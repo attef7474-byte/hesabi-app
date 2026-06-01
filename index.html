@@ -646,6 +646,7 @@ function startListeners(){
   if(state.role==='trader') unsub.push(onSnapshot(base('stockLedger'),s=>{cache.stockLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,300); if(state.profileDone) show(active)}));
 }
 
+function customerStatusText(s){return ({active:'نشط',cash_only:'كاش فقط',blocked:'موقوف'}[s]||s||'نشط')}
 function customerDebtInfo(customerId=state.customerId){
   const c=cache.customers.find(x=>x.customerId===customerId) || {};
   const balance=Number(c.balance||0), limit=Number(c.creditLimit||0), remaining=Math.max(limit-balance,0);
@@ -844,6 +845,7 @@ function refreshCatalogUi(){
   else renderItems();
 }
 function renderCatalogReviewContent(cart){
+  const cs=catalogState();
   return `${cart.lines.length?`<div class="list">${cart.lines.map(l=>`<div class="item"><div class="row"><h3>${esc(l.name)}</h3><b>${money(l.total)}</b></div><div class="muted">${l.qty} ${esc(l.unit||'')} × ${money(l.price)}</div></div>`).join('')}</div>`:'<p class="muted">السلة فارغة. اضغط + بجانب أي صنف لإضافته.</p>'}<div class="field"><label>نوع الدفع</label><select id="payType"><option value="cash">كاش</option><option value="credit">آجل</option></select></div><div class="field"><label>ملاحظة</label><textarea id="orderNote"></textarea></div><div class="actions"><button class="btn" id="sendOrder" ${(cart.lines.length&&cache.shop?.allowCustomerOrders!==false)?'':'disabled'}>إرسال طلب الشراء للتاجر</button>${cs.editingOrderId?`<button class="btn warn" id="cancelEditOrder">إلغاء التعديل</button>`:''}<button class="btn light" id="clearCart" ${cart.lines.length?'':'disabled'}>مسح السلة</button></div>`;
 }
 function renderCatalogCartBar(cart){
