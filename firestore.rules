@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // قاعدة أمان مرحلية للنشر:
+    // تمنع الوصول العام، وتسمح فقط للمستخدمين المسجلين عبر Firebase Authentication.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
