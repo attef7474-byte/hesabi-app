@@ -465,13 +465,27 @@ async function linkCustomerToShop(shopId,name,phone,first=false){
   if(!sid){msg('أدخل كود التاجر/المحل','error');return}
   if(!phoneKey){return}
   if((state.customerLinks||[]).some(x=>x.shopId===sid)){msg('أنت مرتبط بهذا التاجر مسبقًا','error');return}
-  const customerId=id('CUS');
-  const customerRef=doc(db,'shops',sid,'customers',customerId);
+  let customerId=id('CUS');
+  let recoveredExisting=false;
   const phoneRef=doc(db,'shops',sid,'customerPhones',phoneKey);
   try{
     await runTransaction(db, async(tx)=>{
       const existing=await tx.get(phoneRef);
-      if(existing.exists()) throw new Error('هذا الرقم مرتبط مسبقًا بهذا التاجر كعميل. استخدم زر استرجاع حساب عميل موجود بدل إنشاء حساب جديد.');
+      if(existing.exists()){
+        const ex=existing.data()||{};
+        if((state.authPhoneKey||'')!==phoneKey){
+          throw new Error('هذا الرقم مرتبط مسبقًا بهذا التاجر كعميل. سجل الدخول بنفس رقم العميل السابق ثم استخدم استرجاع حساب عميل موجود.');
+        }
+        customerId=ex.customerId;
+        recoveredExisting=true;
+        if(!customerId) throw new Error('تم العثور على رقم العميل لكن سجل الربط ناقص. تواصل مع التاجر لإصلاح الحساب.');
+        const existingCustomerRef=doc(db,'shops',sid,'customers',customerId);
+        tx.set(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
+        tx.update(existingCustomerRef,{customerUid:uid(),securityUpgradedAt:serverTimestamp()});
+        tx.set(doc(db,'customerPhoneLinks',phoneKey,'shops',sid),{customerId,shopId:sid,shopName:sid,name,phone,phoneKey,updatedAt:serverTimestamp()},{merge:true});
+        return;
+      }
+      const customerRef=doc(db,'shops',sid,'customers',customerId);
       tx.set(customerRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),balance:0,creditLimit:0,status:'active',createdAt:serverTimestamp()});
       tx.set(phoneRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),createdAt:serverTimestamp()});
       tx.set(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()});
@@ -480,9 +494,15 @@ async function linkCustomerToShop(shopId,name,phone,first=false){
     let shopName=sid;
     try{ const shopSnap=await getDoc(doc(db,'shops',sid)); if(shopSnap.exists()) shopName=shopSnap.data().name||sid; }catch(_){}
     if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
+    state.customerLinks=state.customerLinks.filter(x=>x.shopId!==sid);
     state.customerLinks.push({shopId:sid,customerId,customerName:name,customerPhone:phone,phoneKey,shopName});
-    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=name; state.customerPhone=phone; state.shopName=shopName; state.profileDone=true; save(); startListeners(); render(); msg(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك','success');
-  }catch(e){msg(e.message||'تعذر ربط العميل بالمحل','error')}
+    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=name; state.customerPhone=phone; state.shopName=shopName; state.profileDone=true; save(); startListeners(); render(); msg(recoveredExisting?'تم استرجاع ربطك السابق بهذا التاجر بنجاح':(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك'),'success');
+  }catch(e){
+    const m=String(e?.message||e||'');
+    if(m.includes('permission')||m.includes('Missing or insufficient')){
+      msg('تم منع العملية بسبب قواعد Firestore. حدّث قواعد الأمان من آخر نسخة للتطبيق ثم أعد المحاولة.','error');
+    }else msg(m||'تعذر ربط العميل بالمحل','error')
+  }
 }
 
 async function addAnotherShop(){
