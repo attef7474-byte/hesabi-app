@@ -149,7 +149,7 @@ if(!state.firebaseConfig?.apiKey){ state.firebaseConfig = DEFAULT_FIREBASE_CONFI
 let app=null, db=null, auth=null, currentUser=null, authReady=false, unsub=[];
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
-const APP_VERSION='2026-06-01-واجهة-محسنة-بحث-شامل-FCM';
+const APP_VERSION='2026-06-01-كتالوج-ذكي-إصلاح-البحث-والكيبورد';
 
 function load(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
 function save(){localStorage.setItem(LS,JSON.stringify(state))}
@@ -777,10 +777,10 @@ function setCartQty(itemId,qty){
   if(stock<=0){q=0; msg('هذا الصنف غير متوفر حاليًا','error')}
   if(q>stock){q=stock; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error')}
   if(q>0) cs.cart[itemId]=q; else delete cs.cart[itemId];
-  saveCatalog(); renderItems();
+  saveCatalog(); refreshCatalogUi();
 }
 function changeCartQty(itemId,delta){const cs=catalogState(); setCartQty(itemId,Number(cs.cart?.[itemId]||0)+Number(delta||0))}
-function toggleFavorite(itemId){const cs=catalogState(); cs.favorites[itemId]=!cs.favorites[itemId]; if(!cs.favorites[itemId]) delete cs.favorites[itemId]; saveCatalog(); renderItems()}
+function toggleFavorite(itemId){const cs=catalogState(); cs.favorites[itemId]=!cs.favorites[itemId]; if(!cs.favorites[itemId]) delete cs.favorites[itemId]; saveCatalog(); refreshCatalogUi()}
 function itemSoldQty(itemId){return cache.invoices.reduce((a,inv)=>a+(inv.lines||inv.items||[]).filter(l=>l.itemId===itemId).reduce((x,l)=>x+Number(l.qty||0),0),0)}
 function commonCustomerItems(){
   const counts={};
@@ -805,11 +805,42 @@ function renderCatalogItem(i){
   const cs=catalogState(); const qty=Number(cs.cart?.[i.id]||0); const stock=Number(i.stock||0); const disabled=stock<=0;
   return `<div class="item catalog-item"><div><div class="row"><h3>${esc(i.name)}</h3><button class="btn fav-btn" data-fav-item="${i.id}">${cs.favorites?.[i.id]?'⭐':'☆'}</button></div><div class="muted">${esc(itemCategory(i))} | ${esc(i.unit||'حبة')} | المتوفر: <b>${stock}</b></div><div class="catalog-price">${money(i.price||0)}</div>${disabled?'<div class="notice error">غير متوفر حاليًا</div>':''}</div><div class="qty-control"><button class="btn light" data-cart-dec="${i.id}" ${qty<=0?'disabled':''}>−</button><span class="qty-pill">${qty}</span><button class="btn secondary" data-cart-inc="${i.id}" ${disabled||qty>=stock?'disabled':''}>+</button></div></div>`;
 }
+
+function refreshCatalogUi(){
+  if($('catalogList')) renderCatalogDynamicSections();
+  else renderItems();
+}
+function renderCatalogReviewContent(cart){
+  return `${cart.lines.length?`<div class="list">${cart.lines.map(l=>`<div class="item"><div class="row"><h3>${esc(l.name)}</h3><b>${money(l.total)}</b></div><div class="muted">${l.qty} ${esc(l.unit||'')} × ${money(l.price)}</div></div>`).join('')}</div>`:'<p class="muted">السلة فارغة. اضغط + بجانب أي صنف لإضافته.</p>'}<div class="field"><label>نوع الدفع</label><select id="payType"><option value="cash">كاش</option><option value="credit">آجل</option></select></div><div class="field"><label>ملاحظة</label><textarea id="orderNote"></textarea></div><div class="actions"><button class="btn" id="sendOrder" ${(cart.lines.length&&cache.shop?.allowCustomerOrders!==false)?'':'disabled'}>إرسال طلب الشراء للتاجر</button><button class="btn light" id="clearCart" ${cart.lines.length?'':'disabled'}>مسح السلة</button></div>`;
+}
+function renderCatalogCartBar(cart){
+  return cart.items?`<div class="cart-bar"><div class="row"><div><b>السلة: ${cart.items} أصناف</b><div class="muted">الكمية: ${cart.count} | الإجمالي: ${money(cart.total)}</div></div><button class="btn cart-review" onclick="document.getElementById('orderReviewCard')?.scrollIntoView({behavior:'smooth'})">مراجعة الطلب</button></div></div>`:'';
+}
+function renderCatalogDynamicSections(){
+  const cs=catalogState();
+  const all=filteredCatalogItems();
+  const shown=all.slice(0,Number(cs.limit||30));
+  const common=commonCustomerItems().filter(i=>i.isActive!==false && Number(i.stock||0)>0).slice(0,6);
+  const cart=catalogCartTotal();
+  const summary=$('catalogSummary');
+  if(summary) summary.textContent=`نتائج مطابقة: ${all.length} | في السلة: ${cart.items} أصناف / ${cart.count} كمية`;
+  const commonEl=$('catalogCommon');
+  if(commonEl) commonEl.innerHTML=common.length?`<div class="card"><h2>الأصناف المعتادة لك</h2><div class="list">${common.map(renderCatalogItem).join('')}</div></div>`:'';
+  const listEl=$('catalogList');
+  if(listEl) listEl.innerHTML=shown.map(renderCatalogItem).join('')||'<p class="muted">لا توجد أصناف مطابقة. جرّب تغيير البحث أو التصنيف.</p>';
+  const moreEl=$('catalogLoadMoreWrap');
+  if(moreEl) moreEl.innerHTML=shown.length<all.length?`<div class="load-more-card actions"><button class="btn secondary" id="catalogLoadMore">عرض المزيد (${all.length-shown.length} متبقي)</button></div>`:'';
+  const cartBarEl=$('catalogCartBar');
+  if(cartBarEl) cartBarEl.innerHTML=renderCatalogCartBar(cart);
+  const reviewEl=$('orderReviewDynamic');
+  if(reviewEl) reviewEl.innerHTML=renderCatalogReviewContent(cart);
+  bindCatalogButtons();
+}
 function bindCatalogButtons(){
   document.querySelectorAll('[data-cart-inc]').forEach(b=>b.onclick=()=>changeCartQty(b.dataset.cartInc,1));
   document.querySelectorAll('[data-cart-dec]').forEach(b=>b.onclick=()=>changeCartQty(b.dataset.cartDec,-1));
   document.querySelectorAll('[data-fav-item]').forEach(b=>b.onclick=()=>toggleFavorite(b.dataset.favItem));
-  const q=$('catalogSearch'); if(q) q.oninput=e=>{const cs=catalogState(); cs.q=e.target.value; cs.limit=30; saveCatalog(); renderItems()};
+  const q=$('catalogSearch'); if(q) q.oninput=e=>{const cs=catalogState(); cs.q=e.target.value; cs.limit=30; saveCatalog(); renderCatalogDynamicSections()};
   const av=$('catalogAvailableOnly'); if(av) av.onchange=e=>{const cs=catalogState(); cs.availableOnly=e.target.value==='1'; cs.limit=30; saveCatalog(); renderItems()};
   const sort=$('catalogSort'); if(sort) sort.onchange=e=>{const cs=catalogState(); cs.sort=e.target.value; saveCatalog(); renderItems()};
   document.querySelectorAll('[data-catalog-cat]').forEach(b=>b.onclick=()=>{const cs=catalogState(); cs.category=b.dataset.catalogCat; cs.limit=30; saveCatalog(); renderItems()});
@@ -832,11 +863,11 @@ function renderItems(){
     const common=commonCustomerItems().filter(i=>i.isActive!==false && Number(i.stock||0)>0).slice(0,6);
     const cart=catalogCartTotal();
     $('page_items').innerHTML=`<div class="card"><h2>كتالوج طلب الشراء</h2><p class="muted">اختر الأصناف بسهولة بالبحث والتصنيف والمفضلة. لا يتم عرض 1000 صنف دفعة واحدة؛ يظهر أول ${Number(cs.limit||30)} صنف ويمكنك عرض المزيد.</p>${cache.shop?.allowCustomerOrders===false?'<div class="notice error">التاجر أوقف استقبال طلبات العملاء مؤقتًا. يمكنك المراسلة فقط.</div>':''}${renderCustomerLimitBox()}</div>
-    <div class="catalog-toolbar"><div class="field"><label>بحث سريع باسم الصنف أو التصنيف أو الكود</label><input id="catalogSearch" value="${esc(cs.q||'')}" placeholder="مثال: سكر، زيت، منظفات..."></div><div class="grid"><div class="field"><label>الترتيب</label><select id="catalogSort"><option value="popular" ${cs.sort==='popular'?'selected':''}>الأكثر طلبًا أولًا</option><option value="price_asc" ${cs.sort==='price_asc'?'selected':''}>الأرخص أولًا</option><option value="price_desc" ${cs.sort==='price_desc'?'selected':''}>الأعلى سعرًا</option><option value="stock_desc" ${cs.sort==='stock_desc'?'selected':''}>الأكثر توفرًا</option></select></div><div class="field"><label>المتوفر فقط</label><select id="catalogAvailableOnly"><option value="1" ${cs.availableOnly?'selected':''}>نعم</option><option value="0" ${!cs.availableOnly?'selected':''}>لا</option></select></div></div><div class="chips">${categories.map(c=>`<button class="chip ${cs.category===c?'active':''}" data-catalog-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div><div class="muted">نتائج مطابقة: ${all.length} | في السلة: ${cart.items} أصناف / ${cart.count} كمية</div></div>
-    ${common.length?`<div class="card"><h2>الأصناف المعتادة لك</h2><div class="list">${common.map(renderCatalogItem).join('')}</div></div>`:''}
-    <div class="card"><h2>الأصناف</h2><div class="list">${shown.map(renderCatalogItem).join('')||'<p class="muted">لا توجد أصناف مطابقة. جرّب تغيير البحث أو التصنيف.</p>'}</div>${shown.length<all.length?`<div class="load-more-card actions"><button class="btn secondary" id="catalogLoadMore">عرض المزيد (${all.length-shown.length} متبقي)</button></div>`:''}</div>
-    ${cart.items?`<div class="cart-bar"><div class="row"><div><b>السلة: ${cart.items} أصناف</b><div class="muted">الكمية: ${cart.count} | الإجمالي: ${money(cart.total)}</div></div><button class="btn cart-review" onclick="document.getElementById('orderReviewCard')?.scrollIntoView({behavior:'smooth'})">مراجعة الطلب</button></div></div>`:''}
-    <div class="card" id="orderReviewCard"><h2>مراجعة وإرسال الطلب</h2>${cart.lines.length?`<div class="list">${cart.lines.map(l=>`<div class="item"><div class="row"><h3>${esc(l.name)}</h3><b>${money(l.total)}</b></div><div class="muted">${l.qty} ${esc(l.unit||'')} × ${money(l.price)}</div></div>`).join('')}</div>`:'<p class="muted">السلة فارغة. اضغط + بجانب أي صنف لإضافته.</p>'}<div class="field"><label>نوع الدفع</label><select id="payType"><option value="cash">كاش</option><option value="credit">آجل</option></select></div><div class="field"><label>ملاحظة</label><textarea id="orderNote"></textarea></div><div class="actions"><button class="btn" id="sendOrder" ${(cart.lines.length&&cache.shop?.allowCustomerOrders!==false)?'':'disabled'}>إرسال طلب الشراء للتاجر</button><button class="btn light" id="clearCart" ${cart.lines.length?'':'disabled'}>مسح السلة</button></div></div>`;
+    <div class="catalog-toolbar"><div class="field"><label>بحث سريع باسم الصنف أو التصنيف أو الكود</label><input id="catalogSearch" value="${esc(cs.q||'')}" placeholder="مثال: سكر، زيت، منظفات..."></div><div class="grid"><div class="field"><label>الترتيب</label><select id="catalogSort"><option value="popular" ${cs.sort==='popular'?'selected':''}>الأكثر طلبًا أولًا</option><option value="price_asc" ${cs.sort==='price_asc'?'selected':''}>الأرخص أولًا</option><option value="price_desc" ${cs.sort==='price_desc'?'selected':''}>الأعلى سعرًا</option><option value="stock_desc" ${cs.sort==='stock_desc'?'selected':''}>الأكثر توفرًا</option></select></div><div class="field"><label>المتوفر فقط</label><select id="catalogAvailableOnly"><option value="1" ${cs.availableOnly?'selected':''}>نعم</option><option value="0" ${!cs.availableOnly?'selected':''}>لا</option></select></div></div><div class="chips">${categories.map(c=>`<button class="chip ${cs.category===c?'active':''}" data-catalog-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div><div class="muted" id="catalogSummary">نتائج مطابقة: ${all.length} | في السلة: ${cart.items} أصناف / ${cart.count} كمية</div></div>
+    <div id="catalogCommon">${common.length?`<div class="card"><h2>الأصناف المعتادة لك</h2><div class="list">${common.map(renderCatalogItem).join('')}</div></div>`:''}</div>
+    <div class="card"><h2>الأصناف</h2><div class="list" id="catalogList">${shown.map(renderCatalogItem).join('')||'<p class="muted">لا توجد أصناف مطابقة. جرّب تغيير البحث أو التصنيف.</p>'}</div><div id="catalogLoadMoreWrap">${shown.length<all.length?`<div class="load-more-card actions"><button class="btn secondary" id="catalogLoadMore">عرض المزيد (${all.length-shown.length} متبقي)</button></div>`:''}</div></div>
+    <div id="catalogCartBar">${renderCatalogCartBar(cart)}</div>
+    <div class="card" id="orderReviewCard"><h2>مراجعة وإرسال الطلب</h2><div id="orderReviewDynamic">${renderCatalogReviewContent(cart)}</div></div>`;
     setTimeout(bindCatalogButtons);
   }
 }
