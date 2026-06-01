@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>حسابي التجاري - Firebase</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--text:#162033;--muted:#667085;--primary:#0f766e;--danger:#b42318;--warn:#b54708;--ok:#027a48;--line:#e4e7ec;--soft:#ecfdf3;--shadow:0 8px 24px rgba(16,24,40,.08)}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif} button,input,select,textarea{font:inherit} .app{max-width:760px;margin:0 auto;min-height:100vh;padding:14px 14px 84px}.top{position:sticky;top:0;z-index:10;background:rgba(246,247,251,.94);backdrop-filter:blur(10px);padding:10px 0}.title{display:flex;gap:10px;align-items:center;justify-content:space-between}.title h1{font-size:20px;margin:0}.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 10px;background:#fff;color:var(--muted);font-size:12px}.online{color:var(--ok)}.offline{color:var(--danger)}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#f8fafc;border:1px solid var(--line);border-radius:16px;padding:12px}.metric b{display:block;font-size:18px;margin-top:4px}.muted{color:var(--muted);font-size:13px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.list{display:grid;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.item h3{margin:0 0 5px;font-size:15px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.btn{border:0;border-radius:13px;padding:10px 13px;background:var(--primary);color:#fff;cursor:pointer}.btn.secondary{background:#eef4ff;color:#1849a9}.btn.light{background:#f2f4f7;color:#344054}.btn.danger{background:var(--danger)}.btn.warn{background:var(--warn)}.btn.ok{background:var(--ok)}.btn:disabled{opacity:.55;cursor:not-allowed}.form{display:grid;gap:10px}.field label{display:block;font-size:13px;color:var(--muted);margin:0 0 5px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:13px;padding:11px;background:#fff}.field textarea{min-height:70px;resize:vertical}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px;z-index:20}.nav-inner{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:6px}.tab{border:0;border-radius:14px;padding:9px 5px;background:#f2f4f7;color:#344054;font-size:12px}.tab.active{background:var(--primary);color:#fff}.hidden{display:none!important}.notice{border:1px dashed #99f6e4;background:#f0fdfa;border-radius:16px;padding:12px;color:#115e59}.error{border-color:#fecaca;background:#fff1f2;color:#991b1b}.success{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.status{font-size:12px;border-radius:999px;padding:4px 8px;background:#f2f4f7}.pending{background:#fff7ed;color:#9a3412}.approved{background:#ecfdf3;color:#027a48}.rejected{background:#fef2f2;color:#b42318}.mono{direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap;background:#101828;color:#d0d5dd;border-radius:14px;padding:12px;overflow:auto}.setupChoice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bigChoice{border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;background:#fff}.bigChoice strong{display:block;font-size:18px;margin-bottom:7px}@media(max-width:420px){.grid{grid-template-columns:1fr}.setupChoice{grid-template-columns:1fr}.app{padding:10px 10px 84px}.btn{width:100%}.actions .btn{width:auto;flex:1}.nav-inner{gap:4px}.tab{font-size:11px;padding:8px 2px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="title"><h1>حسابي التجاري</h1><span id="netBadge" class="badge">جاري الفحص...</span></div><div id="subTitle" class="muted"></div></div>
+  <div id="msg"></div>
+
+  <section id="firebaseSetup" class="card hidden">
+    <h2>إعداد Firebase Firestore</h2>
+    <p class="muted">أدخل إعدادات Firebase Web App مرة واحدة. بعدها سيعمل التزامن بين هاتف العميل وهاتف التاجر عبر Firestore.</p>
+    <div class="form">
+      <div class="field"><label>apiKey</label><input id="cfg_apiKey"></div>
+      <div class="field"><label>authDomain</label><input id="cfg_authDomain" placeholder="project.firebaseapp.com"></div>
+      <div class="field"><label>projectId</label><input id="cfg_projectId"></div>
+      <div class="field"><label>storageBucket</label><input id="cfg_storageBucket" placeholder="project.appspot.com"></div>
+      <div class="field"><label>messagingSenderId</label><input id="cfg_messagingSenderId"></div>
+      <div class="field"><label>appId</label><input id="cfg_appId"></div>
+      <button class="btn" id="saveFirebaseConfig">حفظ إعدادات Firebase</button>
+    </div>
+    <details style="margin-top:12px"><summary>قواعد Firestore للتجربة فقط</summary><div class="mono">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</div><p class="muted">هذه القواعد مفتوحة للتجربة فقط. لا تستخدمها لبيانات حقيقية بدون Firebase Authentication وقواعد أمان.</p></details>
+  </section>
+
+
+
+  <section id="authSetup" class="card hidden">
+    <h2>تسجيل الدخول الآمن</h2>
+    <p class="muted">للنشر التجاري يجب الدخول بحساب آمن. استخدم رقم الهاتف وكلمة مرور. يجب تفعيل Email/Password من Firebase Authentication. إذا كانت شاشة الدخول لا تظهر عند فتح الملف المحلي، استخدم هذه النسخة المعدلة أو ارفع التطبيق على Firebase Hosting.</p>
+    <div class="form">
+      <div class="field"><label>رقم الهاتف</label><input id="authPhone" placeholder="مثال: 777123456"></div>
+      <div class="field"><label>كلمة المرور</label><input id="authPass" type="password" placeholder="6 أحرف على الأقل"></div>
+      <div class="actions">
+        <button class="btn" id="loginBtn">دخول</button>
+        <button class="btn secondary" id="signupBtn">إنشاء حساب آمن</button>
+      </div>
+      <div class="notice">بعد الدخول سيحفظ التطبيق معرف المستخدم UID ويربط به المحل أو حساب العميل، وهذا هو أساس قواعد الأمان.</div>
+    </div>
+  </section>
+
+  <section id="roleSetup" class="card hidden">
+    <h2>تهيئة أول تشغيل</h2>
+    <p class="muted">اختر نوع المستخدم. العميل يرى مشترياته وسداداته فقط، والتاجر يرى إدارة المحل والطلبات.</p>
+    <div class="setupChoice">
+      <button class="bigChoice" id="chooseTrader"><strong>تاجر / محل</strong><span class="muted">إدارة الأصناف والعملاء والطلبات</span></button>
+      <button class="bigChoice" id="chooseCustomer"><strong>عميل</strong><span class="muted">شراء أصناف وسداد حساب</span></button>
+    </div>
+  </section>
+
+  <section id="profileSetup" class="card hidden"></section>
+
+  <main id="main" class="hidden">
+    <section id="page_home"></section>
+    <section id="page_items" class="hidden"></section>
+    <section id="page_orders" class="hidden"></section>
+    <section id="page_customers" class="hidden"></section>
+    <section id="page_shops" class="hidden"></section>
+    <section id="page_messages" class="hidden"></section>
+    <section id="page_payments" class="hidden"></section>
+    <section id="page_invoices" class="hidden"></section>
+    <section id="page_statement" class="hidden"></section>
+    <section id="page_audit" class="hidden"></section>
+    <section id="page_stock" class="hidden"></section>
+    <section id="page_returns" class="hidden"></section>
+    <section id="page_schedules" class="hidden"></section>
+    <section id="page_collections" class="hidden"></section>
+    <section id="page_reports" class="hidden"></section>
+    <section id="page_policies" class="hidden"></section>
+    <section id="page_notifications" class="hidden"></section>
+    <section id="page_settings" class="hidden"></section>
+  </main>
+</div>
+
+<nav id="nav" class="nav hidden"><div id="navInner" class="nav-inner"></div></nav>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getFirestore, collection, doc, setDoc, addDoc, getDoc, updateDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+const LS='hesabi_firebase_v3';
+const OLD_LS='hesabi_firebase_v2';
+const $=id=>document.getElementById(id);
+let state=load();
+if(!state.firebaseConfig){
+  try{ const old=JSON.parse(localStorage.getItem(OLD_LS)||'{}'); if(old.firebaseConfig) state=old; }catch{}
+}
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDzM7sFT6FvP740Yq6ySa_z-_kj8NT2pGw",
+  authDomain: "hesabi-app-edc7e.firebaseapp.com",
+  projectId: "hesabi-app-edc7e",
+  storageBucket: "hesabi-app-edc7e.firebasestorage.app",
+  messagingSenderId: "669487458406",
+  appId: "1:669487458406:web:958c0218a3ba861e9365a7"
+};
+if(!state.firebaseConfig?.apiKey){ state.firebaseConfig = DEFAULT_FIREBASE_CONFIG; save(); }
+let app=null, db=null, auth=null, currentUser=null, authReady=false, unsub=[];
+let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
+let active='home';
+const APP_VERSION='2026-06-01-مرحلة-9-الأمان-والنشر-fixed4';
+
+function load(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
+function save(){localStorage.setItem(LS,JSON.stringify(state))}
+function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function msg(t,type='notice'){ $('msg').innerHTML=`<div class="notice ${type}">${esc(t)}</div>`; setTimeout(()=>{$('msg').innerHTML=''},5000)}
+function money(n){return Number(n||0).toLocaleString('ar-YE')+' ريال'}
+function todayIso(){return new Date().toISOString().slice(0,10)}
+function fileToDataUrl(file, maxBytes=700000){
+  return new Promise((resolve,reject)=>{
+    if(!file){resolve(null);return}
+    if(file.size>maxBytes){reject(new Error('حجم صورة الإيصال كبير جدًا. اختر صورة أقل من 700KB أو صغّرها قبل الإرسال.'));return}
+    const r=new FileReader(); r.onload=()=>resolve({name:file.name,type:file.type,size:file.size,dataUrl:r.result}); r.onerror=()=>reject(new Error('تعذر قراءة صورة الإيصال')); r.readAsDataURL(file);
+  })
+}
+function id(prefix){return prefix+'-'+Math.random().toString(36).slice(2,7).toUpperCase()+Date.now().toString().slice(-4)}
+function statusText(s){return ({pending:'معلّق',pending_trader:'بانتظار موافقة التاجر',pending_customer:'بانتظار موافقة العميل',approved:'مقبول',rejected:'مرفوض'}[s]||s||'معلّق')}
+function payTypeText(v){return v==='credit'?'آجل':'كاش'}
+function ledgerTypeText(v){return ({debit_invoice:'فاتورة آجل',cash_invoice:'فاتورة كاش',payment:'سداد',return_credit:'مرتجع آجل',return_cash:'مرتجع كاش',adjustment:'تسوية'}[v]||v||'حركة')}
+function onlineBadge(){const on=navigator.onLine;$('netBadge').className='badge '+(on?'online':'offline');$('netBadge').textContent=on?'متصل بالإنترنت':'غير متصل'}
+function normalizePhone(v){
+  let x=String(v||'').trim();
+  const ar='٠١٢٣٤٥٦٧٨٩'; const fa='۰۱۲۳۴۵۶۷۸۹';
+  x=x.replace(/[٠-٩]/g,d=>String(ar.indexOf(d))).replace(/[۰-۹]/g,d=>String(fa.indexOf(d)));
+  x=x.replace(/[^0-9]/g,'');
+  if(x.startsWith('00')) x=x.slice(2);
+  if(x.startsWith('967') && x.length>=12) x='0'+x.slice(3);
+  if(x.startsWith('7') && x.length===9) x='0'+x;
+  return x;
+}
+function authEmailFromPhone(phoneKey){return 'u'+phoneKey+'@hesabi.local'}
+function uid(){return currentUser?.uid || state.uid || ''}
+function requireAuth(){ if(!uid()){msg('يجب تسجيل الدخول أولًا','error'); return false} return true }
+function validPhoneOrWarn(phone,label='رقم الهاتف'){
+  const key=normalizePhone(phone);
+  if(key.length<7){msg(label+' غير صحيح أو قصير جدًا','error'); return null}
+  return key;
+}
+window.addEventListener('online',onlineBadge);window.addEventListener('offline',onlineBadge);onlineBadge();
+function isIgnorableBrowserError(m){
+  m=String(m||'');
+  return m==='Script error.' || m==='Script error' ||
+    m.includes('reading getContext') ||
+    m.includes('Cannot read properties of undefined') && m.includes('getContext') ||
+    m.includes('ResizeObserver loop') ||
+    m.includes('Non-Error promise rejection captured');
+}
+window.addEventListener('error',e=>{try{const m=String(e.message||e.error?.message||e||''); console.warn('window.error',m,e.error||e); if(isIgnorableBrowserError(m)) return; msg('خطأ في تشغيل التطبيق: '+m,'error')}catch{}});
+window.addEventListener('unhandledrejection',e=>{try{const m=String(e.reason?.message||e.reason||e); console.warn('unhandledrejection',m,e.reason); if(isIgnorableBrowserError(m)) return; msg('خطأ في الاتصال أو تسجيل الدخول: '+m,'error')}catch{}});
+
+function normalizeCustomerLinks(){
+  if(state.role==='customer'){
+    if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
+    if(state.customerId && state.shopId && !state.customerLinks.some(x=>x.shopId===state.shopId && x.customerId===state.customerId)){
+      state.customerLinks.push({shopId:state.shopId,customerId:state.customerId,customerName:state.customerName||'عميل',customerPhone:state.customerPhone||'',shopName:state.shopName||state.shopId});
+    }
+    if(state.customerLinks.length && (!state.activeShopId || !state.customerLinks.some(x=>x.shopId===state.activeShopId))){
+      state.activeShopId=state.customerLinks[0].shopId;
+    }
+    const link=currentCustomerLink();
+    if(link){state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||state.customerPhone||''; state.shopName=link.shopName||link.shopId;}
+    save();
+  }
+}
+function currentCustomerLink(){return (state.customerLinks||[]).find(x=>x.shopId===state.activeShopId) || (state.customerLinks||[])[0] || null}
+function setActiveCustomerShop(shopId){
+  const link=(state.customerLinks||[]).find(x=>x.shopId===shopId);
+  if(!link){msg('لم يتم العثور على هذا التاجر في روابطك','error');return}
+  state.activeShopId=shopId; state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||''; state.shopName=link.shopName||shopId; save(); cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]}; startListeners(); active='home'; render(); msg('تم التبديل إلى حساب: '+(link.shopName||shopId),'success');
+}
+function beep(){
+  if(!state.soundEnabled) return;
+  try{const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC(); const osc=ctx.createOscillator(); const gain=ctx.createGain(); osc.type='sine'; osc.frequency.value=880; gain.gain.value=.08; osc.connect(gain); gain.connect(ctx.destination); osc.start(); setTimeout(()=>{osc.stop();ctx.close();},180)}catch(e){}
+}
+function notifyLocal(title,body){
+  beep();
+  if(state.notifyEnabled && 'Notification' in window && Notification.permission==='granted'){
+    try{new Notification(title,{body:body||'',tag:'hesabi-'+Date.now()})}catch(e){}
+  }
+}
+function ensureNotifyState(){
+  if(!state.knownNotifyIds) state.knownNotifyIds={};
+  if(!state.readNotifyIds) state.readNotifyIds={};
+}
+function notificationKey(n){return n.id}
+function getNotifications(){
+  const notes=[];
+  const shopName=state.role==='customer' ? (state.shopName||state.shopId||'التاجر') : (cache.shop?.name||'المحل');
+  for(const o of cache.orders||[]){
+    if(state.role==='trader' && (o.status==='pending'||o.status==='pending_trader') && o.source!=='trader'){
+      notes.push({id:`order:${state.shopId}:${o.id}:${o.status}`,type:'order',page:'orders',createdMs:Number(o.createdMs||0),title:'طلب شراء جديد',body:`${o.customerName||'عميل'} - ${money(o.total)} - ${payTypeText(o.paymentType)}`});
+    }
+    if(state.role==='customer'){
+      if(o.status==='pending_customer' && o.source==='trader'){
+        notes.push({id:`order:${state.shopId}:${o.id}:pending_customer`,type:'order',page:'orders',createdMs:Number(o.createdMs||0),title:'طلب بيع من التاجر',body:`${shopName} - ${money(o.total)} - يحتاج موافقتك`});
+      }
+      if((o.status==='approved'||o.status==='rejected') && o.source!=='customer_ack'){
+        notes.push({id:`order:${state.shopId}:${o.id}:${o.status}`,type:'order',page:'orders',createdMs:Number(o.createdMs||Date.now()),title:o.status==='approved'?'تم قبول طلبك':'تم رفض طلبك',body:`${shopName} - ${money(o.total)}${o.traderNote?' - '+o.traderNote:''}`});
+      }
+    }
+  }
+  for(const p of cache.payments||[]){
+    if(state.role==='trader' && p.status==='pending'){
+      notes.push({id:`payment:${state.shopId}:${p.id}:pending`,type:'payment',page:'payments',createdMs:Number(p.createdMs||0),title:'طلب سداد جديد',body:`${p.customerName||'عميل'} - ${money(p.amount)}`});
+    }
+    if(state.role==='customer' && (p.status==='approved'||p.status==='rejected')){
+      notes.push({id:`payment:${state.shopId}:${p.id}:${p.status}`,type:'payment',page:'payments',createdMs:Number(p.createdMs||Date.now()),title:p.status==='approved'?'تم قبول السداد':'تم رفض السداد',body:`${money(p.amount)}${p.traderNote?' - '+p.traderNote:''}`});
+    }
+  }
+  for(const r of cache.returns||[]){
+    if(state.role==='trader' && r.status==='pending'){
+      notes.push({id:`return:${state.shopId}:${r.id}:pending`,type:'return',page:'returns',createdMs:Number(r.createdMs||0),title:'طلب مرتجع جديد',body:`${r.customerName||'عميل'} - ${esc(r.itemName||'صنف')} - ${money(r.amount)}`});
+    }
+    if(state.role==='customer' && (r.status==='approved'||r.status==='rejected')){
+      notes.push({id:`return:${state.shopId}:${r.id}:${r.status}`,type:'return',page:'returns',createdMs:Number(r.reviewedMs||r.createdMs||Date.now()),title:r.status==='approved'?'تم قبول المرتجع':'تم رفض المرتجع',body:`${esc(r.itemName||'صنف')} - ${money(r.amount)}${r.traderNote?' - '+r.traderNote:''}`});
+    }
+  }
+  const todayIso=new Date().toISOString().slice(0,10);
+  for(const sch of cache.schedules||[]){
+    if(sch.status!=='pending') continue;
+    const due=String(sch.dueDate||'');
+    if(due && due<=todayIso){
+      const late=due<todayIso;
+      if(state.role==='customer') notes.push({id:`schedule:${state.shopId}:${sch.id}:${due}:${sch.status}`,type:'schedule',page:'schedules',createdMs:Number(sch.createdMs||Date.now()),title:late?'قسط متأخر':'قسط مستحق اليوم',body:`${shopName} - ${money(sch.amount)} - تاريخ الاستحقاق ${due}`});
+      if(state.role==='trader') notes.push({id:`schedule:${state.shopId}:${sch.id}:${due}:${sch.status}`,type:'schedule',page:'schedules',createdMs:Number(sch.createdMs||Date.now()),title:late?'قسط عميل متأخر':'قسط عميل مستحق اليوم',body:`${sch.customerName||'عميل'} - ${money(sch.amount)} - ${due}`});
+    }
+  }
+  for(const m of cache.messages||[]){
+    const other = state.role==='trader' ? m.fromRole==='customer' : m.fromRole==='trader';
+    if(other){
+      notes.push({id:`message:${state.shopId}:${m.id}`,type:'message',page:'messages',createdMs:Number(m.createdMs||0),title:'رسالة جديدة',body:`${m.fromName||''}: ${String(m.text||'').slice(0,90)}`});
+    }
+  }
+  return notes.sort((a,b)=>(b.createdMs||0)-(a.createdMs||0));
+}
+function unreadNotifications(){
+  ensureNotifyState();
+  return getNotifications().filter(n=>!state.readNotifyIds[notificationKey(n)]);
+}
+function unreadCount(){return unreadNotifications().length}
+function checkNotifications(){
+  ensureNotifyState();
+  const notes=getNotifications();
+  const fresh=notes.filter(n=>!state.knownNotifyIds[notificationKey(n)]);
+  if(fresh.length){
+    for(const n of fresh) state.knownNotifyIds[notificationKey(n)]=Date.now();
+    save();
+    // لا نصدر صوتًا عند التحميل الأول للحساب حتى لا يرن التطبيق على بيانات قديمة كثيرة.
+    if(state.notifyInitialized){
+      notifyLocal('حسابي التجاري', fresh[0].title + (fresh.length>1 ? ` + ${fresh.length-1}` : ''), fresh[0].body || '');
+    }
+  }
+  if(!state.notifyInitialized){state.notifyInitialized=true; save();}
+}
+function markNotificationsRead(filterFn=null){
+  ensureNotifyState();
+  const notes=getNotifications().filter(n=>!filterFn || filterFn(n));
+  for(const n of notes) state.readNotifyIds[notificationKey(n)]=Date.now();
+  save();
+}
+function openNotificationPage(page){
+  show(page||'notifications');
+}
+
+async function initFirebase(){
+  if(!state.firebaseConfig?.apiKey) return false;
+  try{ app=initializeApp(state.firebaseConfig); db=getFirestore(app); auth=getAuth(app); try{await enableIndexedDbPersistence(db)}catch(e){} return true; }
+  catch(e){console.error(e); msg('فشل الاتصال بـ Firebase: '+e.message,'error'); return false;}
+}
+
+async function waitForAuth(){
+  if(!auth) return null;
+  if(authReady) return currentUser;
+  return new Promise(resolve=>{
+    let resolved=false;
+    const applyUser=(u)=>{
+      currentUser=u||null;
+      if(u?.uid) state.uid=u.uid;
+      if(u?.email) state.authEmail=u.email;
+      save();
+    };
+    const resolveOnce=(u)=>{
+      if(resolved) return;
+      resolved=true;
+      applyUser(u);
+      authReady=true;
+      resolve(currentUser);
+      render();
+    };
+    try{
+      onAuthStateChanged(auth,u=>{
+        applyUser(u);
+        if(!authReady) resolveOnce(u);
+        else render();
+      },err=>{
+        console.error(err);
+        msg('تعذر قراءة جلسة الدخول: '+(err.message||err),'error');
+        if(!authReady) resolveOnce(null);
+      });
+    }catch(e){
+      console.error(e);
+      msg('تعذر بدء Firebase Auth: '+(e.message||e),'error');
+      resolveOnce(null);
+    }
+    // في بعض متصفحات أندرويد عند فتح الملف المحلي content:// قد لا يرجع Auth بسرعة.
+    // لا نترك الصفحة فارغة؛ نعرض شاشة الدخول، لكن إذا وصل المستخدم لاحقًا نحدث الواجهة.
+    setTimeout(()=>resolveOnce(auth.currentUser||currentUser), 2500);
+  });
+}
+function render(){
+  normalizeCustomerLinks();
+  const hasCfg=!!state.firebaseConfig?.apiKey;
+  const signed=!!uid();
+  $('firebaseSetup').classList.toggle('hidden', hasCfg);
+  $('authSetup').classList.toggle('hidden', !hasCfg || signed);
+  $('roleSetup').classList.toggle('hidden', !hasCfg || !signed || !!state.role);
+  $('profileSetup').classList.toggle('hidden', !signed || !state.role || !!state.profileDone);
+  $('main').classList.toggle('hidden', !signed || !state.profileDone);
+  $('nav').classList.toggle('hidden', !signed || !state.profileDone);
+  $('subTitle').textContent = signed ? (state.profileDone ? (state.role==='trader'?`تاجر | كود المحل: ${state.shopId||'-'} | حساب آمن`:`عميل | التاجر الحالي: ${state.shopName||state.shopId||'-'} | عدد التجار: ${(state.customerLinks||[]).length||1} | حساب آمن`) : 'تم تسجيل الدخول الآمن') : '';
+  if(!hasCfg){fillCfg(); return}
+  if(hasCfg && !signed){bindAuthButtons(); return}
+  if(state.role && !state.profileDone){renderProfileSetup(); return}
+  if(state.profileDone){renderNav(); show(active)}
+}
+
+function fillCfg(){['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{$('cfg_'+k).value=state.firebaseConfig?.[k]||''})}
+$('saveFirebaseConfig').onclick=async()=>{state.firebaseConfig={apiKey:$('cfg_apiKey').value.trim(),authDomain:$('cfg_authDomain').value.trim(),projectId:$('cfg_projectId').value.trim(),storageBucket:$('cfg_storageBucket').value.trim(),messagingSenderId:$('cfg_messagingSenderId').value.trim(),appId:$('cfg_appId').value.trim()}; if(!state.firebaseConfig.apiKey||!state.firebaseConfig.projectId){msg('أدخل apiKey و projectId على الأقل','error');return} save(); await initFirebase(); render(); msg('تم حفظ إعدادات Firebase','success')}
+
+function bindAuthButtons(){
+  if(!$('loginBtn')) return;
+  $('loginBtn').onclick=async()=>{
+    const phoneKey=validPhoneOrWarn($('authPhone').value,'رقم الهاتف'); const pass=$('authPass').value;
+    if(!phoneKey||!pass){msg('أدخل رقم الهاتف وكلمة المرور','error');return}
+    try{
+      $('loginBtn').disabled=true;
+      const cred=await signInWithEmailAndPassword(auth,authEmailFromPhone(phoneKey),pass);
+      currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; save();
+      msg('تم تسجيل الدخول','success');
+      render();
+    }
+    catch(e){msg('فشل الدخول: '+friendlyAuthError(e),'error')}
+    finally{$('loginBtn').disabled=false;}
+  };
+  $('signupBtn').onclick=async()=>{
+    const phoneKey=validPhoneOrWarn($('authPhone').value,'رقم الهاتف'); const pass=$('authPass').value;
+    if(!phoneKey||!pass||pass.length<6){msg('أدخل رقم هاتف صحيح وكلمة مرور 6 أحرف على الأقل','error');return}
+    try{
+      $('signupBtn').disabled=true;
+      const cred=await createUserWithEmailAndPassword(auth,authEmailFromPhone(phoneKey),pass);
+      currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; save();
+      msg('تم إنشاء الحساب الآمن. اختر الآن نوع الحساب: تاجر أو عميل.','success');
+      render();
+    }
+    catch(e){msg('تعذر إنشاء الحساب: '+friendlyAuthError(e),'error')}
+    finally{$('signupBtn').disabled=false;}
+  };
+}
+
+function friendlyAuthError(e){
+  const code=String(e?.code||''); const m=String(e?.message||e||'');
+  if(code.includes('email-already-in-use')) return 'هذا الرقم لديه حساب سابق. استخدم زر دخول بدل إنشاء حساب.';
+  if(code.includes('invalid-credential')||code.includes('wrong-password')) return 'رقم الهاتف أو كلمة المرور غير صحيحة.';
+  if(code.includes('weak-password')) return 'كلمة المرور ضعيفة. استخدم 6 أحرف أو أرقام على الأقل.';
+  if(code.includes('configuration-not-found')) return 'يجب تفعيل Authentication ثم Email/Password في Firebase.';
+  if(code.includes('network-request-failed')) return 'فشل الاتصال بالإنترنت أو Firebase. تحقق من الشبكة.';
+  return m;
+}
+
+$('chooseTrader').onclick=()=>{state.role='trader';save();render()}
+$('chooseCustomer').onclick=()=>{state.role='customer';save();render()}
+
+function renderProfileSetup(){
+  if(state.role==='trader') $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">إذا فتحت نسخة جديدة ولم تظهر بياناتك، لا تنشئ محلًا جديدًا. استخدم زر استرجاع محل موجود بنفس رقم الهاتف و PIN.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" placeholder="مثال: 777123456"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء محل جديد</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button></div>`;
+  else $('profileSetup').innerHTML=`<h2>تهيئة العميل</h2><div class="notice">إذا اختفت بياناتك بعد التحديث، أدخل نفس رقم هاتفك وكود المحل ثم اضغط استرجاع حساب عميل موجود. لن يتم إنشاء حساب مكرر.</div><div class="form"><div class="field"><label>اسم العميل</label><input id="custName"></div><div class="field"><label>رقم الهاتف</label><input id="custPhone"></div><div class="field"><label>كود المحل من التاجر</label><input id="joinShopId" placeholder="SHOP-XXXXX"></div><button class="btn" id="joinShop">ربط كعميل جديد</button><button class="btn secondary" id="recoverCustomer">استرجاع حساب عميل موجود</button></div>`;
+  setTimeout(()=>{ if(state.role==='trader'){ $('createShop').onclick=createShop; $('recoverShop').onclick=recoverShopByPhone; } else { $('joinShop').onclick=joinShop; $('recoverCustomer').onclick=recoverCustomerByPhone; } });
+}
+
+async function recoverShopByPhone(){
+  if(!requireAuth()) return;
+  const phone=$('shopPhone').value.trim(), pin=$('shopPin').value.trim();
+  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف المحل');
+  if(!phoneKey||!pin){msg('أدخل رقم هاتف المحل ورمز الإدارة PIN لاسترجاع المحل','error');return}
+  try{
+    const phoneSnap=await getDoc(doc(db,'shopPhones',phoneKey));
+    if(!phoneSnap.exists()){msg('لا يوجد محل مسجل بهذا الرقم. يمكنك إنشاء محل جديد.','error');return}
+    const shopId=phoneSnap.data().shopId;
+    const shopSnap=await getDoc(doc(db,'shops',shopId));
+    if(!shopSnap.exists()){msg('تم العثور على الرقم لكن سجل المحل غير موجود','error');return}
+    const shop=shopSnap.data();
+    if(String(shop.pin||'')!==String(pin)){msg('رمز PIN غير صحيح لهذا المحل','error');return}
+    if(shop.ownerUid && shop.ownerUid!==uid()){msg('هذا المحل مربوط بحساب دخول آخر. ادخل بنفس الحساب الذي أنشأ المحل.','error');return}
+    if(!shop.ownerUid){await updateDoc(doc(db,'shops',shopId),{ownerUid:uid(),ownerPhoneKey:state.authPhoneKey||phoneKey,securityUpgradedAt:serverTimestamp()});}
+    state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.shopName=shop.name||shopId; save(); startListeners(); render(); msg('تم استرجاع المحل والبيانات من Firebase بنجاح','success');
+  }catch(e){msg(e.message||'تعذر استرجاع المحل','error')}
+}
+
+async function recoverCustomerByPhone(){
+  if(!requireAuth()) return;
+  const name=$('custName').value.trim(), phone=$('custPhone').value.trim(), shopId=$('joinShopId').value.trim();
+  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف العميل');
+  if(!phoneKey||!shopId){msg('أدخل رقم الهاتف وكود المحل لاسترجاع الحساب','error');return}
+  try{
+    const sid=String(shopId).trim();
+    const phoneSnap=await getDoc(doc(db,'shops',sid,'customerPhones',phoneKey));
+    if(!phoneSnap.exists()){msg('لا يوجد عميل بهذا الرقم عند هذا التاجر. يمكنك الربط كعميل جديد.','error');return}
+    const customerId=phoneSnap.data().customerId;
+    const custRef=doc(db,'shops',sid,'customers',customerId);
+    try{ await updateDoc(custRef,{customerUid:uid(),securityUpgradedAt:serverTimestamp()}); }catch(_){}
+    await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
+    const shopSnap=await getDoc(doc(db,'shops',sid));
+    if(!shopSnap.exists()){msg('كود المحل غير صحيح أو لا تملك صلاحية الوصول إليه','error');return}
+    const custSnap=await getDoc(custRef);
+    if(!custSnap.exists()){msg('تم العثور على الرقم لكن سجل العميل غير موجود','error');return}
+    const shop=shopSnap.data(); const c=custSnap.data();
+    if(c.customerUid && c.customerUid!==uid()){msg('هذا العميل مربوط بحساب دخول آخر. ادخل بنفس الحساب السابق.','error');return}
+    if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
+    state.customerLinks=state.customerLinks.filter(x=>!(x.shopId===sid));
+    state.customerLinks.push({shopId:sid,customerId,customerName:c.name||name||'عميل',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
+    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=c.name||name||'عميل'; state.customerPhone=c.phone||phone; state.shopName=shop.name||sid; state.profileDone=true; save(); startListeners(); render(); msg('تم استرجاع حساب العميل والبيانات من Firebase بنجاح','success');
+  }catch(e){msg(e.message||'تعذر استرجاع حساب العميل','error')}
+}
+
+async function createShop(){
+  if(!requireAuth()) return;
+  const name=$('shopName').value.trim(), phone=$('shopPhone').value.trim(), pin=$('shopPin').value.trim();
+  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف المحل');
+  if(!name||!phoneKey||!pin){msg('أدخل اسم المحل ورقم الهاتف ورمز الإدارة','error');return}
+  const shopId=id('SHOP');
+  const phoneRef=doc(db,'shopPhones',phoneKey);
+  const shopRef=doc(db,'shops',shopId);
+  try{
+    await runTransaction(db, async(tx)=>{
+      const existing=await tx.get(phoneRef);
+      if(existing.exists()) throw new Error('يوجد محل تجاري مسجل مسبقًا بنفس رقم الهاتف. لا يمكن تكرار رقم هاتف المحل.');
+      tx.set(shopRef,{shopId,name,phone,phoneKey,pin,ownerUid:uid(),ownerPhoneKey:state.authPhoneKey||phoneKey,currency:'YER',allowCustomerOrders:true,allowReturns:true,requireCustomerApproval:true,defaultCreditLimit:0,defaultCustomerStatus:'active',invoicePrefix:'INV',createdAt:serverTimestamp()});
+      tx.set(phoneRef,{shopId,name,phone,phoneKey,ownerUid:uid(),createdAt:serverTimestamp()});
+    });
+    state.shopId=shopId; state.traderPin=pin; state.profileDone=true; save(); startListeners(); render(); msg('تم إنشاء المحل. أعطِ هذا الكود للعملاء: '+shopId,'success');
+  }catch(e){msg(e.message||'تعذر إنشاء المحل','error')}
+}
+async function joinShop(){
+  if(!requireAuth()) return;
+  const name=$('custName').value.trim(), phone=$('custPhone').value.trim(), shopId=$('joinShopId').value.trim();
+  if(!name||!phone||!shopId){msg('أدخل الاسم والهاتف وكود المحل','error');return}
+  await linkCustomerToShop(shopId,name,phone,true);
+}
+async function linkCustomerToShop(shopId,name,phone,first=false){
+  if(!requireAuth()) return;
+  const sid=String(shopId||'').trim();
+  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف العميل');
+  if(!sid){msg('أدخل كود التاجر/المحل','error');return}
+  if(!phoneKey){return}
+  if((state.customerLinks||[]).some(x=>x.shopId===sid)){msg('أنت مرتبط بهذا التاجر مسبقًا','error');return}
+  const customerId=id('CUS');
+  const customerRef=doc(db,'shops',sid,'customers',customerId);
+  const phoneRef=doc(db,'shops',sid,'customerPhones',phoneKey);
+  try{
+    await runTransaction(db, async(tx)=>{
+      const existing=await tx.get(phoneRef);
+      if(existing.exists()) throw new Error('هذا الرقم مرتبط مسبقًا بهذا التاجر كعميل. استخدم زر استرجاع حساب عميل موجود بدل إنشاء حساب جديد.');
+      tx.set(customerRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),balance:0,creditLimit:0,status:'active',createdAt:serverTimestamp()});
+      tx.set(phoneRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),createdAt:serverTimestamp()});
+      tx.set(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()});
+      tx.set(doc(db,'customerPhoneLinks',phoneKey,'shops',sid),{customerId,shopId:sid,shopName:sid,name,phone,phoneKey,createdAt:serverTimestamp()});
+    });
+    let shopName=sid;
+    try{ const shopSnap=await getDoc(doc(db,'shops',sid)); if(shopSnap.exists()) shopName=shopSnap.data().name||sid; }catch(_){}
+    if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
+    state.customerLinks.push({shopId:sid,customerId,customerName:name,customerPhone:phone,phoneKey,shopName});
+    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=name; state.customerPhone=phone; state.shopName=shopName; state.profileDone=true; save(); startListeners(); render(); msg(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك','success');
+  }catch(e){msg(e.message||'تعذر ربط العميل بالمحل','error')}
+}
+
+async function addAnotherShop(){
+  const sid=($('newShopCode')?.value||'').trim();
+  const name=state.customerName || prompt('اسمك لدى التاجر:') || '';
+  const phone=state.customerPhone || prompt('رقم هاتفك:') || '';
+  if(!name||!phone||!sid){msg('أدخل كود التاجر وتأكد من وجود اسم ورقم هاتف','error');return}
+  await linkCustomerToShop(sid,name,phone,false);
+}
+async function recoverShopLinkInMyStores(){
+  const sid=($('recoverShopCode')?.value||'').trim();
+  const phone=($('recoverCustomerPhone')?.value||state.customerPhone||'').trim();
+  const phoneKey=validPhoneOrWarn(phone,'رقم الهاتف المسجل عند التاجر');
+  if(!sid||!phoneKey){msg('أدخل كود المحل ورقم الهاتف السابق','error');return}
+  if((state.customerLinks||[]).some(x=>x.shopId===sid)){msg('هذا المتجر موجود مسبقًا في قائمة متاجري','error');return}
+  try{
+    const phoneSnap=await getDoc(doc(db,'shops',sid,'customerPhones',phoneKey));
+    if(!phoneSnap.exists()) throw new Error('لم يتم العثور على عميل بهذا الرقم عند هذا التاجر');
+    const customerId=phoneSnap.data().customerId;
+    const custRef=doc(db,'shops',sid,'customers',customerId);
+    try{ await updateDoc(custRef,{customerUid:uid(),securityUpgradedAt:serverTimestamp()}); }catch(_){}
+    await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
+    const shopSnap=await getDoc(doc(db,'shops',sid));
+    if(!shopSnap.exists()) throw new Error('كود المحل غير صحيح');
+    const custSnap=await getDoc(custRef);
+    if(!custSnap.exists()) throw new Error('حساب العميل غير موجود أو تم حذفه من عند التاجر');
+    const shop=shopSnap.data(); const c=custSnap.data();
+    if(c.customerUid && c.customerUid!==uid()){msg('هذا العميل مربوط بحساب دخول آخر. ادخل بنفس الحساب السابق.','error');return}
+    if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
+    state.customerLinks.push({shopId:sid,customerId,customerName:c.name||state.customerName||'',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
+    state.customerPhone=c.phone||phone; state.customerName=c.name||state.customerName||''; save();
+    setActiveCustomerShop(sid);
+    msg('تم استرجاع المتجر وربطه بحسابك مرة أخرى','success');
+  }catch(e){msg(e.message||'تعذر استرجاع المتجر','error')}
+}
+
+async function addAudit(action, details={}){
+  try{
+    if(!db||!state.shopId)return;
+    await addDoc(collection(db,'shops',state.shopId,'auditLogs'),{shopId:state.shopId,ownerUid:cache.shop?.ownerUid||uid(),action,actorRole:state.role||'',actorName:actorName(),details,createdAt:serverTimestamp(),createdMs:Date.now()});
+  }catch(e){console.warn('audit failed',e)}
+}
+
+function itemById(itemId){return cache.items.find(i=>i.id===itemId)}
+function renderHome(){
+  const approvedOrders=cache.orders.filter(o=>o.status==='approved');
+  const totalOrders=approvedOrders.reduce((a,o)=>a+Number(o.total||0),0);
+  const pendingOrders=cache.orders.filter(o=>o.status==='pending'||o.status==='pending_trader'||o.status==='pending_customer').length;
+  const pendingPays=cache.payments.filter(p=>p.status==='pending').length;
+  const debt= state.role==='customer' ? customerDebtInfo().balance : cache.customers.reduce((a,c)=>a+Number(c.balance||0),0);
+  const lowStock=cache.items.filter(i=>Number(i.stock||0)<=Number(i.minStock||0) && Number(i.stock||0)>0).length;
+  const outStock=cache.items.filter(i=>Number(i.stock||0)<=0).length;
+  $('page_home').innerHTML=`<div class="card"><h2>${state.role==='trader'?'لوحة التاجر':'لوحة العميل'}</h2><div class="grid"><div class="metric"><span class="muted">إجمالي المديونية</span><b>${money(debt)}</b></div><div class="metric"><span class="muted">طلبات معلقة</span><b>${pendingOrders}</b></div><div class="metric"><span class="muted">طلبات سداد معلقة</span><b>${pendingPays}</b></div><div class="metric"><span class="muted">مبيعات مقبولة</span><b>${money(totalOrders)}</b></div>${state.role==='trader'?`<div class="metric"><span class="muted">أصناف منخفضة/منتهية</span><b>${lowStock} / ${outStock}</b></div><div class="metric"><span class="muted">عدد العملاء</span><b>${cache.customers.length}</b></div>`:''}</div><p class="muted">${state.role==='trader'?'أعطِ العملاء كود المحل للربط:':'حسابك الحالي مع التاجر:'}</p><div class="mono">${esc(state.role==='customer'?(state.shopName||state.shopId):state.shopId)}</div>${state.role==='customer'?renderCustomerLimitBox():''}</div>
+  <div class="card"><h2>آخر الحالات</h2><div class="list">${[...cache.orders.slice(0,3),...cache.payments.slice(0,3)].map(x=>`<div class="item"><div class="row"><h3>${x.amount!==undefined?'طلب سداد':'طلب شراء'} - ${money(x.total||x.amount)}</h3><span class="status ${x.status}">${statusText(x.status)}</span></div><div class="muted">${esc(x.customerName||'')} ${esc(x.note||x.traderNote||'')}</div></div>`).join('')||'<p class="muted">لا توجد عمليات بعد.</p>'}</div></div>`;
+}
+function renderCustomerLimitBox(){const d=customerDebtInfo(); return `<div class="notice"><b>سقف الدين:</b> ${money(d.limit)}<br><b>الدين الحالي:</b> ${money(d.balance)}<br><b>المتاح للشراء الآجل:</b> ${money(d.remaining)}</div>`}
+
+function renderItems(){
+  if(state.role==='trader'){
+    $('page_items').innerHTML=`<div class="card"><h2>إضافة صنف للبيع</h2><div class="form"><div class="field"><label>اسم الصنف</label><input id="itemName"></div><div class="grid"><div class="field"><label>السعر</label><input id="itemPrice" type="number" min="0"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>الكمية المتوفرة</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد التنبيه المنخفض</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><button class="btn" id="addItem">حفظ الصنف</button></div></div>
+    <div class="card"><h2>الأصناف والمخزون</h2><div class="list">${cache.items.map(i=>renderItemCard(i)).join('')||'<p class="muted">لا توجد أصناف.</p>'}</div></div>`;
+    setTimeout(()=>{ $('addItem').onclick=addItem; bindItemButtons(); });
+  } else {
+    const available=cache.items.filter(i=>i.isActive!==false && Number(i.stock||0)>0);
+    $('page_items').innerHTML=`<div class="card"><h2>طلب شراء من العميل</h2><p class="muted">لا يمكن طلب صنف كميته صفر، ولا يمكن طلب كمية أكبر من المخزون الفعلي.</p>${cache.shop?.allowCustomerOrders===false?'<div class="notice error">التاجر أوقف استقبال طلبات العملاء مؤقتًا. يمكنك المراسلة فقط.</div>':''}${renderCustomerLimitBox()}<div class="form">${available.map(i=>`<div class="field"><label>${esc(i.name)} - ${money(i.price)} / ${esc(i.unit||'حبة')} | المتوفر: ${Number(i.stock||0)}</label><input data-item="${i.id}" data-name="${esc(i.name)}" data-price="${Number(i.price||0)}" data-stock="${Number(i.stock||0)}" type="number" min="0" max="${Number(i.stock||0)}" placeholder="الكمية"></div>`).join('')||'<p class="muted">لا توجد أصناف متاحة حاليًا.</p>'}<div class="field"><label>نوع الدفع</label><select id="payType"><option value="cash">كاش</option><option value="credit">آجل</option></select></div><div class="field"><label>ملاحظة</label><textarea id="orderNote"></textarea></div><button class="btn" id="sendOrder" ${(available.length&&cache.shop?.allowCustomerOrders!==false)?'':'disabled'}>إرسال طلب الشراء للتاجر</button></div></div>`;
+    setTimeout(()=>{ if($('sendOrder')) $('sendOrder').onclick=sendCustomerOrder; });
+  }
+}
+function renderItemCard(i){
+  const stock=Number(i.stock||0), min=Number(i.minStock||0);
+  const stockClass=stock<=0?'error':(min>0&&stock<=min?'notice':'success');
+  return `<div class="item"><div class="row"><h3>${esc(i.name)}</h3><b>${money(i.price)}</b></div><div class="muted">الوحدة: ${esc(i.unit||'-')} | الكمية: <b>${stock}</b> | حد التنبيه: ${min}</div>${stock<=0?'<div class="notice error">نفدت الكمية، لا يمكن بيع هذا الصنف حتى يتم تعديل المخزون.</div>':(min>0&&stock<=min?'<div class="notice">تنبيه: الكمية منخفضة.</div>':'')}<div class="actions"><button class="btn light" data-edit-item="${i.id}">تعديل</button><button class="btn secondary" data-stock-item="${i.id}">تعديل الكمية</button><button class="btn ${i.isActive===false?'ok':'warn'}" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button></div></div>`;
+}
+function bindItemButtons(){
+  document.querySelectorAll('[data-edit-item]').forEach(b=>b.onclick=()=>editItem(b.dataset.editItem));
+  document.querySelectorAll('[data-stock-item]').forEach(b=>b.onclick=()=>editStock(b.dataset.stockItem));
+  document.querySelectorAll('[data-toggle-item]').forEach(b=>b.onclick=()=>toggleItem(b.dataset.toggleItem));
+}
+async function addItem(){
+  const name=$('itemName').value.trim(), price=Number($('itemPrice').value), unit=$('itemUnit').value.trim(), stock=Number($('itemStock').value), minStock=Number($('itemMinStock').value);
+  if(!name||price<=0||stock<0){msg('أدخل اسم الصنف والسعر والكمية بشكل صحيح','error');return}
+  const ref=await addDoc(collection(db,'shops',state.shopId,'items'),{name,price,unit,stock,minStock,isActive:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  if(stock>0) await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'item',note:'رصيد افتتاحي عند إضافة الصنف',createdAt:serverTimestamp(),createdMs:Date.now()});
+  await addAudit('create_item',{itemId:ref.id,name,stock,price});
+  msg('تم حفظ الصنف مع الكمية','success')
+}
+async function editItem(itemId){
+  const i=itemById(itemId); if(!i)return;
+  const name=prompt('اسم الصنف:',i.name); if(!name)return;
+  const price=Number(prompt('السعر:',i.price)); if(!(price>0)){msg('السعر غير صحيح','error');return}
+  const unit=prompt('الوحدة:',i.unit||'حبة')||'حبة';
+  const minStock=Number(prompt('حد التنبيه المنخفض:',Number(i.minStock||0))); if(minStock<0){msg('حد التنبيه غير صحيح','error');return}
+  await updateDoc(doc(db,'shops',state.shopId,'items',itemId),{name:name.trim(),price,unit:unit.trim(),minStock,updatedAt:serverTimestamp()});
+  msg('تم تعديل الصنف','success')
+}
+async function editStock(itemId){
+  const i=itemById(itemId); if(!i)return;
+  const stock=Number(prompt('الكمية المتوفرة الجديدة:',Number(i.stock||0))); if(stock<0||Number.isNaN(stock)){msg('الكمية غير صحيحة','error');return}
+  const diff=stock-Number(i.stock||0);
+  const reason=prompt('سبب تعديل المخزون:', diff>=0?'إضافة كمية':'تسوية/نقص') || 'تعديل مخزون';
+  if(diff===0){msg('لم تتغير الكمية','notice');return}
+  await applyStockAdjustment(itemId,diff,reason,'manual_set');
+}
+async function toggleItem(itemId){const i=itemById(itemId); if(!i)return; await updateDoc(doc(db,'shops',state.shopId,'items',itemId),{isActive:!(i.isActive!==false),updatedAt:serverTimestamp()}); msg('تم تحديث حالة الصنف','success')}
+
+function collectLinesFromInputs(){
+  let lines=[];
+  for(const inp of document.querySelectorAll('[data-item]')){
+    const qty=Number(inp.value); if(qty>0){
+      const stock=Number(inp.dataset.stock||0);
+      if(qty>stock) throw new Error(`الكمية المطلوبة من ${inp.dataset.name} أكبر من المتوفر (${stock})`);
+      lines.push({itemId:inp.dataset.item,name:inp.dataset.name,price:Number(inp.dataset.price),qty,total:Number(inp.dataset.price)*qty});
+    }
+  }
+  if(!lines.length) throw new Error('اختر صنفًا واحدًا على الأقل');
+  return lines;
+}
+async function sendCustomerOrder(){
+  try{
+    if(cache.shop?.allowCustomerOrders===false){msg('التاجر أوقف استقبال طلبات الشراء مؤقتًا','error');return}
+    const d0=customerDebtInfo();
+    if(d0.c?.status==='blocked'){msg('حسابك موقوف لدى هذا التاجر ولا يمكنك إرسال طلبات','error');return}
+    const lines=collectLinesFromInputs(); const total=lines.reduce((a,l)=>a+l.total,0); const payType=$('payType').value;
+    if(d0.c?.status==='cash_only' && payType==='credit'){msg('حسابك لدى هذا التاجر مسموح كاش فقط ولا يمكنك الشراء آجلًا','error');return}
+    if(payType==='credit'){
+      const d=customerDebtInfo(); const pending=pendingCreditForCustomer(state.customerId);
+      if(d.limit<=0){msg('ليس لديك سقف دين آجل. اطلب من التاجر تحديد سقف لك.','error');return}
+      if(d.balance+pending+total>d.limit){msg(`لا يمكن إرسال الطلب الآجل. المتاح بعد الطلبات المعلقة: ${money(Math.max(d.limit-d.balance-pending,0))}`,'error');return}
+    }
+    await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,items:lines,total,paymentType:payType,status:'pending_trader',source:'customer',note:$('orderNote').value.trim(),kind:'purchase',createdAt:serverTimestamp(),createdMs:Date.now()});
+    msg('تم إرسال طلب الشراء للتاجر','success')
+  }catch(e){msg(e.message,'error')}
+}
+
+function renderCustomers(){
+  if(state.role!=='trader'){show('home');return}
+  const options=cache.customers.map(c=>`<option value="${c.customerId}">${esc(c.name)} - دينه ${money(c.balance||0)} - سقفه ${money(c.creditLimit||0)}</option>`).join('');
+  $('page_customers').innerHTML=`<div class="card"><h2>العملاء وسقوف الدين</h2><p class="muted">حدد لكل عميل سقف دين مختلف. لا يمكن إنشاء أو قبول طلب آجل يتجاوز سقف العميل.</p><div class="list">${cache.customers.map(c=>renderCustomerCard(c)).join('')||'<p class="muted">لا يوجد عملاء مرتبطون بعد.</p>'}</div></div>
+  <div class="card"><h2>إنشاء طلب بيع وإرساله للعميل</h2><p class="muted">التاجر يجهز الأصناف للعميل. بعد موافقة العميل يتم خصم الكمية، وإذا كان البيع آجلًا تضاف القيمة إلى حسابه.</p><div class="form"><div class="field"><label>العميل</label><select id="saleCustomer">${options}</select></div>${cache.items.filter(i=>i.isActive!==false).map(i=>`<div class="field"><label>${esc(i.name)} - ${money(i.price)} | المتوفر: ${Number(i.stock||0)}</label><input data-item="${i.id}" data-name="${esc(i.name)}" data-price="${Number(i.price||0)}" data-stock="${Number(i.stock||0)}" type="number" min="0" max="${Number(i.stock||0)}" placeholder="الكمية" ${Number(i.stock||0)>0?'':'disabled'}></div>`).join('')||'<p class="muted">لا توجد أصناف.</p>'}<div class="field"><label>نوع الدفع</label><select id="salePayType"><option value="credit">آجل</option><option value="cash">كاش</option></select></div><div class="field"><label>ملاحظة للعميل</label><textarea id="saleNote"></textarea></div><button class="btn" id="sendTraderSale" ${cache.customers.length&&cache.items.length?'':'disabled'}>إرسال الطلب للعميل للموافقة</button></div></div>`;
+  setTimeout(()=>{document.querySelectorAll('[data-set-limit]').forEach(b=>b.onclick=()=>setCreditLimit(b.dataset.setLimit));document.querySelectorAll('[data-customer-status]').forEach(b=>b.onclick=()=>setCustomerStatus(b.dataset.customerStatus,b.dataset.statusValue)); if($('sendTraderSale')) $('sendTraderSale').onclick=sendTraderSale;});
+}
+function customerStatusLabel(status){return ({active:'نشط',cash_only:'كاش فقط',blocked:'موقوف'}[status]||'نشط')}
+function customerStatusClass(status){return status==='blocked'?'rejected':(status==='cash_only'?'pending':'approved')}
+function renderCustomerCard(c){
+  const balance=Number(c.balance||0), limit=Number(c.creditLimit||0), remain=Math.max(limit-balance,0);
+  const status=c.status||'active';
+  return `<div class="item"><div class="row"><h3>${esc(c.name)}</h3><span class="status ${customerStatusClass(status)}">${customerStatusLabel(status)}</span></div><div class="muted">الهاتف: ${esc(c.phone||'-')}<br>الدين الحالي: <b>${money(balance)}</b><br>سقف الدين: <b>${money(limit)}</b><br>المتاح: <b>${money(remain)}</b></div><div class="actions"><button class="btn secondary" data-set-limit="${c.customerId}">تعديل السقف</button><button class="btn ok" data-customer-status="${c.customerId}" data-status-value="active">نشط</button><button class="btn warn" data-customer-status="${c.customerId}" data-status-value="cash_only">كاش فقط</button><button class="btn danger" data-customer-status="${c.customerId}" data-status-value="blocked">إيقاف</button></div></div>`;
+}
+async function setCreditLimit(customerId){
+  const c=cache.customers.find(x=>x.customerId===customerId); if(!c)return;
+  const val=Number(prompt(`سقف الدين للعميل ${c.name}:`,Number(c.creditLimit||0)));
+  if(val<0||Number.isNaN(val)){msg('السقف غير صحيح','error');return}
+  if(val<Number(c.balance||0) && !confirm('السقف أقل من الدين الحالي. هل تريد المتابعة؟')) return;
+  await updateDoc(doc(db,'shops',state.shopId,'customers',customerId),{creditLimit:val,updatedAt:serverTimestamp()});
+  msg('تم تعديل سقف الدين','success')
+}
+async function setCustomerStatus(customerId,status){const c=cache.customers.find(x=>x.customerId===customerId); if(!c)return; await updateDoc(doc(db,'shops',state.shopId,'customers',customerId),{status,updatedAt:serverTimestamp()}); await addAudit('set_customer_status',{customerId,status}); msg('تم تحديث حالة العميل إلى '+customerStatusLabel(status),'success')}
+async function sendTraderSale(){
+  try{
+    const customerId=$('saleCustomer').value; const c=cache.customers.find(x=>x.customerId===customerId); if(!c){msg('اختر العميل','error');return}
+    if(c.status==='blocked'){msg('هذا العميل موقوف ولا يمكن إرسال طلب له','error');return}
+    const lines=collectLinesFromInputs(); const total=lines.reduce((a,l)=>a+l.total,0); const paymentType=$('salePayType').value;
+    if(c.status==='cash_only' && paymentType==='credit'){msg('هذا العميل مضبوط على كاش فقط ولا يمكن إرسال طلب آجل له','error');return}
+    if(paymentType==='credit'){
+      const balance=Number(c.balance||0), limit=Number(c.creditLimit||0), pending=pendingCreditForCustomer(customerId);
+      if(limit<=0){msg('لا يوجد سقف دين لهذا العميل. عدّل السقف أولًا.','error');return}
+      if(balance+pending+total>limit){msg(`الطلب يتجاوز سقف العميل. المتاح بعد الطلبات المعلقة: ${money(Math.max(limit-balance-pending,0))}`,'error');return}
+    }
+    await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,items:lines,total,paymentType,status:'pending_customer',source:'trader',note:$('saleNote').value.trim(),kind:'purchase',createdAt:serverTimestamp(),createdMs:Date.now()});
+    msg('تم إرسال طلب البيع للعميل للموافقة','success')
+  }catch(e){msg(e.message,'error')}
+}
+
+function renderOrders(){
+  $('page_orders').innerHTML=`<div class="card"><h2>${state.role==='trader'?'طلبات البيع والشراء':'طلباتي'}</h2><div class="list">${cache.orders.map(o=>renderOrderCard(o)).join('')||'<p class="muted">لا توجد طلبات.</p>'}</div></div>`;
+  setTimeout(()=>{document.querySelectorAll('[data-approve-order]').forEach(b=>b.onclick=()=>approveOrder(b.dataset.approveOrder));document.querySelectorAll('[data-reject-order]').forEach(b=>b.onclick=()=>rejectOrder(b.dataset.rejectOrder));document.querySelectorAll('[data-customer-approve]').forEach(b=>b.onclick=()=>customerApproveOrder(b.dataset.customerApprove));document.querySelectorAll('[data-customer-reject]').forEach(b=>b.onclick=()=>customerRejectOrder(b.dataset.customerReject));});
+}
+function renderOrderCard(o){
+  const source=o.source==='trader'?'أنشأه التاجر وأُرسل للعميل':'أنشأه العميل وأُرسل للتاجر';
+  const canTrader=state.role==='trader'&&(o.status==='pending'||o.status==='pending_trader');
+  const canCustomer=state.role==='customer'&&o.status==='pending_customer';
+  return `<div class="item"><div class="row"><h3>${esc(o.customerName||'عميل')} - ${money(o.total)}</h3><span class="status ${o.status}">${statusText(o.status)}</span></div><div class="muted">${source} | ${payTypeText(o.paymentType)} | ${esc(o.note||'')}</div><ul>${(o.items||[]).map(l=>`<li>${esc(l.name)} × ${Number(l.qty)} = ${money(l.total)}</li>`).join('')}</ul>${o.traderNote?`<div class="notice ${o.status==='rejected'?'error':'success'}">ملاحظة: ${esc(o.traderNote)}</div>`:''}${canTrader?`<div class="actions"><button class="btn ok" data-approve-order="${o.id}">موافقة وتسليم</button><button class="btn danger" data-reject-order="${o.id}">رفض</button></div>`:''}${canCustomer?`<div class="actions"><button class="btn ok" data-customer-approve="${o.id}">موافقة العميل</button><button class="btn danger" data-customer-reject="${o.id}">رفض العميل</button></div>`:''}</div>`;
+}
+async function finalizeOrder(orderId, actor){
+  const orderRef=doc(db,'shops',state.shopId,'purchaseRequests',orderId);
+  await runTransaction(db, async (tx)=>{
+    const os=await tx.get(orderRef); if(!os.exists()) throw new Error('الطلب غير موجود');
+    const o=os.data();
+    if(o.status==='approved') throw new Error('الطلب مقبول مسبقًا');
+    if(o.status==='rejected') throw new Error('الطلب مرفوض مسبقًا');
+    if(actor==='trader' && !(o.status==='pending'||o.status==='pending_trader')) throw new Error('هذا الطلب لا ينتظر موافقة التاجر');
+    if(actor==='customer' && o.status!=='pending_customer') throw new Error('هذا الطلب لا ينتظر موافقة العميل');
+    const customerRef=doc(db,'shops',state.shopId,'customers',o.customerId);
+    const cs=await tx.get(customerRef); if(!cs.exists()) throw new Error('العميل غير موجود');
+    const c=cs.data(); if(c.status==='blocked') throw new Error('العميل موقوف'); if(c.status==='cash_only' && o.paymentType==='credit') throw new Error('هذا العميل مسموح له كاش فقط ولا يمكن اعتماد طلب آجل');
+    if(o.paymentType==='credit'){
+      const balance=Number(c.balance||0), limit=Number(c.creditLimit||0), total=Number(o.total||0);
+      if(limit<=0) throw new Error('لا يوجد سقف دين لهذا العميل');
+      if(balance+total>limit) throw new Error(`الطلب يتجاوز سقف الدين. المتاح: ${money(Math.max(limit-balance,0))}`);
+    }
+    const itemSnaps=[];
+    for(const line of (o.items||[])){
+      const itemRef=doc(db,'shops',state.shopId,'items',line.itemId);
+      const is=await tx.get(itemRef); if(!is.exists()) throw new Error(`الصنف غير موجود: ${line.name}`);
+      const item=is.data(); const stock=Number(item.stock||0), qty=Number(line.qty||0);
+      if(item.isActive===false) throw new Error(`الصنف معطل: ${line.name}`);
+      if(qty<=0) throw new Error(`كمية غير صحيحة: ${line.name}`);
+      if(stock<qty) throw new Error(`الكمية غير كافية للصنف ${line.name}. المتوفر: ${stock}`);
+      itemSnaps.push({itemRef,qty});
+    }
+    for(const x of itemSnaps) tx.update(x.itemRef,{stock:increment(-x.qty),updatedAt:serverTimestamp()});
+    if(o.paymentType==='credit') tx.update(customerRef,{balance:increment(Number(o.total||0)),updatedAt:serverTimestamp()});
+    const invRef=doc(collection(db,'shops',state.shopId,'invoices'));
+    const invNo=invoiceNumber();
+    tx.set(invRef,{shopId:state.shopId,orderId,invoiceNo:invNo,customerId:o.customerId,customerName:o.customerName||c.name||'',items:o.items||[],total:Number(o.total||0),paymentType:o.paymentType||'cash',source:o.source||'',status:'posted',createdAt:serverTimestamp(),createdMs:Date.now(),approvedBy:actor});
+    const ledgerRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
+    tx.set(ledgerRef,{shopId:state.shopId,customerId:o.customerId,customerName:o.customerName||c.name||'',type:o.paymentType==='credit'?'debit_invoice':'cash_invoice',amount:Number(o.total||0),sourceId:invRef.id,sourceType:'invoice',note:'فاتورة '+invNo,createdAt:serverTimestamp(),createdMs:Date.now()});
+    for(const line of (o.items||[])){
+      const stockRef=doc(collection(db,'shops',state.shopId,'stockLedger'));
+      tx.set(stockRef,{shopId:state.shopId,itemId:line.itemId,itemName:line.name,qty:-Number(line.qty||0),type:'sale',sourceId:invRef.id,sourceType:'invoice',createdAt:serverTimestamp(),createdMs:Date.now()});
+    }
+    const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
+    tx.set(auditRef,{shopId:state.shopId,action:'approve_order_create_invoice',actorRole:actor,actorName:actor==='trader'?(cache.shop?.name||'التاجر'):(o.customerName||'العميل'),details:{orderId,invoiceId:invRef.id,invoiceNo:invNo,total:Number(o.total||0),paymentType:o.paymentType||'cash'},createdAt:serverTimestamp(),createdMs:Date.now()});
+    tx.update(orderRef,{status:'approved',invoiceId:invRef.id,invoiceNo:invNo,traderNote: actor==='customer'?'وافق العميل وتم اعتماد الطلب':'تمت الموافقة والتسليم',reviewedAt:serverTimestamp(),approvedBy:actor});
+  });
+}
+async function approveOrder(orderId){try{if(!confirm('تأكيد الموافقة على الطلب وتسليم الأصناف؟'))return; await finalizeOrder(orderId,'trader'); msg('تم قبول الطلب وتحديث المخزون والحساب','success')}catch(e){msg(e.message,'error')}}
+async function customerApproveOrder(orderId){try{if(!confirm('تأكيد موافقتك على الطلب؟'))return; await finalizeOrder(orderId,'customer'); msg('تمت موافقتك وتحديث حسابك','success')}catch(e){msg(e.message,'error')}}
+async function rejectOrder(orderId){const reason=prompt('اكتب سبب الرفض:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),rejectedBy:'trader'}); await addAudit('reject_order',{orderId,reason}); msg('تم رفض الطلب','success')}
+async function customerRejectOrder(orderId){const reason=prompt('اكتب سبب رفضك للطلب:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:'رفض العميل: '+reason,reviewedAt:serverTimestamp(),rejectedBy:'customer'}); await addAudit('customer_reject_order',{orderId,reason}); msg('تم رفض الطلب','success')}
+
+
+function renderShops(){
+  if(state.role!=='customer'){show('home');return}
+  const links=state.customerLinks||[];
+  $('page_shops').innerHTML=`<div class="card"><h2>متاجري</h2><p class="muted">يمكنك الارتباط بأكثر من تاجر. كل تاجر له حساب وديون وطلبات وسدادات منفصلة تمامًا.</p><div class="list">${links.map(l=>`<div class="item"><div class="row"><h3>${esc(l.shopName||l.shopId)}</h3><span class="status ${l.shopId===state.shopId?'approved':''}">${l.shopId===state.shopId?'الحالي':'غير محدد'}</span></div><div class="muted">كود المحل: ${esc(l.shopId)}<br>رقمك عنده: ${esc(l.customerPhone||'-')}<br>حساب العميل: ${esc(l.customerId)}</div><div class="actions"><button class="btn ${l.shopId===state.shopId?'light':'secondary'}" data-switch-shop="${l.shopId}" ${l.shopId===state.shopId?'disabled':''}>فتح هذا الحساب</button></div></div>`).join('')||'<p class="muted">لا توجد روابط.</p>'}</div></div>
+  <div class="card"><h2>إضافة تاجر جديد</h2><div class="form"><div class="field"><label>كود التاجر / المحل</label><input id="newShopCode" placeholder="SHOP-XXXXX"></div><button class="btn" id="addShopLink">ربط تاجر جديد</button></div></div>
+  <div class="card"><h2>استرجاع متجر سابق</h2><p class="muted">إذا حذفت إعدادات حسابك من الهاتف، أدخل كود المحل ورقم الهاتف نفسه المسجل سابقًا عند هذا التاجر لاسترجاع الربط بدون إنشاء عميل جديد.</p><div class="form"><div class="field"><label>كود المحل السابق</label><input id="recoverShopCode" placeholder="SHOP-XXXXX"></div><div class="field"><label>رقم هاتفك المسجل عند التاجر</label><input id="recoverCustomerPhone" value="${esc(state.customerPhone||'')}" placeholder="77xxxxxxx"></div><button class="btn secondary" id="recoverShopLink">استرجاع هذا المتجر</button></div></div>`;
+  setTimeout(()=>{document.querySelectorAll('[data-switch-shop]').forEach(b=>b.onclick=()=>setActiveCustomerShop(b.dataset.switchShop)); $('addShopLink').onclick=addAnotherShop; $('recoverShopLink').onclick=recoverShopLinkInMyStores;});
+}
+function renderMessages(){
+  if(state.role==='trader'){
+    const selected=state.selectedMessageCustomer || cache.customers[0]?.customerId || '';
+    const opts=cache.customers.map(c=>`<option value="${c.customerId}" ${c.customerId===selected?'selected':''}>${esc(c.name)} - ${esc(c.phone||'')}</option>`).join('');
+    const msgs=selected?cache.messages.filter(m=>m.customerId===selected):[];
+    $('page_messages').innerHTML=`<div class="card"><h2>مراسلة العملاء</h2><div class="field"><label>اختر العميل</label><select id="messageCustomer">${opts}</select></div>${renderMessageList(msgs)}<div class="form"><div class="field"><label>رسالة نصية</label><textarea id="messageText" placeholder="اكتب رسالتك للعميل..."></textarea></div><button class="btn" id="sendMessage" ${selected?'':'disabled'}>إرسال رسالة</button></div></div>`;
+    setTimeout(()=>{$('messageCustomer')&&($('messageCustomer').onchange=()=>{state.selectedMessageCustomer=$('messageCustomer').value; save(); renderMessages()}); $('sendMessage')&&($('sendMessage').onclick=()=>sendMessageToCustomer($('messageCustomer').value));});
+  }else{
+    $('page_messages').innerHTML=`<div class="card"><h2>رسائل مع ${esc(state.shopName||state.shopId)}</h2>${renderMessageList(cache.messages)}<div class="form"><div class="field"><label>رسالة نصية</label><textarea id="messageText" placeholder="اكتب رسالتك للتاجر..."></textarea></div><button class="btn" id="sendMessage">إرسال رسالة</button></div></div>`;
+    setTimeout(()=>{$('sendMessage').onclick=sendCustomerMessage;});
+  }
+}
+function renderMessageList(msgs){
+  return `<div class="list" style="margin:10px 0">${msgs.map(m=>`<div class="item" style="background:${m.fromRole==='trader'?'#eef4ff':'#f0fdfa'}"><div class="row"><h3>${m.fromRole==='trader'?'التاجر':'العميل'}: ${esc(m.fromName||'')}</h3><span class="muted">${new Date(Number(m.createdMs||Date.now())).toLocaleString('ar-YE')}</span></div><div>${esc(m.text||'')}</div></div>`).join('')||'<p class="muted">لا توجد رسائل بعد.</p>'}</div>`
+}
+async function sendCustomerMessage(){
+  const text=($('messageText')?.value||'').trim(); if(!text){msg('اكتب الرسالة أولًا','error');return}
+  await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,fromRole:'customer',fromName:state.customerName,text,createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:false,readByCustomer:true});
+  $('messageText').value=''; msg('تم إرسال الرسالة','success')
+}
+async function sendMessageToCustomer(customerId){
+  const c=cache.customers.find(x=>x.customerId===customerId); if(!c){msg('اختر العميل','error');return}
+  const text=($('messageText')?.value||'').trim(); if(!text){msg('اكتب الرسالة أولًا','error');return}
+  await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,fromRole:'trader',fromName:cache.shop?.name||'التاجر',text,createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:true,readByCustomer:false});
+  $('messageText').value=''; msg('تم إرسال الرسالة','success')
+}
+
+
+
+function filteredInvoices(){
+  let rows=[...(cache.invoices||[])];
+  const c=$('invFilterCustomer')?.value||'';
+  const p=$('invFilterPay')?.value||'';
+  const from=$('invFilterFrom')?.value||'';
+  const to=$('invFilterTo')?.value||'';
+  if(c) rows=rows.filter(x=>x.customerId===c);
+  if(p) rows=rows.filter(x=>(x.paymentType||'cash')===p);
+  if(from){const ms=new Date(from+'T00:00:00').getTime(); rows=rows.filter(x=>Number(x.createdMs||0)>=ms)}
+  if(to){const ms=new Date(to+'T23:59:59').getTime(); rows=rows.filter(x=>Number(x.createdMs||0)<=ms)}
+  return rows;
+}
+function renderInvoices(){
+  const selectedCustomer=state.invFilterCustomer||'';
+  const selectedPay=state.invFilterPay||'';
+  const customerOptions=state.role==='trader'?cache.customers.map(c=>`<option value="${esc(c.customerId)}" ${selectedCustomer===c.customerId?'selected':''}>${esc(c.name)} - ${esc(c.phone||'')}</option>`).join(''):'';
+  const all=(cache.invoices||[]);
+  const rows=all.filter(inv=>{
+    if(state.role==='trader' && selectedCustomer && inv.customerId!==selectedCustomer) return false;
+    if(selectedPay && (inv.paymentType||'cash')!==selectedPay) return false;
+    return true;
+  });
+  const total=rows.reduce((s,x)=>s+Number(x.total||0),0);
+  const credit=rows.filter(x=>x.paymentType==='credit').reduce((s,x)=>s+Number(x.total||0),0);
+  const cash=rows.filter(x=>x.paymentType!=='credit').reduce((s,x)=>s+Number(x.total||0),0);
+  $('page_invoices').innerHTML=`<div class="card"><div class="row"><h2>الفواتير</h2><span class="status approved">${rows.length} / ${all.length} فاتورة</span></div>
+  <div class="grid"><div class="metric"><span class="muted">إجمالي المعروض</span><b>${money(total)}</b></div><div class="metric"><span class="muted">آجل</span><b>${money(credit)}</b></div><div class="metric"><span class="muted">كاش</span><b>${money(cash)}</b></div></div>
+  <div class="card" style="box-shadow:none"><h3>فلترة الفواتير</h3><div class="grid">${state.role==='trader'?`<div class="field"><label>العميل</label><select id="invFilterCustomer"><option value="">كل العملاء</option>${customerOptions}</select></div>`:''}<div class="field"><label>نوع الدفع</label><select id="invFilterPay"><option value="" ${!selectedPay?'selected':''}>الكل</option><option value="cash" ${selectedPay==='cash'?'selected':''}>كاش</option><option value="credit" ${selectedPay==='credit'?'selected':''}>آجل</option></select></div></div><div class="actions"><button class="btn light" id="clearInvoiceFilters">مسح الفلاتر</button></div></div>
+  <div class="list" style="margin-top:10px">${rows.map(inv=>`<div class="item"><div class="row"><h3>${esc(inv.invoiceNo||inv.id)}</h3><span class="status approved">${payTypeText(inv.paymentType)}</span></div><div class="muted">العميل: ${esc(inv.customerName||'')} | الإجمالي: ${money(inv.total)} | ${new Date(Number(inv.createdMs||Date.now())).toLocaleString('ar-YE')}</div><ul>${(inv.items||[]).map(l=>`<li>${esc(l.name)} × ${Number(l.qty)} = ${money(l.total)}</li>`).join('')}</ul><div class="actions"><button class="btn light" data-print-invoice="${inv.id}">مشاركة نص الفاتورة</button></div></div>`).join('')||'<p class="muted">لا توجد فواتير حسب الفلترة الحالية.</p>'}</div></div>`;
+  setTimeout(()=>{
+    if($('invFilterCustomer')) $('invFilterCustomer').onchange=()=>{state.invFilterCustomer=$('invFilterCustomer').value; save(); renderInvoices()};
+    if($('invFilterPay')) $('invFilterPay').onchange=()=>{state.invFilterPay=$('invFilterPay').value; save(); renderInvoices()};
+    if($('clearInvoiceFilters')) $('clearInvoiceFilters').onclick=()=>{state.invFilterCustomer='';state.invFilterPay='';save();renderInvoices()};
+    document.querySelectorAll('[data-print-invoice]').forEach(b=>b.onclick=()=>shareInvoiceText(b.dataset.printInvoice));
+  });
+}
+async function shareInvoiceText(invoiceId){
+  const inv=(cache.invoices||[]).find(x=>x.id===invoiceId); if(!inv)return;
+  const lines=(inv.items||[]).map(l=>`- ${l.name} × ${l.qty} = ${money(l.total)}`).join('\n');
+  const text=`فاتورة ${inv.invoiceNo||inv.id}\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${inv.customerName||''}\nطريقة الدفع: ${payTypeText(inv.paymentType)}\nالإجمالي: ${money(inv.total)}\n${lines}`;
+  try{ if(navigator.share) await navigator.share({title:'فاتورة حسابي',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ نص الفاتورة','success');} }catch(e){try{await navigator.clipboard?.writeText(text); msg('تم نسخ نص الفاتورة','success')}catch{}}
+}
+function ledgerRowsForCustomer(customerId){
+  let rows=(cache.customerLedger||[]).filter(x=>x.customerId===customerId);
+  if(rows.length) return rows.sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+  const invs=(cache.invoices||[]).filter(x=>x.customerId===customerId).map(x=>({id:'inv-'+x.id,customerId:x.customerId,customerName:x.customerName,type:x.paymentType==='credit'?'debit_invoice':'cash_invoice',amount:Number(x.total||0),note:'فاتورة '+(x.invoiceNo||x.id),sourceType:'invoice',sourceId:x.id,createdMs:x.createdMs||0,items:x.items||[]}));
+  const pays=(cache.payments||[]).filter(x=>x.customerId===customerId&&x.status==='approved').map(x=>({id:'pay-'+x.id,customerId:x.customerId,customerName:x.customerName,type:'payment',amount:-Number(x.amount||0),note:'سداد مقبول '+(x.method||''),sourceType:'paymentRequest',sourceId:x.id,createdMs:x.createdMs||0}));
+  return [...invs,...pays].sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+}
+function renderStatement(){
+  let customerId=state.role==='customer'?state.customerId:(state.statementCustomerId||cache.customers[0]?.customerId||'');
+  const c=state.role==='customer'?customerDebtInfo(customerId).c:(cache.customers.find(x=>x.customerId===customerId)||{});
+  if(state.role==='trader' && customerId && state.statementCustomerId!==customerId){state.statementCustomerId=customerId; save();}
+  const rows=customerId?ledgerRowsForCustomer(customerId):[];
+  let running=0;
+  const debit=rows.filter(r=>Number(r.amount||0)>0 && r.type!=='cash_invoice').reduce((s,r)=>s+Number(r.amount||0),0);
+  const cashInvoices=rows.filter(r=>r.type==='cash_invoice').reduce((s,r)=>s+Number(r.amount||0),0);
+  const payments=Math.abs(rows.filter(r=>Number(r.amount||0)<0).reduce((s,r)=>s+Number(r.amount||0),0));
+  const balance=Number(c.balance||0);
+  const limit=Number(c.creditLimit||0);
+  const remaining=Math.max(limit-balance,0);
+  const options=cache.customers.map(x=>`<option value="${esc(x.customerId)}" ${x.customerId===customerId?'selected':''}>${esc(x.name)} - ${esc(x.phone||'')}</option>`).join('');
+  $('page_statement').innerHTML=`<div class="card"><div class="row"><h2>كشف الحساب</h2><span class="status approved">${esc(c.name||state.customerName||'')}</span></div>${state.role==='trader'?`<div class="field"><label>اختر العميل</label><select id="statementCustomer"><option value="">اختر عميل</option>${options}</select></div>`:''}
+  <div class="grid"><div class="metric"><span class="muted">الرصيد الحالي / الدين</span><b>${money(balance)}</b></div><div class="metric"><span class="muted">سقف الدين</span><b>${money(limit)}</b></div><div class="metric"><span class="muted">المتاح من السقف</span><b>${money(remaining)}</b></div><div class="metric"><span class="muted">إجمالي سدادات مقبولة</span><b>${money(payments)}</b></div><div class="metric"><span class="muted">فواتير آجلة</span><b>${money(debit)}</b></div><div class="metric"><span class="muted">فواتير كاش</span><b>${money(cashInvoices)}</b></div></div>
+  <div class="actions"><button class="btn light" id="shareStatement">مشاركة كشف الحساب نصيًا</button></div></div>
+  <div class="card"><h2>حركات الحساب</h2><div class="list">${rows.map(r=>{running+=Number(r.amount||0);return `<div class="item"><div class="row"><h3>${ledgerTypeText(r.type)}</h3><b>${Number(r.amount||0)>=0?'+':''}${money(r.amount)}</b></div><div class="muted">${esc(r.note||'')} | ${new Date(Number(r.createdMs||Date.now())).toLocaleString('ar-YE')}</div><div class="muted">الرصيد التراكمي حسب الكشف: ${money(running)}</div></div>`}).join('')||'<p class="muted">لا توجد حركات في كشف الحساب بعد.</p>'}</div></div>`;
+  setTimeout(()=>{
+    if($('statementCustomer')) $('statementCustomer').onchange=()=>{state.statementCustomerId=$('statementCustomer').value;save();renderStatement()};
+    if($('shareStatement')) $('shareStatement').onclick=()=>shareStatementText(customerId);
+  });
+}
+async function shareStatementText(customerId){
+  const c=state.role==='customer'?customerDebtInfo(customerId).c:(cache.customers.find(x=>x.customerId===customerId)||{});
+  const rows=ledgerRowsForCustomer(customerId);
+  let running=0;
+  const body=rows.map(r=>{running+=Number(r.amount||0);return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`}).join('\n');
+  const text=`كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\nسقف الدين: ${money(Number(c.creditLimit||0))}\n----------------\n${body||'لا توجد حركات.'}`;
+  try{ if(navigator.share) await navigator.share({title:'كشف حساب',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب','success');} }catch(e){try{await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب','success')}catch{}}
+}
+function renderAudit(){
+  if(state.role!=='trader'){show('home');return}
+  $('page_audit').innerHTML=`<div class="card"><h2>سجل العمليات</h2><p class="muted">يعرض آخر 100 عملية مهمة: قبول طلب، إنشاء فاتورة، قبول/رفض سداد، رفض طلب. هذا السجل لا يغير البيانات المالية، لكنه يساعد في المراجعة.</p><div class="list">${(cache.auditLogs||[]).map(a=>`<div class="item"><div class="row"><h3>${esc(a.action)}</h3><span class="muted">${new Date(Number(a.createdMs||Date.now())).toLocaleString('ar-YE')}</span></div><div class="muted">بواسطة: ${esc(a.actorName||a.actorRole||'')}</div><div class="mono">${esc(JSON.stringify(a.details||{},null,2))}</div></div>`).join('')||'<p class="muted">لا يوجد سجل عمليات بعد.</p>'}</div></div>`;
+}
+
+
+function renderStock(){
+  if(state.role!=='trader'){show('home');return}
+  const totalValue=cache.items.reduce((a,i)=>a+Number(i.price||0)*Number(i.stock||0),0);
+  const out=cache.items.filter(i=>Number(i.stock||0)<=0);
+  const low=cache.items.filter(i=>Number(i.stock||0)>0 && Number(i.minStock||0)>0 && Number(i.stock||0)<=Number(i.minStock||0));
+  const selected=state.stockFilterItem||'all';
+  const movements=(cache.stockLedger||[]).filter(m=>selected==='all'||m.itemId===selected);
+  const opts='<option value="all">كل الأصناف</option>'+cache.items.map(i=>`<option value="${i.id}" ${selected===i.id?'selected':''}>${esc(i.name)}</option>`).join('');
+  $('page_stock').innerHTML=`<div class="card"><h2>إدارة المخزون</h2><div class="grid"><div class="metric"><span class="muted">قيمة المخزون الحالية</span><b>${money(totalValue)}</b></div><div class="metric"><span class="muted">أصناف منتهية</span><b>${out.length}</b></div><div class="metric"><span class="muted">أصناف قرب النفاد</span><b>${low.length}</b></div><div class="metric"><span class="muted">عدد الأصناف</span><b>${cache.items.length}</b></div></div></div>
+  <div class="card"><h2>تنبيهات المخزون</h2><div class="list">${[...out.map(i=>({i,t:'منتهي',cls:'error'})),...low.map(i=>({i,t:'قرب النفاد',cls:'notice'}))].map(x=>`<div class="item ${x.cls}"><div class="row"><h3>${esc(x.i.name)}</h3><span class="status ${x.cls==='error'?'rejected':'pending'}">${x.t}</span></div><div class="muted">الكمية الحالية: ${Number(x.i.stock||0)} | حد التنبيه: ${Number(x.i.minStock||0)}</div><div class="actions"><button class="btn secondary" data-quick-stock="${x.i.id}">تسوية/إضافة كمية</button></div></div>`).join('')||'<p class="muted">لا توجد تنبيهات مخزون حاليًا.</p>'}</div></div>
+  <div class="card"><h2>تسوية مخزون يدوية</h2><p class="muted">استخدمها عند إضافة بضاعة جديدة، تلف، جرد، أو تصحيح كمية. كل تسوية تسجل في حركة المخزون والسجل.</p><div class="form"><div class="field"><label>الصنف</label><select id="stockAdjItem">${cache.items.map(i=>`<option value="${i.id}">${esc(i.name)} - الحالي: ${Number(i.stock||0)}</option>`).join('')}</select></div><div class="grid"><div class="field"><label>نوع الحركة</label><select id="stockAdjType"><option value="add">إضافة كمية</option><option value="remove">نقص/تلف</option><option value="set">تعيين الكمية النهائية</option></select></div><div class="field"><label>الكمية</label><input id="stockAdjQty" type="number" min="0" placeholder="مثال: 10"></div></div><div class="field"><label>السبب / الملاحظة</label><textarea id="stockAdjReason" placeholder="شراء بضاعة، تلف، جرد..."></textarea></div><button class="btn" id="applyStockAdj" ${cache.items.length?'':'disabled'}>حفظ حركة المخزون</button></div></div>
+  <div class="card"><div class="row"><h2>حركة المخزون</h2><span class="status">${movements.length} حركة</span></div><div class="field"><label>فلترة حسب الصنف</label><select id="stockFilterItem">${opts}</select></div><div class="list">${movements.map(m=>`<div class="item"><div class="row"><h3>${esc(m.itemName||m.itemId||'صنف')}</h3><b style="color:${Number(m.qty||0)>=0?'var(--ok)':'var(--danger)'}">${Number(m.qty||0)>=0?'+':''}${Number(m.qty||0)}</b></div><div class="muted">${stockTypeText(m.type)} | ${new Date(Number(m.createdMs||Date.now())).toLocaleString('ar-YE')}<br>${esc(m.note||'')} ${m.sourceType?`| المصدر: ${esc(m.sourceType)}`:''}</div></div>`).join('')||'<p class="muted">لا توجد حركات مخزون بعد.</p>'}</div></div>`;
+  setTimeout(()=>{document.querySelectorAll('[data-quick-stock]').forEach(b=>b.onclick=()=>editStock(b.dataset.quickStock)); $('applyStockAdj')&&($('applyStockAdj').onclick=manualStockAdjustment); $('stockFilterItem')&&($('stockFilterItem').onchange=()=>{state.stockFilterItem=$('stockFilterItem').value; save(); renderStock();});});
+}
+function stockTypeText(t){return ({sale:'بيع/خصم فاتورة',opening:'رصيد افتتاحي',adjustment_add:'إضافة مخزون',adjustment_remove:'نقص/تلف',adjustment_set:'تسوية نهائية',manual_set:'تعديل كمية'}[t]||t||'حركة')}
+async function manualStockAdjustment(){
+  const itemId=$('stockAdjItem')?.value; const mode=$('stockAdjType')?.value; const qty=Number($('stockAdjQty')?.value||0); const reason=($('stockAdjReason')?.value||'').trim()||'تسوية مخزون يدوية';
+  const item=itemById(itemId); if(!item){msg('اختر الصنف','error');return}
+  if(qty<0 || Number.isNaN(qty)){msg('الكمية غير صحيحة','error');return}
+  let diff=0;
+  if(mode==='add'){if(qty<=0){msg('أدخل كمية أكبر من صفر','error');return} diff=qty;}
+  if(mode==='remove'){if(qty<=0){msg('أدخل كمية أكبر من صفر','error');return} diff=-qty;}
+  if(mode==='set'){diff=qty-Number(item.stock||0);}
+  if(Number(item.stock||0)+diff<0){msg('لا يمكن أن تصبح الكمية أقل من صفر','error');return}
+  await applyStockAdjustment(itemId,diff,reason,mode==='set'?'adjustment_set':(diff>0?'adjustment_add':'adjustment_remove'));
+}
+async function applyStockAdjustment(itemId,diff,reason,type='adjustment'){
+  const item=itemById(itemId); if(!item){msg('الصنف غير موجود','error');return}
+  if(Number(item.stock||0)+Number(diff||0)<0){msg('لا يمكن أن تصبح الكمية أقل من صفر','error');return}
+  await runTransaction(db, async(tx)=>{
+    const itemRef=doc(db,'shops',state.shopId,'items',itemId);
+    const snap=await tx.get(itemRef); if(!snap.exists()) throw new Error('الصنف غير موجود في قاعدة البيانات');
+    const current=Number(snap.data().stock||0); const next=current+Number(diff||0);
+    if(next<0) throw new Error('لا يمكن أن تصبح الكمية أقل من صفر');
+    tx.update(itemRef,{stock:next,updatedAt:serverTimestamp()});
+    const stockRef=doc(collection(db,'shops',state.shopId,'stockLedger'));
+    tx.set(stockRef,{shopId:state.shopId,itemId,itemName:snap.data().name||item.name,qty:Number(diff||0),type,note:reason,sourceId:itemId,sourceType:'manual_adjustment',createdAt:serverTimestamp(),createdMs:Date.now()});
+    const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
+    tx.set(auditRef,{shopId:state.shopId,action:'stock_adjustment',actorRole:'trader',actorName:cache.shop?.name||'التاجر',details:{itemId,itemName:snap.data().name||item.name,diff:Number(diff||0),previous:current,next,reason,type},createdAt:serverTimestamp(),createdMs:Date.now()});
+  });
+  msg('تم حفظ حركة المخزون وتحديث الكمية','success');
+}
+
+function invoiceLineReturnInfo(invoiceId,itemId){
+  const approved=(cache.returns||[]).filter(r=>r.invoiceId===invoiceId && r.itemId===itemId && r.status==='approved').reduce((a,r)=>a+Number(r.qty||0),0);
+  const pending=(cache.returns||[]).filter(r=>r.invoiceId===invoiceId && r.itemId===itemId && r.status==='pending').reduce((a,r)=>a+Number(r.qty||0),0);
+  return {approved,pending};
+}
+function renderReturns(){
+  const rows=cache.returns||[];
+  if(state.role==='customer'){
+    const invoices=(cache.invoices||[]).filter(i=>i.status==='posted' && i.customerId===state.customerId);
+    const invOpts=invoices.map(i=>`<option value="${i.id}">${esc(i.invoiceNo||i.id)} - ${money(i.total)} - ${payTypeText(i.paymentType)}</option>`).join('');
+    $('page_returns').innerHTML=`<div class="card"><h2>طلب مرتجع</h2>${cache.shop?.allowReturns===false?'<div class="notice error">التاجر أوقف استقبال طلبات المرتجع مؤقتًا.</div>':''}<p class="muted">اختر فاتورة ثم اختر الصنف والكمية. لا يمكن إرجاع كمية أكبر من الكمية المتبقية بعد المرتجعات السابقة والمعلقة.</p><div class="form"><div class="field"><label>الفاتورة</label><select id="returnInvoice">${invOpts}</select></div><div id="returnLinesBox"></div><div class="field"><label>سبب المرتجع</label><textarea id="returnReason" placeholder="مثال: صنف تالف، خطأ في الطلب..."></textarea></div><button class="btn" id="sendReturn" ${invoices.length?'':'disabled'}>إرسال طلب المرتجع للتاجر</button></div></div>
+    <div class="card"><h2>طلبات المرتجع الخاصة بي</h2><div class="list">${rows.map(renderReturnCard).join('')||'<p class="muted">لا توجد طلبات مرتجع.</p>'}</div></div>`;
+    setTimeout(()=>{if($('returnInvoice')){$('returnInvoice').onchange=renderReturnLines; renderReturnLines();} if($('sendReturn')) $('sendReturn').onclick=sendReturnRequest;});
+  } else {
+    const pending=rows.filter(r=>r.status==='pending').length;
+    $('page_returns').innerHTML=`<div class="card"><div class="row"><h2>المرتجعات</h2><span class="status ${pending?'pending':'approved'}">${pending} معلّق</span></div><p class="muted">قبول المرتجع يعيد الكمية إلى المخزون، ويخصم قيمته من حساب العميل إذا كانت الفاتورة آجلة، ويسجل حركة مالية ومخزنية وسجل عملية.</p><div class="list">${rows.map(renderReturnCard).join('')||'<p class="muted">لا توجد طلبات مرتجع.</p>'}</div></div>`;
+    setTimeout(()=>{document.querySelectorAll('[data-approve-return]').forEach(b=>b.onclick=()=>approveReturn(b.dataset.approveReturn)); document.querySelectorAll('[data-reject-return]').forEach(b=>b.onclick=()=>rejectReturn(b.dataset.rejectReturn));});
+  }
+}
+function renderReturnLines(){
+  const invoiceId=$('returnInvoice')?.value;
+  const inv=(cache.invoices||[]).find(i=>i.id===invoiceId);
+  const box=$('returnLinesBox'); if(!box)return;
+  if(!inv){box.innerHTML='<p class="muted">لا توجد فاتورة مختارة.</p>';return}
+  box.innerHTML=(inv.items||[]).map(l=>{const info=invoiceLineReturnInfo(inv.id,l.itemId); const remaining=Math.max(Number(l.qty||0)-info.approved-info.pending,0); return `<div class="field"><label>${esc(l.name)} - المشتري: ${Number(l.qty||0)} | مرتجع مقبول: ${info.approved} | معلّق: ${info.pending} | المتاح للإرجاع: ${remaining}</label><input data-return-item="${l.itemId}" data-name="${esc(l.name)}" data-price="${Number(l.price||0)}" data-max="${remaining}" type="number" min="0" max="${remaining}" placeholder="كمية المرتجع" ${remaining>0?'':'disabled'}></div>`}).join('')||'<p class="muted">لا توجد أصناف في هذه الفاتورة.</p>';
+}
+function renderReturnCard(r){
+  const canTrader=state.role==='trader'&&r.status==='pending';
+  return `<div class="item"><div class="row"><h3>${esc(r.customerName||'عميل')} - ${esc(r.itemName||'صنف')}</h3><span class="status ${r.status}">${statusText(r.status)}</span></div><div class="muted">الفاتورة: ${esc(r.invoiceNo||r.invoiceId||'-')}<br>الكمية: <b>${Number(r.qty||0)}</b> | القيمة: <b>${money(r.amount)}</b> | نوع الفاتورة: ${payTypeText(r.paymentType)}<br>السبب: ${esc(r.reason||'-')}</div>${r.traderNote?`<div class="notice ${r.status==='rejected'?'error':'success'}">ملاحظة التاجر: ${esc(r.traderNote)}</div>`:''}${canTrader?`<div class="actions"><button class="btn ok" data-approve-return="${r.id}">قبول المرتجع</button><button class="btn danger" data-reject-return="${r.id}">رفض المرتجع</button></div>`:''}</div>`;
+}
+async function sendReturnRequest(){
+  try{
+    if(cache.shop?.allowReturns===false){msg('التاجر أوقف استقبال طلبات المرتجع مؤقتًا','error');return}
+    const invoiceId=$('returnInvoice')?.value; const inv=(cache.invoices||[]).find(i=>i.id===invoiceId);
+    if(!inv) throw new Error('اختر فاتورة صحيحة');
+    const reason=($('returnReason')?.value||'').trim(); if(!reason) throw new Error('اكتب سبب المرتجع');
+    const lines=[];
+    for(const inp of document.querySelectorAll('[data-return-item]')){
+      const qty=Number(inp.value||0); if(qty>0){const max=Number(inp.dataset.max||0); if(qty>max) throw new Error(`كمية مرتجع ${inp.dataset.name} أكبر من المتاح (${max})`); lines.push({itemId:inp.dataset.returnItem,itemName:inp.dataset.name,price:Number(inp.dataset.price||0),qty,amount:Number(inp.dataset.price||0)*qty});}
+    }
+    if(!lines.length) throw new Error('اختر صنفًا واحدًا على الأقل للمرتجع');
+    for(const l of lines){
+      await addDoc(collection(db,'shops',state.shopId,'returnRequests'),{shopId:state.shopId,customerUid:uid(),invoiceId:inv.id,invoiceNo:inv.invoiceNo||'',customerId:state.customerId,customerName:state.customerName,itemId:l.itemId,itemName:l.itemName,price:l.price,qty:l.qty,amount:l.amount,paymentType:inv.paymentType||'cash',status:'pending',reason,createdAt:serverTimestamp(),createdMs:Date.now()});
+    }
+    msg('تم إرسال طلب المرتجع للتاجر','success');
+  }catch(e){msg(e.message,'error')}
+}
+async function approveReturn(returnId){
+  const r=(cache.returns||[]).find(x=>x.id===returnId); if(!r)return;
+  if(!confirm('تأكيد قبول المرتجع وتحديث المخزون وحساب العميل؟'))return;
+  try{
+    await runTransaction(db, async(tx)=>{
+      const rr=doc(db,'shops',state.shopId,'returnRequests',returnId);
+      const rs=await tx.get(rr); if(!rs.exists()) throw new Error('طلب المرتجع غير موجود');
+      const rd=rs.data(); if(rd.status!=='pending') throw new Error('هذا المرتجع تمت مراجعته مسبقًا');
+      const itemRef=doc(db,'shops',state.shopId,'items',rd.itemId);
+      const itemSnap=await tx.get(itemRef); if(!itemSnap.exists()) throw new Error('الصنف غير موجود');
+      const customerRef=doc(db,'shops',state.shopId,'customers',rd.customerId);
+      const customerSnap=await tx.get(customerRef); if(!customerSnap.exists()) throw new Error('العميل غير موجود');
+      tx.update(itemRef,{stock:increment(Number(rd.qty||0)),updatedAt:serverTimestamp()});
+      if(rd.paymentType==='credit') tx.update(customerRef,{balance:increment(-Number(rd.amount||0)),updatedAt:serverTimestamp()});
+      tx.update(rr,{status:'approved',traderNote:'تم قبول المرتجع',reviewedAt:serverTimestamp(),reviewedMs:Date.now()});
+      const ledgerRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
+      tx.set(ledgerRef,{shopId:state.shopId,customerId:rd.customerId,customerName:rd.customerName||'',type:rd.paymentType==='credit'?'return_credit':'return_cash',amount:-Number(rd.amount||0),sourceId:returnId,sourceType:'returnRequest',note:'مرتجع فاتورة '+(rd.invoiceNo||rd.invoiceId||''),createdAt:serverTimestamp(),createdMs:Date.now()});
+      const stockRef=doc(collection(db,'shops',state.shopId,'stockLedger'));
+      tx.set(stockRef,{shopId:state.shopId,itemId:rd.itemId,itemName:rd.itemName,qty:Number(rd.qty||0),type:'return',sourceId:returnId,sourceType:'returnRequest',note:'مرتجع من العميل '+(rd.customerName||''),createdAt:serverTimestamp(),createdMs:Date.now()});
+      const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
+      tx.set(auditRef,{shopId:state.shopId,action:'approve_return',actorRole:'trader',actorName:cache.shop?.name||'التاجر',details:{returnId,invoiceId:rd.invoiceId,itemId:rd.itemId,qty:Number(rd.qty||0),amount:Number(rd.amount||0),paymentType:rd.paymentType},createdAt:serverTimestamp(),createdMs:Date.now()});
+    });
+    msg('تم قبول المرتجع وتحديث الحساب والمخزون','success');
+  }catch(e){msg(e.message,'error')}
+}
+async function rejectReturn(returnId){
+  const reason=prompt('اكتب سبب رفض المرتجع:'); if(!reason)return;
+  await updateDoc(doc(db,'shops',state.shopId,'returnRequests',returnId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),reviewedMs:Date.now()});
+  await addAudit('reject_return',{returnId,reason});
+  msg('تم رفض المرتجع','success');
+}
+
+function renderPayments(){
+  const myDebt=customerDebtInfo().balance;
+  const rows=(cache.payments||[]).slice().sort((a,b)=>(b.createdMs||0)-(a.createdMs||0));
+  $('page_payments').innerHTML=`${state.role==='customer'?`<div class="card"><h2>طلب سداد</h2><div class="metric"><span class="muted">الدين الحالي عليك</span><b>${money(myDebt)}</b></div><div class="form"><div class="field"><label>المبلغ المسدد</label><input id="payAmount" type="number" min="1"></div><div class="field"><label>طريقة السداد</label><select id="payMethod"><option>كاش</option><option>حوالة كريمي</option><option>محفظة</option><option>بنك</option><option>نقد عند التاجر</option><option>أخرى</option></select></div><div class="field"><label>رقم العملية / المرجع</label><input id="payRef" placeholder="رقم الحوالة أو العملية إن وجد"></div><div class="field"><label>صورة الإيصال / التحويل اختياري</label><input id="payReceipt" type="file" accept="image/*"></div><div class="field"><label>ملاحظة</label><textarea id="payNote"></textarea></div><button class="btn" id="sendPayment">إرسال طلب السداد</button><p class="muted">ملاحظة: صورة الإيصال تُحفظ داخل Firestore كنسخة مصغرة للتجربة؛ لا ترسل صورًا كبيرة.</p></div></div>`:''}
+  <div class="card"><h2>${state.role==='trader'?'طلبات السداد من العملاء':'سداداتي'}</h2><div class="list">${rows.map(p=>`<div class="item"><div class="row"><h3>${esc(p.customerName||'')} - ${money(p.amount)}</h3><span class="status ${p.status}">${statusText(p.status)}</span></div><div class="muted">${esc(p.method||'')} | مرجع: ${esc(p.referenceNo||'-')} | ${esc(p.note||'')}${p.scheduleId?' | مرتبط باستحقاق':''}</div>${p.receiptData?`<div class="actions"><button class="btn secondary" data-open-receipt="${p.id}">عرض الإيصال</button></div>`:''}${p.traderNote?`<div class="notice ${p.status==='rejected'?'error':'success'}">ملاحظة التاجر: ${esc(p.traderNote)}</div>`:''}${state.role==='trader'&&p.status==='pending'?`<div class="actions"><button class="btn ok" data-approve-pay="${p.id}">قبول السداد</button><button class="btn danger" data-reject-pay="${p.id}">رفض</button></div>`:''}</div>`).join('')||'<p class="muted">لا توجد طلبات سداد.</p>'}</div></div>`;
+  setTimeout(()=>{ if($('sendPayment')) $('sendPayment').onclick=sendPayment; document.querySelectorAll('[data-approve-pay]').forEach(b=>b.onclick=()=>approvePayment(b.dataset.approvePay));document.querySelectorAll('[data-reject-pay]').forEach(b=>b.onclick=()=>rejectPayment(b.dataset.rejectPay));document.querySelectorAll('[data-open-receipt]').forEach(b=>b.onclick=()=>openReceipt(b.dataset.openReceipt));});
+}
+function openReceipt(paymentId){
+  const p=(cache.payments||[]).find(x=>x.id===paymentId);
+  if(!p?.receiptData){msg('لا توجد صورة إيصال لهذا السداد','error');return}
+  const w=window.open('');
+  if(w){w.document.write(`<title>إيصال السداد</title><body style="margin:0;background:#111;display:grid;place-items:center;min-height:100vh"><img src="${p.receiptData}" style="max-width:100%;height:auto"></body>`);w.document.close();}
+}
+async function sendPayment(){
+  const amount=Number($('payAmount').value); const debt=Number(customerDebtInfo().balance);
+  if(amount<=0){msg('أدخل مبلغ صحيح','error');return}
+  if(debt<=0){msg('لا يوجد دين قائم للسداد','error');return}
+  if(amount>debt){msg('مبلغ السداد أكبر من الدين الحالي','error');return}
+  let receipt=null;
+  try{receipt=await fileToDataUrl($('payReceipt')?.files?.[0]);}catch(e){msg(e.message,'error');return}
+  const payload={shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,amount,method:$('payMethod').value,referenceNo:$('payRef').value.trim(),note:$('payNote').value.trim(),status:'pending',kind:'payment',createdAt:serverTimestamp(),createdMs:Date.now()};
+  if(receipt){payload.receiptName=receipt.name; payload.receiptType=receipt.type; payload.receiptSize=receipt.size; payload.receiptData=receipt.dataUrl;}
+  await addDoc(collection(db,'shops',state.shopId,'paymentRequests'),payload); msg('تم إرسال طلب السداد للتاجر','success')
+}
+async function approvePayment(payId){
+  const p=cache.payments.find(x=>x.id===payId); if(!p)return;
+  const c=cache.customers.find(x=>x.customerId===p.customerId); const balance=Number(c?.balance||0);
+  if(Number(p.amount||0)>balance){msg('لا يمكن قبول السداد لأن المبلغ أكبر من دين العميل الحالي','error');return}
+  if(!confirm('تأكيد قبول السداد وخصمه من حساب العميل؟'))return;
+  try{
+    await runTransaction(db, async(tx)=>{
+      const payRef=doc(db,'shops',state.shopId,'paymentRequests',payId);
+      const customerRef=doc(db,'shops',state.shopId,'customers',p.customerId);
+      const ps=await tx.get(payRef); if(!ps.exists()) throw new Error('طلب السداد غير موجود');
+      const pd=ps.data(); if(pd.status==='approved') throw new Error('السداد مقبول مسبقًا');
+      const cs=await tx.get(customerRef); if(!cs.exists()) throw new Error('العميل غير موجود');
+      const current=Number(cs.data().balance||0); const amount=Number(pd.amount||0);
+      if(amount>current) throw new Error('مبلغ السداد أكبر من الدين الحالي');
+      tx.update(payRef,{status:'approved',traderNote:'تم قبول السداد',reviewedAt:serverTimestamp(),reviewedMs:Date.now()});
+      tx.update(customerRef,{balance:increment(-amount),updatedAt:serverTimestamp()});
+      if(pd.scheduleId){
+        const schedRef=doc(db,'shops',state.shopId,'paymentSchedules',pd.scheduleId);
+        const ss=await tx.get(schedRef);
+        if(ss.exists()) tx.update(schedRef,{status:'paid',paymentId:payId,paidAt:serverTimestamp(),paidMs:Date.now(),updatedAt:serverTimestamp()});
+      }
+      const ledgerRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
+      tx.set(ledgerRef,{shopId:state.shopId,customerId:p.customerId,customerName:p.customerName||'',type:'payment',amount:-amount,sourceId:payId,sourceType:'paymentRequest',method:pd.method||'',referenceNo:pd.referenceNo||'',note:'سداد مقبول - '+(pd.method||''),createdAt:serverTimestamp(),createdMs:Date.now()});
+      const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
+      tx.set(auditRef,{shopId:state.shopId,action:'approve_payment',actorRole:'trader',actorName:cache.shop?.name||'التاجر',details:{paymentId:payId,customerId:p.customerId,amount,method:pd.method||'',referenceNo:pd.referenceNo||''},createdAt:serverTimestamp(),createdMs:Date.now()});
+    });
+    msg('تم قبول السداد وخصمه من الدين','success');
+  }catch(e){msg(e.message,'error')}
+}
+async function rejectPayment(payId){const reason=prompt('اكتب سبب رفض السداد:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'paymentRequests',payId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),reviewedMs:Date.now()}); await addAudit('reject_payment',{paymentId:payId,reason}); msg('تم رفض السداد','success')}
+
+function paymentDate(p){return new Date(Number(p.reviewedMs||p.createdMs||Date.now())).toISOString().slice(0,10)}
+function renderCollections(){
+  if(state.role!=='trader'){show('home');return}
+  const selectedDate=state.collectionDate||todayIso();
+  const selectedStatus=state.collectionStatus||'all';
+  const selectedMethod=state.collectionMethod||'all';
+  const methods=[...new Set((cache.payments||[]).map(p=>p.method||'غير محدد'))];
+  let rows=(cache.payments||[]).slice();
+  rows=rows.filter(p=>paymentDate(p)===selectedDate);
+  if(selectedStatus!=='all') rows=rows.filter(p=>p.status===selectedStatus);
+  if(selectedMethod!=='all') rows=rows.filter(p=>(p.method||'غير محدد')===selectedMethod);
+  const approved=rows.filter(p=>p.status==='approved').reduce((a,p)=>a+Number(p.amount||0),0);
+  const pending=rows.filter(p=>p.status==='pending').reduce((a,p)=>a+Number(p.amount||0),0);
+  const rejected=rows.filter(p=>p.status==='rejected').reduce((a,p)=>a+Number(p.amount||0),0);
+  const byMethod={}; for(const p of rows.filter(x=>x.status==='approved')) byMethod[p.method||'غير محدد']=(byMethod[p.method||'غير محدد']||0)+Number(p.amount||0);
+  $('page_collections').innerHTML=`<div class="card"><h2>التحصيل اليومي</h2><div class="grid"><div class="field"><label>التاريخ</label><input id="collectionDate" type="date" value="${esc(selectedDate)}"></div><div class="field"><label>الحالة</label><select id="collectionStatus"><option value="all">الكل</option><option value="approved">مقبول</option><option value="pending">معلق</option><option value="rejected">مرفوض</option></select></div><div class="field"><label>طريقة الدفع</label><select id="collectionMethod"><option value="all">كل الطرق</option>${methods.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('')}</select></div></div><div class="grid"><div class="metric"><span class="muted">مقبول</span><b>${money(approved)}</b></div><div class="metric"><span class="muted">معلق</span><b>${money(pending)}</b></div><div class="metric"><span class="muted">مرفوض</span><b>${money(rejected)}</b></div><div class="metric"><span class="muted">عدد الطلبات</span><b>${rows.length}</b></div></div><div class="card"><h3>المقبوض حسب طريقة الدفع</h3>${Object.keys(byMethod).map(m=>`<div class="row"><span>${esc(m)}</span><b>${money(byMethod[m])}</b></div>`).join('')||'<p class="muted">لا توجد سدادات مقبولة في هذا التاريخ.</p>'}</div><div class="actions"><button class="btn secondary" id="shareCollection">مشاركة تقرير التحصيل</button></div></div><div class="card"><h2>تفاصيل السدادات</h2><div class="list">${rows.map(p=>`<div class="item"><div class="row"><h3>${esc(p.customerName||'')} - ${money(p.amount)}</h3><span class="status ${p.status}">${statusText(p.status)}</span></div><div class="muted">${esc(p.method||'')} | مرجع: ${esc(p.referenceNo||'-')} | ${paymentDate(p)}</div>${p.receiptData?`<div class="actions"><button class="btn secondary" data-open-receipt="${p.id}">عرض الإيصال</button></div>`:''}</div>`).join('')||'<p class="muted">لا توجد سدادات حسب الفلاتر.</p>'}</div></div>`;
+  setTimeout(()=>{ $('collectionStatus').value=selectedStatus; $('collectionMethod').value=selectedMethod; $('collectionDate').onchange=e=>{state.collectionDate=e.target.value;save();renderCollections()}; $('collectionStatus').onchange=e=>{state.collectionStatus=e.target.value;save();renderCollections()}; $('collectionMethod').onchange=e=>{state.collectionMethod=e.target.value;save();renderCollections()}; $('shareCollection').onclick=shareCollectionReport; document.querySelectorAll('[data-open-receipt]').forEach(b=>b.onclick=()=>openReceipt(b.dataset.openReceipt));});
+}
+async function shareCollectionReport(){
+  const date=state.collectionDate||todayIso();
+  const rows=(cache.payments||[]).filter(p=>paymentDate(p)===date);
+  const approved=rows.filter(p=>p.status==='approved').reduce((a,p)=>a+Number(p.amount||0),0);
+  const pending=rows.filter(p=>p.status==='pending').reduce((a,p)=>a+Number(p.amount||0),0);
+  const rejected=rows.filter(p=>p.status==='rejected').reduce((a,p)=>a+Number(p.amount||0),0);
+  const lines=[`تقرير التحصيل - ${cache.shop?.name||'المحل'}`,`التاريخ: ${date}`,`المقبول: ${money(approved)}`,`المعلق: ${money(pending)}`,`المرفوض: ${money(rejected)}`,'','التفاصيل:',...rows.map(p=>`- ${p.customerName||''}: ${money(p.amount)} | ${p.method||''} | ${statusText(p.status)} | مرجع: ${p.referenceNo||'-'}`)];
+  const text=lines.join('\n');
+  try{ if(navigator.share) await navigator.share({title:'تقرير التحصيل',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ تقرير التحصيل','success');} }catch(e){try{await navigator.clipboard?.writeText(text); msg('تم نسخ تقرير التحصيل','success')}catch{} }
+}
+
+
+function scheduleStatus(s){
+  if(s.status==='paid') return {cls:'approved',text:'مدفوع'};
+  if(s.status==='cancelled') return {cls:'rejected',text:'ملغي'};
+  const today=new Date().toISOString().slice(0,10);
+  if(String(s.dueDate||'')<today) return {cls:'rejected',text:'متأخر'};
+  if(String(s.dueDate||'')===today) return {cls:'pending',text:'مستحق اليوم'};
+  return {cls:'',text:'قادم'};
+}
+function renderSchedules(){
+  const rows=(cache.schedules||[]).slice().sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||'')));
+  const pending=rows.filter(s=>s.status==='pending');
+  const overdue=pending.filter(s=>String(s.dueDate||'')<new Date().toISOString().slice(0,10));
+  const paid=rows.filter(s=>s.status==='paid');
+  const totalPending=pending.reduce((a,s)=>a+Number(s.amount||0),0);
+  const totalPaid=paid.reduce((a,s)=>a+Number(s.amount||0),0);
+  const customerOptions=(cache.customers||[]).map(c=>`<option value="${esc(c.customerId)}">${esc(c.name)} - دينه: ${money(c.balance)}</option>`).join('');
+  const invoiceOptions=(cache.invoices||[]).filter(i=>i.paymentType==='credit').map(i=>`<option value="${esc(i.id)}">${esc(i.invoiceNo||i.id)} - ${esc(i.customerName||'')} - ${money(i.total)}</option>`).join('');
+  const createBox=state.role==='trader'?`<div class="card"><h2>جدولة سداد / أقساط</h2><p class="muted">استخدمها لتقسيم دين العميل إلى دفعات بتاريخ استحقاق. لا تخصم من الدين إلا عند إرسال العميل طلب سداد وموافقة التاجر عليه.</p><div class="form"><div class="field"><label>العميل</label><select id="schedCustomer"><option value="">اختر العميل</option>${customerOptions}</select></div><div class="field"><label>ربط اختياري بفاتورة آجلة</label><select id="schedInvoice"><option value="">بدون ربط بفاتورة</option>${invoiceOptions}</select></div><div class="grid"><div class="field"><label>إجمالي مبلغ الجدولة</label><input id="schedTotal" type="number" min="1"></div><div class="field"><label>عدد الدفعات</label><input id="schedCount" type="number" min="1" value="1"></div><div class="field"><label>تاريخ أول استحقاق</label><input id="schedStart" type="date"></div><div class="field"><label>الفاصل بالأيام</label><input id="schedInterval" type="number" min="1" value="7"></div></div><div class="field"><label>ملاحظة</label><textarea id="schedNote" placeholder="مثال: دفعات أسبوعية"></textarea></div><button class="btn" id="createSchedule">إنشاء الجدولة</button></div></div>`:'';
+  $('page_schedules').innerHTML=`${createBox}<div class="card"><div class="row"><h2>${state.role==='trader'?'استحقاقات العملاء':'استحقاقاتي'}</h2><span class="status ${overdue.length?'rejected':'approved'}">${overdue.length} متأخر</span></div><div class="grid"><div class="metric"><span class="muted">المتبقي المجدول</span><b>${money(totalPending)}</b></div><div class="metric"><span class="muted">المدفوع من الجدولة</span><b>${money(totalPaid)}</b></div><div class="metric"><span class="muted">دفعات معلقة</span><b>${pending.length}</b></div><div class="metric"><span class="muted">إجمالي السجلات</span><b>${rows.length}</b></div></div><div class="list" style="margin-top:10px">${rows.map(renderScheduleCard).join('')||'<p class="muted">لا توجد استحقاقات بعد.</p>'}</div></div>`;
+  setTimeout(()=>{ if($('createSchedule')) $('createSchedule').onclick=createSchedule; document.querySelectorAll('[data-pay-schedule]').forEach(b=>b.onclick=()=>paySchedule(b.dataset.paySchedule)); document.querySelectorAll('[data-cancel-schedule]').forEach(b=>b.onclick=()=>cancelSchedule(b.dataset.cancelSchedule)); if($('schedInvoice')) $('schedInvoice').onchange=fillScheduleFromInvoice; });
+}
+function renderScheduleCard(s){
+  const st=scheduleStatus(s);
+  const canPay=state.role==='customer' && s.status==='pending';
+  const canCancel=state.role==='trader' && s.status==='pending';
+  return `<div class="item"><div class="row"><h3>${esc(s.customerName||state.customerName||'عميل')} - ${money(s.amount)}</h3><span class="status ${st.cls}">${st.text}</span></div><div class="muted">تاريخ الاستحقاق: ${esc(s.dueDate||'-')} | دفعة ${Number(s.installmentNo||1)} من ${Number(s.installmentCount||1)}<br>فاتورة: ${esc(s.invoiceNo||'-')} | ${esc(s.note||'')}</div>${s.paymentId?`<div class="notice success">تم السداد بطلب رقم: ${esc(s.paymentId)}</div>`:''}${s.cancelReason?`<div class="notice error">سبب الإلغاء: ${esc(s.cancelReason)}</div>`:''}<div class="actions">${canPay?`<button class="btn ok" data-pay-schedule="${s.id}">سداد هذه الدفعة</button>`:''}${canCancel?`<button class="btn danger" data-cancel-schedule="${s.id}">إلغاء الدفعة</button>`:''}</div></div>`;
+}
+function fillScheduleFromInvoice(){
+  const idv=$('schedInvoice')?.value;
+  if(!idv)return;
+  const inv=(cache.invoices||[]).find(i=>i.id===idv);
+  if(!inv)return;
+  const cust=$('schedCustomer'); if(cust) cust.value=inv.customerId||'';
+  const total=$('schedTotal'); if(total) total.value=Number(inv.total||0);
+  const note=$('schedNote'); if(note) note.value='جدولة فاتورة '+(inv.invoiceNo||'');
+}
+async function createSchedule(){
+  const customerId=$('schedCustomer').value;
+  const c=(cache.customers||[]).find(x=>x.customerId===customerId);
+  if(!c){msg('اختر العميل','error');return}
+  const total=Number($('schedTotal').value||0), count=Math.max(1,Number($('schedCount').value||1)), interval=Math.max(1,Number($('schedInterval').value||7));
+  const start=$('schedStart').value; const note=$('schedNote').value.trim();
+  if(total<=0||count<=0||!start){msg('أدخل المبلغ وعدد الدفعات وتاريخ أول استحقاق','error');return}
+  if(total>Number(c.balance||0)){ if(!confirm('مبلغ الجدولة أكبر من الدين الحالي للعميل. هل تريد المتابعة؟')) return; }
+  const inv=(cache.invoices||[]).find(i=>i.id===$('schedInvoice').value);
+  const groupId=id('SCH'); const baseAmount=Math.floor(total/count); let remainder=total-(baseAmount*count);
+  const startDate=new Date(start+'T00:00:00');
+  try{
+    for(let i=1;i<=count;i++){
+      const d=new Date(startDate); d.setDate(startDate.getDate()+((i-1)*interval));
+      const amount=baseAmount+(remainder>0?1:0); if(remainder>0) remainder--;
+      await addDoc(collection(db,'shops',state.shopId,'paymentSchedules'),{shopId:state.shopId,customerId:c.customerId,customerUid:c.customerUid||'',customerName:c.name||'',amount,dueDate:d.toISOString().slice(0,10),status:'pending',groupId,installmentNo:i,installmentCount:count,invoiceId:inv?.id||'',invoiceNo:inv?.invoiceNo||'',note,createdAt:serverTimestamp(),createdMs:Date.now()});
+    }
+    await addAudit('create_payment_schedule',{customerId:c.customerId,total,count,start,interval,invoiceId:inv?.id||''});
+    msg('تم إنشاء جدول السداد بنجاح','success');
+  }catch(e){msg(e.message||'تعذر إنشاء الجدولة','error')}
+}
+async function paySchedule(scheduleId){
+  const s=(cache.schedules||[]).find(x=>x.id===scheduleId); if(!s)return;
+  const debt=Number(customerDebtInfo().balance); const amount=Number(s.amount||0);
+  if(debt<=0){msg('لا يوجد دين قائم للسداد','error');return}
+  if(amount>debt){msg('قيمة الدفعة أكبر من الدين الحالي. تواصل مع التاجر لتعديل الجدولة.','error');return}
+  if(!confirm('إرسال طلب سداد لهذه الدفعة بمبلغ '+money(amount)+'؟'))return;
+  await addDoc(collection(db,'shops',state.shopId,'paymentRequests'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,amount,method:'سداد استحقاق',referenceNo:'',note:'سداد دفعة مستحقة بتاريخ '+(s.dueDate||''),status:'pending',kind:'payment',scheduleId,createdAt:serverTimestamp(),createdMs:Date.now()});
+  msg('تم إرسال طلب سداد الدفعة للتاجر','success');
+}
+async function cancelSchedule(scheduleId){
+  const reason=prompt('اكتب سبب إلغاء هذه الدفعة المجدولة:'); if(!reason)return;
+  await updateDoc(doc(db,'shops',state.shopId,'paymentSchedules',scheduleId),{status:'cancelled',cancelReason:reason,updatedAt:serverTimestamp()});
+  await addAudit('cancel_payment_schedule',{scheduleId,reason});
+  msg('تم إلغاء الدفعة المجدولة','success');
+}
+
+function renderNotifications(){
+  const notes=getNotifications();
+  const unread=unreadNotifications();
+  $('page_notifications').innerHTML=`<div class="card"><div class="row"><h2>الإشعارات</h2><span class="status ${unread.length?'pending':'approved'}">${unread.length} جديد</span></div><p class="muted">تظهر هنا الطلبات الجديدة، طلبات السداد، المرتجعات، الاستحقاقات، حالات القبول والرفض، والرسائل الجديدة. عند فتح هذه الصفحة تُحذف العلامة من الأيقونة فقط ولا تُحذف البيانات.</p><div class="actions"><button class="btn secondary" id="markAllRead">تعليم الكل كمقروء</button></div><div class="list" style="margin-top:10px">${notes.map(n=>`<div class="item ${state.readNotifyIds&&state.readNotifyIds[notificationKey(n)]?'':'notice'}"><div class="row"><h3>${esc(n.title)}</h3><span class="muted">${new Date(Number(n.createdMs||Date.now())).toLocaleString('ar-YE')}</span></div><div>${esc(n.body||'')}</div><div class="actions"><button class="btn light" data-open-note="${esc(n.page)}">فتح</button></div></div>`).join('')||'<p class="muted">لا توجد إشعارات.</p>'}</div></div>`;
+  markNotificationsRead();
+  setTimeout(()=>{$('markAllRead')&&($('markAllRead').onclick=()=>{markNotificationsRead(); renderNotifications(); renderNav(); msg('تم تعليم الإشعارات كمقروءة','success')}); document.querySelectorAll('[data-open-note]').forEach(b=>b.onclick=()=>openNotificationPage(b.dataset.openNote)); renderNav();});
+}
+
+
+
+function dateKey(ms){
+  const d=new Date(ms||Date.now());
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function monthKey(ms){
+  const d=new Date(ms||Date.now());
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function periodFilter(rows, period){
+  const today=dateKey(Date.now()), month=monthKey(Date.now());
+  return rows.filter(x=>{
+    const ms=Number(x.createdMs||0); if(!ms) return period==='all';
+    if(period==='today') return dateKey(ms)===today;
+    if(period==='month') return monthKey(ms)===month;
+    return true;
+  });
+}
+function renderReports(){
+  const period=localStorage.getItem('hesabi_report_period')||'month';
+  const selectedCustomer=localStorage.getItem('hesabi_report_customer')||'all';
+  const customerFilter=(r)=> state.role==='customer' ? r.customerId===state.customerId : (selectedCustomer==='all'||r.customerId===selectedCustomer);
+  const invoices=periodFilter(cache.invoices,period).filter(customerFilter);
+  const payments=periodFilter(cache.payments,period).filter(customerFilter);
+  const returns=periodFilter(cache.returns,period).filter(customerFilter);
+  const acceptedPayments=payments.filter(p=>p.status==='approved');
+  const pendingPayments=payments.filter(p=>p.status==='pending');
+  const rejectedPayments=payments.filter(p=>p.status==='rejected');
+  const salesTotal=invoices.reduce((a,x)=>a+Number(x.total||0),0);
+  const cashTotal=invoices.filter(x=>x.paymentType==='cash').reduce((a,x)=>a+Number(x.total||0),0);
+  const creditTotal=invoices.filter(x=>x.paymentType==='credit').reduce((a,x)=>a+Number(x.total||0),0);
+  const collectedTotal=acceptedPayments.reduce((a,x)=>a+Number(x.amount||0),0);
+  const pendingCollect=pendingPayments.reduce((a,x)=>a+Number(x.amount||0),0);
+  const rejectedCollect=rejectedPayments.reduce((a,x)=>a+Number(x.amount||0),0);
+  const returnAccepted=returns.filter(r=>r.status==='approved').reduce((a,x)=>a+Number(x.total||0),0);
+  const debtTotal=state.role==='trader'?cache.customers.reduce((a,c)=>a+Number(c.balance||0),0):customerDebtInfo().balance;
+  const stockValue=state.role==='trader'?cache.items.reduce((a,i)=>a+(Number(i.price||0)*Number(i.stock||0)),0):0;
+  const lowStock=state.role==='trader'?cache.items.filter(i=>Number(i.stock||0)>0&&Number(i.stock||0)<=Number(i.minStock||0)):[];
+  const outStock=state.role==='trader'?cache.items.filter(i=>Number(i.stock||0)<=0):[];
+  const byItem={};
+  invoices.forEach(inv=>(inv.items||[]).forEach(l=>{const k=l.itemId||l.name; if(!byItem[k]) byItem[k]={name:l.name||'صنف',qty:0,total:0}; byItem[k].qty+=Number(l.qty||0); byItem[k].total+=Number(l.total||0);}));
+  const topItems=Object.values(byItem).sort((a,b)=>b.total-a.total).slice(0,5);
+  const topDebt=[...cache.customers].sort((a,b)=>Number(b.balance||0)-Number(a.balance||0)).slice(0,5);
+  const customerOptions=state.role==='trader'?`<div class="field"><label>فلترة حسب العميل</label><select id="reportCustomer"><option value="all">كل العملاء</option>${cache.customers.map(c=>`<option value="${c.customerId}" ${selectedCustomer===c.customerId?'selected':''}>${esc(c.name)} - ${money(c.balance||0)}</option>`).join('')}</select></div>`:'';
+  $('page_reports').innerHTML=`<div class="card"><h2>التقارير التجارية</h2><div class="grid"><div class="field"><label>الفترة</label><select id="reportPeriod"><option value="today" ${period==='today'?'selected':''}>اليوم</option><option value="month" ${period==='month'?'selected':''}>الشهر الحالي</option><option value="all" ${period==='all'?'selected':''}>كل الفترات</option></select></div>${customerOptions}</div><div class="actions"><button class="btn secondary" id="shareBusinessReport">مشاركة التقرير</button><button class="btn light" id="exportInvoicesCsv">تصدير الفواتير CSV</button><button class="btn light" id="exportPaymentsCsv">تصدير السداد CSV</button>${state.role==='trader'?'<button class="btn light" id="exportCustomersCsv">تصدير العملاء CSV</button>':''}</div></div>
+  <div class="card"><h2>ملخص مالي</h2><div class="grid"><div class="metric"><span class="muted">إجمالي الفواتير</span><b>${money(salesTotal)}</b></div><div class="metric"><span class="muted">كاش</span><b>${money(cashTotal)}</b></div><div class="metric"><span class="muted">آجل</span><b>${money(creditTotal)}</b></div><div class="metric"><span class="muted">تحصيل مقبول</span><b>${money(collectedTotal)}</b></div><div class="metric"><span class="muted">تحصيل معلق</span><b>${money(pendingCollect)}</b></div><div class="metric"><span class="muted">تحصيل مرفوض</span><b>${money(rejectedCollect)}</b></div><div class="metric"><span class="muted">مرتجعات مقبولة</span><b>${money(returnAccepted)}</b></div><div class="metric"><span class="muted">رصيد الدين الحالي</span><b>${money(debtTotal)}</b></div>${state.role==='trader'?`<div class="metric"><span class="muted">قيمة المخزون</span><b>${money(stockValue)}</b></div><div class="metric"><span class="muted">منخفض/منتهي</span><b>${lowStock.length} / ${outStock.length}</b></div>`:''}</div></div>
+  <div class="card"><h2>أفضل الأصناف مبيعًا</h2><div class="list">${topItems.map(x=>`<div class="item"><div class="row"><h3>${esc(x.name)}</h3><b>${money(x.total)}</b></div><div class="muted">الكمية: ${x.qty}</div></div>`).join('')||'<p class="muted">لا توجد مبيعات ضمن الفترة.</p>'}</div></div>
+  ${state.role==='trader'?`<div class="card"><h2>أعلى العملاء مديونية</h2><div class="list">${topDebt.map(c=>`<div class="item"><div class="row"><h3>${esc(c.name)}</h3><b>${money(c.balance||0)}</b></div><div class="muted">الهاتف: ${esc(c.phone||'-')} | السقف: ${money(c.creditLimit||0)}</div></div>`).join('')||'<p class="muted">لا توجد عملاء.</p>'}</div></div>
+  <div class="card"><h2>تنبيهات المخزون</h2><div class="list">${[...outStock,...lowStock].slice(0,10).map(i=>`<div class="item"><div class="row"><h3>${esc(i.name)}</h3><span class="status ${Number(i.stock||0)<=0?'rejected':'pending'}">${Number(i.stock||0)<=0?'منتهي':'منخفض'}</span></div><div class="muted">المتوفر: ${Number(i.stock||0)} | حد التنبيه: ${Number(i.minStock||0)}</div></div>`).join('')||'<p class="muted">لا توجد تنبيهات مخزون.</p>'}</div></div>`:''}`;
+  setTimeout(()=>{
+    $('reportPeriod').onchange=e=>{localStorage.setItem('hesabi_report_period',e.target.value);renderReports()};
+    if($('reportCustomer')) $('reportCustomer').onchange=e=>{localStorage.setItem('hesabi_report_customer',e.target.value);renderReports()};
+    $('shareBusinessReport').onclick=()=>shareBusinessReport({period,salesTotal,cashTotal,creditTotal,collectedTotal,pendingCollect,rejectedCollect,returnAccepted,debtTotal,stockValue,topItems,topDebt});
+    $('exportInvoicesCsv').onclick=()=>downloadCsv('hesabi-invoices.csv', invoicesToCsv(invoices));
+    $('exportPaymentsCsv').onclick=()=>downloadCsv('hesabi-payments.csv', paymentsToCsv(payments));
+    if($('exportCustomersCsv')) $('exportCustomersCsv').onclick=()=>downloadCsv('hesabi-customers.csv', customersToCsv(cache.customers));
+  });
+}
+function csvEscape(v){v=(v??'').toString().replace(/"/g,'""'); return /[",\n]/.test(v)?`"${v}"`:v;}
+function rowsToCsv(rows){return rows.map(r=>r.map(csvEscape).join(',')).join('\n')}
+function invoicesToCsv(invoices){return rowsToCsv([['invoiceNo','customerName','paymentType','total','date'],...invoices.map(x=>[x.invoiceNo||x.id,x.customerName||'',x.paymentType||'',Number(x.total||0),new Date(Number(x.createdMs||0)).toLocaleString('ar-YE')])])}
+function paymentsToCsv(payments){return rowsToCsv([['customerName','amount','method','status','referenceNo','date'],...payments.map(x=>[x.customerName||'',Number(x.amount||0),x.method||'',x.status||'',x.referenceNo||'',new Date(Number(x.createdMs||0)).toLocaleString('ar-YE')])])}
+function customersToCsv(customers){return rowsToCsv([['name','phone','balance','creditLimit','status'],...customers.map(c=>[c.name||'',c.phone||'',Number(c.balance||0),Number(c.creditLimit||0),c.status||'active'])])}
+function downloadCsv(name,text){
+  const blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); msg('تم تجهيز ملف التصدير','success');
+}
+async function shareBusinessReport(r){
+  const text=`تقرير حسابي التجاري\nالفترة: ${r.period==='today'?'اليوم':r.period==='month'?'الشهر الحالي':'كل الفترات'}\nإجمالي الفواتير: ${money(r.salesTotal)}\nكاش: ${money(r.cashTotal)}\nآجل: ${money(r.creditTotal)}\nتحصيل مقبول: ${money(r.collectedTotal)}\nتحصيل معلق: ${money(r.pendingCollect)}\nتحصيل مرفوض: ${money(r.rejectedCollect)}\nمرتجعات: ${money(r.returnAccepted)}\nرصيد الدين الحالي: ${money(r.debtTotal)}${state.role==='trader'?`\nقيمة المخزون: ${money(r.stockValue)}`:''}\n\nأفضل الأصناف:\n${(r.topItems||[]).map((x,i)=>`${i+1}. ${x.name}: ${money(x.total)} - كمية ${x.qty}`).join('\n')||'لا يوجد'}${state.role==='trader'?`\n\nأعلى العملاء مديونية:\n${(r.topDebt||[]).map((c,i)=>`${i+1}. ${c.name}: ${money(c.balance||0)}`).join('\n')||'لا يوجد'}`:''}`;
+  try{ if(navigator.share) await navigator.share({title:'تقرير حسابي التجاري',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير','success');} }catch(e){try{await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير','success')}catch{} }
+}
+
+function renderPolicies(){
+  if(state.role!=='trader'){show('home');return}
+  const sh=cache.shop||{};
+  $('page_policies').innerHTML=`<div class="card"><h2>السياسات والصلاحيات التجارية</h2><p class="muted">هذه الإعدادات تتحكم في سلوك البيع والشراء عند العملاء بدون تعديل يدوي في كل مرة.</p><div class="form">
+    <div class="field"><label>استقبال طلبات الشراء من العملاء</label><select id="polAllowOrders"><option value="true" ${sh.allowCustomerOrders!==false?'selected':''}>مسموح</option><option value="false" ${sh.allowCustomerOrders===false?'selected':''}>موقوف مؤقتًا</option></select></div>
+    <div class="field"><label>السماح بطلبات المرتجع</label><select id="polAllowReturns"><option value="true" ${sh.allowReturns!==false?'selected':''}>مسموح</option><option value="false" ${sh.allowReturns===false?'selected':''}>موقوف</option></select></div>
+    <div class="field"><label>سقف الدين الافتراضي للعميل الجديد</label><input id="polDefaultLimit" type="number" min="0" value="${Number(sh.defaultCreditLimit||0)}"></div>
+    <div class="field"><label>حالة العميل الجديد افتراضيًا</label><select id="polDefaultStatus"><option value="active" ${(sh.defaultCustomerStatus||'active')==='active'?'selected':''}>نشط</option><option value="cash_only" ${sh.defaultCustomerStatus==='cash_only'?'selected':''}>كاش فقط</option><option value="blocked" ${sh.defaultCustomerStatus==='blocked'?'selected':''}>موقوف حتى يفعله التاجر</option></select></div>
+    <div class="field"><label>بادئة رقم الفاتورة</label><input id="polInvoicePrefix" value="${esc(sh.invoicePrefix||'INV')}" placeholder="INV"></div>
+    <button class="btn" id="savePolicies">حفظ السياسات</button>
+  </div></div>
+  <div class="card"><h2>أدوات جماعية للعملاء</h2><p class="muted">يمكن تطبيق حالة أو سقف على عدة عملاء دفعة واحدة. استخدمها بحذر.</p><div class="form">
+    <div class="field"><label>تطبيق حالة على كل العملاء</label><select id="bulkStatus"><option value="">بدون تغيير</option><option value="active">نشط</option><option value="cash_only">كاش فقط</option><option value="blocked">موقوف</option></select></div>
+    <div class="field"><label>تطبيق سقف دين موحد اختياريًا</label><input id="bulkLimit" type="number" min="0" placeholder="اتركه فارغًا إذا لا تريد تعديل السقوف"></div>
+    <button class="btn warn" id="applyBulkCustomers">تطبيق على العملاء</button>
+  </div></div>`;
+  setTimeout(()=>{$('savePolicies').onclick=savePolicies; $('applyBulkCustomers').onclick=applyBulkCustomerPolicies;});
+}
+async function savePolicies(){
+  if(state.role!=='trader')return;
+  const allowCustomerOrders=$('polAllowOrders').value==='true';
+  const allowReturns=$('polAllowReturns').value==='true';
+  const defaultCreditLimit=Math.max(0,Number($('polDefaultLimit').value||0));
+  const defaultCustomerStatus=$('polDefaultStatus').value||'active';
+  const invoicePrefix=($('polInvoicePrefix').value||'INV').trim().replace(/[^A-Za-z0-9\u0600-\u06FF_-]/g,'').slice(0,12)||'INV';
+  await updateDoc(doc(db,'shops',state.shopId),{allowCustomerOrders,allowReturns,defaultCreditLimit,defaultCustomerStatus,invoicePrefix,updatedAt:serverTimestamp()});
+  await addAudit('update_policies',{allowCustomerOrders,allowReturns,defaultCreditLimit,defaultCustomerStatus,invoicePrefix});
+  msg('تم حفظ السياسات التجارية','success');
+}
+async function applyBulkCustomerPolicies(){
+  if(state.role!=='trader')return;
+  const status=$('bulkStatus').value;
+  const limitText=String($('bulkLimit').value||'').trim();
+  const hasLimit=limitText!=='';
+  const limit=Number(limitText);
+  if(!status&&!hasLimit){msg('اختر حالة أو أدخل سقفًا لتطبيقه','error');return}
+  if(hasLimit && (Number.isNaN(limit)||limit<0)){msg('سقف الدين غير صحيح','error');return}
+  if(!confirm('سيتم تطبيق التعديل على '+cache.customers.length+' عميل. هل تريد المتابعة؟'))return;
+  let count=0;
+  for(const c of cache.customers){
+    const patch={updatedAt:serverTimestamp()};
+    if(status) patch.status=status;
+    if(hasLimit) patch.creditLimit=limit;
+    await updateDoc(doc(db,'shops',state.shopId,'customers',c.customerId),patch);
+    count++;
+  }
+  await addAudit('bulk_customer_policy',{status:status||null,creditLimit:hasLimit?limit:null,count});
+  msg('تم تطبيق السياسات على '+count+' عميل','success');
+}
+
+
+const SECURITY_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed(){ return request.auth != null; }
+    function shopPath(shopId){ return /databases/$(database)/documents/shops/$(shopId); }
+    function shopExists(shopId){ return exists(shopPath(shopId)); }
+    function isOwner(shopId){ return signed() && get(shopPath(shopId)).data.ownerUid == request.auth.uid; }
+    function isCustomer(shopId){ return signed() && exists(/databases/$(database)/documents/shops/$(shopId)/customerUidLinks/$(request.auth.uid)); }
+    function isOwnerOrCustomer(shopId){ return isOwner(shopId) || isCustomer(shopId); }
+    function legacyNoOwner(){ return signed() && !('ownerUid' in resource.data); }
+    function legacyNoCustomer(){ return signed() && !('customerUid' in resource.data); }
+
+    match /shopPhones/{phoneKey} {
+      allow read: if signed();
+      allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /customerPhoneLinks/{phoneKey}/shops/{shopId} {
+      allow read: if signed();
+      allow create: if signed();
+      allow update, delete: if false;
+    }
+    match /shops/{shopId} {
+      allow read: if isOwnerOrCustomer(shopId) || legacyNoOwner();
+      allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isOwner(shopId) || (legacyNoOwner() && request.resource.data.ownerUid == request.auth.uid);
+      allow delete: if false;
+
+      match /customerUidLinks/{uid} {
+        allow read: if isOwner(shopId) || (signed() && request.auth.uid == uid);
+        allow create: if signed() && request.auth.uid == uid && shopExists(shopId);
+        allow update, delete: if false;
+      }
+      match /customerPhones/{phoneKey} {
+        allow read: if signed();
+        allow create: if signed() && shopExists(shopId);
+        allow update, delete: if false;
+      }
+      match /items/{id} {
+        allow read: if isOwnerOrCustomer(shopId);
+        allow write: if isOwner(shopId);
+      }
+      match /customers/{customerId} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid) || legacyNoCustomer();
+        allow create: if signed() && shopExists(shopId) && request.resource.data.customerUid == request.auth.uid;
+        allow update: if isOwner(shopId)
+          || (signed() && resource.data.customerUid == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','phoneKey','customerUid','securityUpgradedAt']))
+          || (legacyNoCustomer() && request.resource.data.customerUid == request.auth.uid);
+        allow delete: if false;
+      }
+      match /purchaseRequests/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create: if isOwner(shopId) || (signed() && request.resource.data.customerUid == request.auth.uid);
+        allow update: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow delete: if false;
+      }
+      match /paymentRequests/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create: if signed() && request.resource.data.customerUid == request.auth.uid;
+        allow update: if isOwner(shopId);
+        allow delete: if false;
+      }
+      match /messages/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create: if isOwner(shopId) || (signed() && request.resource.data.customerUid == request.auth.uid);
+        allow update: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow delete: if false;
+      }
+      match /returnRequests/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create: if signed() && request.resource.data.customerUid == request.auth.uid;
+        allow update: if isOwner(shopId);
+        allow delete: if false;
+      }
+      match /paymentSchedules/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create, update: if isOwner(shopId) || (signed() && request.resource.data.customerUid == request.auth.uid);
+        allow delete: if false;
+      }
+      match /invoices/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create, update: if isOwner(shopId);
+        allow delete: if false;
+      }
+      match /customerLedger/{id} {
+        allow read: if isOwner(shopId) || (signed() && resource.data.customerUid == request.auth.uid);
+        allow create, update: if isOwner(shopId);
+        allow delete: if false;
+      }
+      match /stockLedger/{id} { allow read, write: if isOwner(shopId); }
+      match /auditLogs/{id} { allow read, write: if isOwner(shopId); }
+    }
+  }
+}`;
+
+function renderSettings(){
+  const defaultLink = state.appPublicLink || (location.protocol.startsWith('http') ? location.href.split('#')[0] : '');
+  $('page_settings').innerHTML=`<div class="card"><h2>الإعدادات</h2><div class="list"><div class="item"><h3>بيانات المستخدم</h3><p class="muted">الدور: ${state.role==='trader'?'تاجر':'عميل'}<br>كود المحل: ${esc(state.shopId)}<br>إصدار التطبيق: ${APP_VERSION}</p></div><button class="btn secondary" id="copyShop">نسخ كود المحل</button><button class="btn secondary" id="enableNotify">تفعيل الصوت والإشعارات</button><button class="btn light" id="exportData">تصدير إعدادات الجهاز</button><label class="btn light" style="text-align:center">استيراد إعدادات<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار عميل/تاجر</button><button class="btn danger" id="wipeAll">مسح إعدادات هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج الآمن</button></div></div>
+  <div class="card"><h2>مشاركة التطبيق والتحديثات</h2><p class="muted">إذا كان التطبيق مرفوعًا كرابط موقع، أرسل الرابط للعملاء. إذا كنت تستخدمه كملف HTML فقط، استخدم زر مشاركة ملف التطبيق.</p><div class="form"><div class="field"><label>رابط التطبيق المنشور للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="مثال: https://your-app.web.app"></div><div class="actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML الحالي</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إرسال إشعار تحديث للعملاء</button>':''}</div><p class="muted">ملاحظة: إرسال ملف HTML يعتمد على دعم المتصفح للمشاركة. الأفضل لاحقًا رفع الملف على Firebase Hosting حتى يحصل كل العملاء على نفس الرابط دائمًا.</p></div></div>
+  <div class="card"><h2>قواعد الأمان للنشر</h2><p class="muted">بعد تفعيل Authentication، انسخ القواعد التالية إلى Firestore Rules بدل القواعد المفتوحة.</p><div class="mono">${esc(SECURITY_RULES)}</div></div>`;
+  setTimeout(()=>{$('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId); $('enableNotify').onclick=enableNotifications; $('exportData').onclick=exportData; $('importFile').onchange=importData; $('saveAppLink').onclick=saveAppPublicLink; $('shareAppLink').onclick=shareAppLink; $('shareAppFile').onclick=shareCurrentHtmlFile; if($('notifyCustomersUpdate')) $('notifyCustomersUpdate').onclick=broadcastAppUpdate; $('resetRole').onclick=()=>{if(confirm('سيتم إعادة التهيئة على هذا الجهاز فقط. هل تريد المتابعة؟')){state.role=null;state.profileDone=false;state.customerId=null;state.customerName=null;state.customerLinks=[];state.activeShopId=null;save();location.reload()}}; $('wipeAll').onclick=()=>{if(confirm('مسح كل إعدادات هذا الجهاز؟')){localStorage.removeItem(LS);localStorage.removeItem(OLD_LS);location.reload()}}; if($('logoutBtn')) $('logoutBtn').onclick=async()=>{await signOut(auth); localStorage.removeItem(LS); location.reload()};});
+}
+
+function saveAppPublicLink(){
+  state.appPublicLink=($('appPublicLink')?.value||'').trim();
+  save();
+  msg('تم حفظ رابط التطبيق','success');
+}
+async function shareAppLink(){
+  const link=($('appPublicLink')?.value||state.appPublicLink||'').trim();
+  if(!link){msg('أدخل رابط التطبيق أولًا، أو استخدم زر مشاركة ملف HTML الحالي','error');return}
+  const text='رابط تطبيق حسابي التجاري: '+link;
+  try{
+    if(navigator.share){await navigator.share({title:'حسابي التجاري',text,url:link});}
+    else {await navigator.clipboard?.writeText(text); msg('تم نسخ الرابط. أرسله للعميل عبر واتساب أو الرسائل.','success');}
+  }catch(e){try{await navigator.clipboard?.writeText(text); msg('تم نسخ الرابط','success')}catch{} }
+}
+async function shareCurrentHtmlFile(){
+  try{
+    const html='<!doctype html>\n'+document.documentElement.outerHTML;
+    const file=new File([html],'hesabi-firebase-updated.html',{type:'text/html'});
+    if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
+      await navigator.share({title:'تطبيق حسابي التجاري - تحديث',text:'هذه آخر نسخة من تطبيق حسابي التجاري.',files:[file]});
+      msg('تم فتح نافذة المشاركة لإرسال ملف التطبيق','success');
+      return;
+    }
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(file);
+    a.download='hesabi-firebase-updated.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    msg('المتصفح لا يدعم مشاركة الملف مباشرة، لذلك تم تنزيل ملف HTML. أرسله للعميل يدويًا.','notice');
+  }catch(e){msg('تعذر مشاركة ملف التطبيق: '+e.message,'error')}
+}
+async function broadcastAppUpdate(){
+  if(state.role!=='trader'){msg('هذه الميزة للتاجر فقط','error');return}
+  const customers=cache.customers||[];
+  if(!customers.length){msg('لا يوجد عملاء لإرسال التحديث لهم','error');return}
+  const link=($('appPublicLink')?.value||state.appPublicLink||'').trim();
+  const custom=prompt('اكتب ملاحظة التحديث للعملاء:', 'تم إصدار تحديث جديد لتطبيق حسابي التجاري. الرجاء فتح الرابط أو طلب الملف الجديد من التاجر.');
+  if(custom===null)return;
+  if(!confirm('سيتم إرسال رسالة تحديث إلى '+customers.length+' عميل. هل تريد المتابعة؟'))return;
+  const text=(custom||'تحديث جديد لتطبيق حسابي التجاري.')+(link?'\nرابط التحديث: '+link:'\nلا يوجد رابط منشور، اطلب ملف HTML الجديد من التاجر.');
+  let sent=0;
+  for(const c of customers){
+    try{
+      await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId:c.customerId,customerUid:c.customerUid||'',customerName:c.name,fromRole:'trader',fromName:cache.shop?.name||'التاجر',text,type:'app_update',appVersion:APP_VERSION,appLink:link||'',createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:true,readByCustomer:false});
+      sent++;
+    }catch(e){console.error(e)}
+  }
+  msg('تم إرسال إشعار التحديث إلى '+sent+' عميل','success');
+}
+
+async function enableNotifications(){state.soundEnabled=true; if('Notification' in window){try{const p=await Notification.requestPermission(); state.notifyEnabled=(p==='granted');}catch(e){}} save(); beep(); msg('تم تفعيل صوت جميع الطلبات والسداد والرسائل والتنبيهات على هذا الجهاز','success')}
+function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hesabi-device-settings.json';a.click();URL.revokeObjectURL(a.href)}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);save();location.reload()}catch{msg('ملف غير صحيح','error')}};r.readAsText(f)}
+
+(async function boot(){
+  try{
+    render();
+    await initFirebase();
+    render();
+    await waitForAuth();
+    if(state.profileDone && uid()) startListeners();
+    render();
+  }catch(e){
+    console.error(e);
+    try{msg('فشل بدء التطبيق: '+(e.message||e),'error'); render();}catch{}
+  }
+})();
+</script>
+</body>
+</html>
