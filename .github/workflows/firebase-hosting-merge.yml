@@ -10,15 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Write Firebase service account
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_HESABI_APP_EDC7E }}' > ${{ runner.temp }}/firebase-key.json
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_HESABI_APP_EDC7E }}' > firebase-key.json
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
       - name: Deploy Hosting and Firestore Rules
-        run: firebase deploy --only hosting,firestore:rules --project hesabi-app-edc7e
+        run: firebase deploy --only hosting,firestore:rules --project hesabi-app-edc7e --json
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
+          GOOGLE_APPLICATION_CREDENTIALS: firebase-key.json
