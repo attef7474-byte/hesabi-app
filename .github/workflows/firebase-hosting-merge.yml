@@ -24,3 +24,4 @@ jobs:
         run: firebase deploy --only hosting,firestore:rules --project hesabi-app-edc7e --json
         env:
           GOOGLE_APPLICATION_CREDENTIALS: firebase-key.json
+
