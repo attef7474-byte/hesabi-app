@@ -415,18 +415,17 @@ async function recoverCustomerByPhone(){
   if(!phoneKey||!shopId){msg('أدخل رقم الهاتف وكود المحل لاسترجاع الحساب','error');return}
   try{
     const sid=String(shopId).trim();
+    const shopSnap=await getDoc(doc(db,'shops',sid));
+    if(!shopSnap.exists()){msg('كود المحل غير صحيح','error');return}
     const phoneSnap=await getDoc(doc(db,'shops',sid,'customerPhones',phoneKey));
     if(!phoneSnap.exists()){msg('لا يوجد عميل بهذا الرقم عند هذا التاجر. يمكنك الربط كعميل جديد.','error');return}
     const customerId=phoneSnap.data().customerId;
-    const custRef=doc(db,'shops',sid,'customers',customerId);
-    try{ await updateDoc(custRef,{customerUid:uid(),securityUpgradedAt:serverTimestamp()}); }catch(_){}
-    await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
-    const shopSnap=await getDoc(doc(db,'shops',sid));
-    if(!shopSnap.exists()){msg('كود المحل غير صحيح أو لا تملك صلاحية الوصول إليه','error');return}
-    const custSnap=await getDoc(custRef);
+    const custSnap=await getDoc(doc(db,'shops',sid,'customers',customerId));
     if(!custSnap.exists()){msg('تم العثور على الرقم لكن سجل العميل غير موجود','error');return}
     const shop=shopSnap.data(); const c=custSnap.data();
     if(c.customerUid && c.customerUid!==uid()){msg('هذا العميل مربوط بحساب دخول آخر. ادخل بنفس الحساب السابق.','error');return}
+    if(!c.customerUid){await updateDoc(doc(db,'shops',sid,'customers',customerId),{customerUid:uid(),securityUpgradedAt:serverTimestamp()});}
+    await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
     if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
     state.customerLinks=state.customerLinks.filter(x=>!(x.shopId===sid));
     state.customerLinks.push({shopId:sid,customerId,customerName:c.name||name||'عميل',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
@@ -539,6 +538,62 @@ async function recoverShopLinkInMyStores(){
   }catch(e){msg(e.message||'تعذر استرجاع المتجر','error')}
 }
 
+
+function customerUidById(customerId){ const c=(cache.customers||[]).find(x=>x.customerId===customerId); return c?.customerUid||'' }
+function renderNav(){
+  const n=unreadCount();
+  const bell=n?`🔔 ${n}`:'🔔';
+  const trader=[['home','الرئيسية'],['items','الأصناف'],['customers','العملاء'],['orders','الطلبات'],['messages','الرسائل'],['payments','السداد'],['invoices','الفواتير'],['statement','كشف الحساب'],['audit','السجل'],['stock','المخزون'],['returns','المرتجعات'],['schedules','الاستحقاقات'],['collections','التحصيل'],['reports','التقارير'],['policies','السياسات'],['notifications',bell],['settings','الإعدادات']];
+  const customer=[['home','الرئيسية'],['shops','متاجري'],['items','شراء'],['orders','طلباتي'],['messages','الرسائل'],['payments','السداد'],['invoices','الفواتير'],['statement','كشف الحساب'],['returns','المرتجعات'],['schedules','الاستحقاقات'],['reports','التقارير'],['notifications',bell],['settings','الإعدادات']];
+  $('navInner').innerHTML=(state.role==='trader'?trader:customer).map(([k,t])=>`<button class="tab ${active===k?'active':''}" data-tab="${k}">${t}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.tab));
+}
+function show(p){
+  if(state.role!=='trader' && (p==='customers'||p==='audit'||p==='stock'||p==='collections'||p==='policies')) p='home'; if(state.role==='trader' && p==='shops') p='home';
+  active=p;
+  ['home','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','settings'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
+  renderNav();
+  ({home:renderHome,items:renderItems,orders:renderOrders,customers:renderCustomers,shops:renderShops,messages:renderMessages,payments:renderPayments,invoices:renderInvoices,statement:renderStatement,audit:renderAudit,stock:renderStock,returns:renderReturns,schedules:renderSchedules,collections:renderCollections,reports:renderReports,policies:renderPolicies,notifications:renderNotifications,settings:renderSettings}[p])();
+}
+
+function startListeners(){
+  unsub.forEach(f=>f());unsub=[]; normalizeCustomerLinks(); if(!db||!state.shopId) return;
+  const base=(name)=>collection(db,'shops',state.shopId,name);
+  unsub.push(onSnapshot(doc(db,'shops',state.shopId),s=>{cache.shop=s.exists()?s.data():null; if(state.role==='customer'){const link=currentCustomerLink(); if(link&&cache.shop?.name&&link.shopName!==cache.shop.name){link.shopName=cache.shop.name; state.shopName=cache.shop.name; save();}} if(state.profileDone) show(active)}));
+  unsub.push(onSnapshot(base('items'),s=>{cache.items=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}));
+  unsub.push(onSnapshot(base('customers'),s=>{cache.customers=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}));
+  let oq=state.role==='customer'?query(base('purchaseRequests'),where('customerId','==',state.customerId)):base('purchaseRequests');
+  let pq=state.role==='customer'?query(base('paymentRequests'),where('customerId','==',state.customerId)):base('paymentRequests');
+  let mq=state.role==='customer'?query(base('messages'),where('customerId','==',state.customerId)):base('messages');
+  let iq=state.role==='customer'?query(base('invoices'),where('customerId','==',state.customerId)):base('invoices');
+  let lq=state.role==='customer'?query(base('customerLedger'),where('customerId','==',state.customerId)):base('customerLedger');
+  unsub.push(onSnapshot(oq,s=>{cache.orders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
+  unsub.push(onSnapshot(pq,s=>{cache.payments=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
+  unsub.push(onSnapshot(mq,s=>{cache.messages=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.createdMs||0)-(b.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
+  unsub.push(onSnapshot(iq,s=>{cache.invoices=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(state.profileDone) show(active)}));
+  unsub.push(onSnapshot(lq,s=>{cache.customerLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(state.profileDone) show(active)}));
+  const rq=state.role==='customer'?query(base('returnRequests'),where('customerId','==',state.customerId)):base('returnRequests');
+  unsub.push(onSnapshot(rq,s=>{cache.returns=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
+  const sq=state.role==='customer'?query(base('paymentSchedules'),where('customerId','==',state.customerId)):base('paymentSchedules');
+  unsub.push(onSnapshot(sq,s=>{cache.schedules=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||''))); checkNotifications(); if(state.profileDone) show(active)}));
+  if(state.role==='trader') unsub.push(onSnapshot(base('auditLogs'),s=>{cache.auditLogs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,100); if(state.profileDone) show(active)}));
+  if(state.role==='trader') unsub.push(onSnapshot(base('stockLedger'),s=>{cache.stockLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,300); if(state.profileDone) show(active)}));
+}
+
+function customerDebtInfo(customerId=state.customerId){
+  const c=cache.customers.find(x=>x.customerId===customerId) || {};
+  const balance=Number(c.balance||0), limit=Number(c.creditLimit||0), remaining=Math.max(limit-balance,0);
+  return {c,balance,limit,remaining};
+}
+function pendingCreditForCustomer(customerId){
+  return cache.orders.filter(o=>o.customerId===customerId && o.paymentType==='credit' && (o.status==='pending_trader'||o.status==='pending_customer'||o.status==='pending')).reduce((a,o)=>a+Number(o.total||0),0);
+}
+
+function invoiceNumber(){
+  const d=new Date();
+  const prefix=(cache.shop?.invoicePrefix||'INV').trim()||'INV'; return prefix+'-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+'-'+Math.random().toString(36).slice(2,6).toUpperCase()+Date.now().toString().slice(-5);
+}
+function actorName(){return state.role==='trader'?(cache.shop?.name||'التاجر'):(state.customerName||'العميل')}
 async function addAudit(action, details={}){
   try{
     if(!db||!state.shopId)return;
@@ -1287,8 +1342,8 @@ service cloud.firestore {
     }
     match /customerPhoneLinks/{phoneKey}/shops/{shopId} {
       allow read: if signed();
-      allow create: if signed();
-      allow update, delete: if false;
+      allow create, update: if signed();
+      allow delete: if false;
     }
     match /shops/{shopId} {
       allow read: if isOwnerOrCustomer(shopId) || legacyNoOwner();
