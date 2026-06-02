@@ -231,7 +231,7 @@ let app=null, db=null, auth=null, currentUser=null, authReady=false, unsub=[];
 let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
-const APP_VERSION='2026-06-01-كتالوج-ذكي-إصلاح-البحث-والكيبورد';
+const APP_VERSION='2026-06-02-زر-تحديث-التطبيق';
 
 function load(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
 function save(){localStorage.setItem(LS,JSON.stringify(state))}
@@ -1875,9 +1875,40 @@ service cloud.firestore {
 
 function renderSettings(){
   const defaultLink = state.appPublicLink || (location.protocol.startsWith('http') ? location.href.split('#')[0] : '');
-  $('page_settings').innerHTML=`<div class="card"><h2>الإعدادات</h2><div class="list"><div class="item"><h3>بيانات المستخدم</h3><p class="muted">الدور: ${state.role==='trader'?'تاجر':'عميل'}<br>كود المحل: ${esc(state.shopId)}<br>إصدار التطبيق: ${APP_VERSION}</p></div><button class="btn secondary" id="copyShop">نسخ كود المحل</button><button class="btn secondary" id="enableNotify">تفعيل الصوت والإشعارات</button><button class="btn light" id="exportData">تصدير إعدادات الجهاز</button><label class="btn light" style="text-align:center">استيراد إعدادات<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار عميل/تاجر</button><button class="btn danger" id="wipeAll">مسح إعدادات هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج الآمن</button></div></div>
+  $('page_settings').innerHTML=`<div class="card"><h2>الإعدادات</h2><div class="list"><div class="item"><h3>بيانات المستخدم</h3><p class="muted">الدور: ${state.role==='trader'?'تاجر':'عميل'}<br>كود المحل: ${esc(state.shopId)}<br>إصدار التطبيق: ${APP_VERSION}</p></div><button class="btn ok" id="forceAppUpdateBtn">تحديث التطبيق لآخر نسخة</button><button class="btn secondary" id="copyShop">نسخ كود المحل</button><button class="btn secondary" id="enableNotify">تفعيل الصوت والإشعارات</button><button class="btn light" id="exportData">تصدير إعدادات الجهاز</button><label class="btn light" style="text-align:center">استيراد إعدادات<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار عميل/تاجر</button><button class="btn danger" id="wipeAll">مسح إعدادات هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج الآمن</button></div></div>
   <div class="card"><h2>مشاركة التطبيق والتحديثات</h2><p class="muted">إذا كان التطبيق مرفوعًا كرابط موقع، أرسل الرابط للعملاء. إذا كنت تستخدمه كملف HTML فقط، استخدم زر مشاركة ملف التطبيق.</p><div class="form"><div class="field"><label>رابط التطبيق المنشور للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="مثال: https://your-app.web.app"></div><div class="actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML الحالي</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إرسال إشعار تحديث للعملاء</button>':''}</div><p class="muted">ملاحظة: الأفضل مشاركة الرابط الرسمي للتطبيق حتى يحصل العملاء على آخر تحديث تلقائيًا بدون إرسال ملفات جديدة.</p></div></div>`;
-  setTimeout(()=>{$('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId); $('enableNotify').onclick=enableNotifications; $('exportData').onclick=exportData; $('importFile').onchange=importData; $('saveAppLink').onclick=saveAppPublicLink; $('shareAppLink').onclick=shareAppLink; $('shareAppFile').onclick=shareCurrentHtmlFile; if($('notifyCustomersUpdate')) $('notifyCustomersUpdate').onclick=broadcastAppUpdate; $('resetRole').onclick=()=>{if(confirm('سيتم إعادة التهيئة على هذا الجهاز فقط. هل تريد المتابعة؟')){state.role=null;state.profileDone=false;state.customerId=null;state.customerName=null;state.customerLinks=[];state.activeShopId=null;save();location.reload()}}; $('wipeAll').onclick=()=>{if(confirm('مسح كل إعدادات هذا الجهاز؟')){localStorage.removeItem(LS);localStorage.removeItem(OLD_LS);location.reload()}}; if($('logoutBtn')) $('logoutBtn').onclick=async()=>{await signOut(auth); localStorage.removeItem(LS); location.reload()};});
+  setTimeout(()=>{if($('forceAppUpdateBtn')) $('forceAppUpdateBtn').onclick=forceAppUpdate; $('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId); $('enableNotify').onclick=enableNotifications; $('exportData').onclick=exportData; $('importFile').onchange=importData; $('saveAppLink').onclick=saveAppPublicLink; $('shareAppLink').onclick=shareAppLink; $('shareAppFile').onclick=shareCurrentHtmlFile; if($('notifyCustomersUpdate')) $('notifyCustomersUpdate').onclick=broadcastAppUpdate; $('resetRole').onclick=()=>{if(confirm('سيتم إعادة التهيئة على هذا الجهاز فقط. هل تريد المتابعة؟')){state.role=null;state.profileDone=false;state.customerId=null;state.customerName=null;state.customerLinks=[];state.activeShopId=null;save();location.reload()}}; $('wipeAll').onclick=()=>{if(confirm('مسح كل إعدادات هذا الجهاز؟')){localStorage.removeItem(LS);localStorage.removeItem(OLD_LS);location.reload()}}; if($('logoutBtn')) $('logoutBtn').onclick=async()=>{await signOut(auth); localStorage.removeItem(LS); location.reload()};});
+}
+
+
+async function forceAppUpdate(){
+  try{
+    msg('جاري تحديث التطبيق لآخر نسخة... سيتم الحفاظ على حسابك وبيانات الدخول.', 'notice');
+    state.lastManualUpdateAt = Date.now();
+    save();
+    if('serviceWorker' in navigator){
+      try{
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for(const reg of regs){
+          try{ await reg.update(); }catch(e){}
+        }
+      }catch(e){}
+    }
+    if('caches' in window){
+      try{
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k=>caches.delete(k)));
+      }catch(e){}
+    }
+    try{ sessionStorage.setItem('hesabi_force_update_ts', String(Date.now())); }catch(e){}
+    const url = new URL(location.href);
+    url.searchParams.set('v', String(Date.now()));
+    url.searchParams.set('refresh', '1');
+    setTimeout(()=>location.replace(url.toString()), 450);
+  }catch(e){
+    const base = location.origin && location.origin !== 'null' ? location.origin + location.pathname : location.href.split('?')[0];
+    location.href = base + '?v=' + Date.now() + '&refresh=1';
+  }
 }
 
 function saveAppPublicLink(){
