@@ -303,7 +303,7 @@ let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
 let previousPage='home';
-const APP_VERSION='2026-06-02-شريط-ثابت-وكود-التاجر';
+const APP_VERSION='2026-06-02-تسجيل-هاتف-وربط-نهائي';
 
 function getJoinShopParam(){
   try{
@@ -433,6 +433,85 @@ function validPhoneOrWarn(phone,label='رقم الهاتف'){
   const key=normalizePhone(phone);
   if(key.length<7){msg(label+' غير صحيح أو قصير جدًا','error'); return null}
   return key;
+}
+function verifiedCurrentPhoneKey(){
+  const fromUser = normalizePhone(currentUser?.phoneNumber || '');
+  const fromState = normalizePhone(state.authPhoneNumber || state.authPhoneKey || '');
+  if(fromUser) return fromUser;
+  if(state.authProvider==='phone' && fromState) return fromState;
+  return '';
+}
+function canClaimRecordByVerifiedPhone(recordPhoneKey){
+  const k=normalizePhone(recordPhoneKey || '');
+  const verified=verifiedCurrentPhoneKey();
+  return !!(k && verified && k===verified);
+}
+function isPhoneAuthSession(){return state.authProvider==='phone' || !!currentUser?.phoneNumber || !!state.authPhoneNumber}
+function requireVerifiedPhoneInput(phone,label='رقم الهاتف'){
+  const key=validPhoneOrWarn(phone,label);
+  if(!key) return null;
+  const verified=verifiedCurrentPhoneKey();
+  if(isPhoneAuthSession() && verified && key!==verified){
+    msg(`${label} يجب أن يكون نفس الرقم الذي تم التحقق منه بكود SMS: ${phoneKeyToInternational(verified)}`,'error');
+    return null;
+  }
+  return key;
+}
+async function saveUserAccountProfile(extra={}){
+  try{
+    if(!db || !uid()) return;
+    const phoneKey=verifiedCurrentPhoneKey() || state.authPhoneKey || '';
+    const payload={
+      uid:uid(),
+      authProvider:state.authProvider || (currentUser?.phoneNumber?'phone':'email'),
+      authPhoneNumber:state.authPhoneNumber || currentUser?.phoneNumber || (phoneKey?phoneKeyToInternational(phoneKey):''),
+      authPhoneKey:phoneKey,
+      role:state.role || '',
+      profileDone:!!state.profileDone,
+      shopId:state.shopId || '',
+      activeShopId:state.activeShopId || state.shopId || '',
+      customerId:state.customerId || '',
+      shopName:state.shopName || cache.shop?.name || '',
+      customerName:state.customerName || '',
+      customerPhone:state.customerPhone || '',
+      customerLinks:Array.isArray(state.customerLinks)?state.customerLinks:[],
+      updatedAt:serverTimestamp(),
+      ...extra
+    };
+    await setDoc(doc(db,'users',uid()),payload,{merge:true});
+    if(phoneKey){
+      await setDoc(doc(db,'phoneUidLinks',phoneKey),{phoneKey,uid:uid(),provider:payload.authProvider,updatedAt:serverTimestamp()},{merge:true});
+    }
+  }catch(e){console.warn('save user profile failed',e)}
+}
+async function loadUserAccountProfile(){
+  try{
+    if(!db || !uid()) return false;
+    const snap=await getDoc(doc(db,'users',uid()));
+    if(!snap.exists()) return false;
+    const d=snap.data()||{};
+    if(d.role) state.role=d.role;
+    if(d.profileDone){
+      state.profileDone=true;
+      if(d.shopId) state.shopId=d.shopId;
+      if(d.activeShopId) state.activeShopId=d.activeShopId;
+      if(d.customerId) state.customerId=d.customerId;
+      if(d.shopName) state.shopName=d.shopName;
+      if(d.customerName) state.customerName=d.customerName;
+      if(d.customerPhone) state.customerPhone=d.customerPhone;
+      if(Array.isArray(d.customerLinks)) state.customerLinks=d.customerLinks;
+    }
+    if(d.authPhoneKey && !state.authPhoneKey) state.authPhoneKey=d.authPhoneKey;
+    if(d.authPhoneNumber && !state.authPhoneNumber) state.authPhoneNumber=d.authPhoneNumber;
+    save();
+    return !!d.profileDone;
+  }catch(e){console.warn('load user profile failed',e); return false;}
+}
+async function afterSuccessfulAuthLogin(){
+  try{
+    await loadUserAccountProfile();
+    await saveUserAccountProfile({lastLoginAt:serverTimestamp()});
+  }catch(e){console.warn('after login profile sync failed',e)}
 }
 window.addEventListener('online',onlineBadge);window.addEventListener('offline',onlineBadge);onlineBadge();
 applyAppearance();
@@ -595,6 +674,7 @@ async function waitForAuth(){
       currentUser=u||null;
       if(u?.uid) state.uid=u.uid;
       if(u?.email) state.authEmail=u.email;
+      if(u?.phoneNumber){ state.authPhoneNumber=u.phoneNumber; state.authPhoneKey=normalizePhone(u.phoneNumber); state.authProvider='phone'; }
       save();
     };
     const resolveOnce=(u)=>{
@@ -802,7 +882,8 @@ function bindSmsAuthButtons(){
         delete state.pendingSmsPhone; delete state.pendingSmsPhoneKey;
         save();
         phoneConfirmationResult=null;
-        msg('تم التحقق من رقم الهاتف وتسجيل الدخول بنجاح','success');
+        await afterSuccessfulAuthLogin();
+        msg(state.profileDone?'تم التحقق من رقم الهاتف واسترجاع حسابك بنجاح':'تم التحقق من رقم الهاتف. اختر نوع الحساب أو استرجع حسابك السابق.','success');
         render();
       }catch(e){
         console.error(e);
@@ -820,6 +901,7 @@ function bindLegacyAuthButtons(){
       $('loginBtn').disabled=true;
       const cred=await signInWithEmailAndPassword(auth,authEmailFromPhone(phoneKey),pass);
       currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; state.authProvider='email'; save();
+      await afterSuccessfulAuthLogin();
       msg('تم تسجيل الدخول','success');
       render();
     }
@@ -833,6 +915,7 @@ function bindLegacyAuthButtons(){
       $('signupBtn').disabled=true;
       const cred=await createUserWithEmailAndPassword(auth,authEmailFromPhone(phoneKey),pass);
       currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; state.authProvider='email'; save();
+      await afterSuccessfulAuthLogin();
       msg('تم إنشاء الحساب الآمن. اختر الآن نوع الحساب: تاجر أو عميل.','success');
       render();
     }
@@ -896,8 +979,10 @@ function bindSetupBackFloating(){
 }
 
 function renderProfileSetup(){
-  if(state.role==='trader') $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">إذا فتحت نسخة جديدة ولم تظهر بياناتك، لا تنشئ محلًا جديدًا. استخدم زر استرجاع محل موجود بنفس رقم الهاتف و PIN.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" placeholder="مثال: 777123456"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء محل جديد</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button></div>`;
-  else {
+  if(state.role==='trader') {
+    const phoneDefault=esc(state.authPhoneNumber||state.authPhoneKey||'');
+    $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">رقم الهاتف موثق بكود SMS. استخدم نفس الرقم لإنشاء المحل أو استرجاعه حتى يكون الربط آمنًا ونهائيًا.</div><div class="notice">إذا كان المحل موجودًا مسبقًا، أدخل PIN واضغط استرجاع محل موجود، أو اضغط إنشاء وسيتم تحويلك للاسترجاع إذا كان الرقم موجودًا.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" value="${phoneDefault}" placeholder="مثال: +967771749776"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء/استرجاع محل بهذا الرقم</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button></div>`;
+  } else {
     const phoneDefault=esc(state.customerPhone||state.authPhoneNumber||state.authPhoneKey||'');
     const nameDefault=esc(state.customerName||'');
     $('profileSetup').innerHTML=`<h2>تهيئة العميل</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">يمكنك إدخال كود التاجر يدويًا، أو مسح QR، أو البحث عن المتاجر المسجلة، ثم إضافة متجر أو عدة متاجر والربط بها دفعة واحدة.</div><div class="form customer-setup-form"><div class="field"><label>اسم العميل</label><input id="custName" value="${nameDefault}" placeholder="اسمك عند التاجر"></div><div class="field"><label>رقم الهاتف</label><input id="custPhone" value="${phoneDefault}" placeholder="77xxxxxxx أو +967..."></div><div class="field"><label>كود المحل من التاجر</label><div class="shop-code-input-row"><input id="joinShopId" placeholder="SHOP-XXXXX"><button class="icon-mini-btn" id="setupScanShopQr" type="button" title="مسح كود التاجر">📷</button><button class="icon-mini-btn" id="setupSearchStores" type="button" title="بحث عن متجر">🔎</button><button class="icon-mini-btn" id="setupAddStore" type="button" title="إضافة متجر للقائمة">➕</button></div></div><video id="setupQrVideo" class="scan-video setup-scan-video" playsinline></video><div class="settings-compact-actions setup-scan-actions hidden" id="setupScanActions"><button class="btn light" id="setupStopQrScan" type="button">إيقاف الكاميرا</button></div><div class="field"><label>بحث عن متجر مسجل</label><input id="shopSearchQuery" placeholder="اكتب اسم المتجر أو كود التاجر أو رقم الهاتف"></div><div id="shopSearchResults" class="compact-shop-results hidden"></div><div id="selectedSetupShops" class="selected-setup-shops"></div><button class="btn" id="joinShop">ربط المتاجر المحددة</button><button class="btn secondary" id="recoverCustomer">استرجاع حساب عميل موجود</button></div>`;
@@ -920,7 +1005,7 @@ function renderProfileSetup(){
 async function recoverShopByPhone(){
   if(!requireAuth()) return;
   const phone=$('shopPhone').value.trim(), pin=$('shopPin').value.trim();
-  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف المحل');
+  const phoneKey=requireVerifiedPhoneInput(phone,'رقم هاتف المحل');
   if(!phoneKey||!pin){msg('أدخل رقم هاتف المحل ورمز الإدارة PIN لاسترجاع المحل','error');return}
   try{
     const phoneSnap=await getDoc(doc(db,'shopPhones',phoneKey));
@@ -930,9 +1015,20 @@ async function recoverShopByPhone(){
     if(!shopSnap.exists()){msg('تم العثور على الرقم لكن سجل المحل غير موجود','error');return}
     const shop=shopSnap.data();
     if(String(shop.pin||'')!==String(pin)){msg('رمز PIN غير صحيح لهذا المحل','error');return}
-    if(shop.ownerUid && shop.ownerUid!==uid()){msg('هذا المحل مربوط بحساب دخول آخر. ادخل بنفس الحساب الذي أنشأ المحل.','error');return}
-    if(!shop.ownerUid){await updateDoc(doc(db,'shops',shopId),{ownerUid:uid(),ownerPhoneKey:state.authPhoneKey||phoneKey,securityUpgradedAt:serverTimestamp()});}
-    state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.shopName=shop.name||shopId; save(); startListeners(); render(); msg('تم استرجاع المحل والبيانات من Firebase بنجاح','success');
+    const claimByPhone = shop.ownerUid && shop.ownerUid!==uid() && canClaimRecordByVerifiedPhone(shop.phoneKey||phoneKey);
+    if(shop.ownerUid && shop.ownerUid!==uid() && !claimByPhone){msg('هذا المحل مربوط بحساب دخول آخر. يجب الدخول برقم SMS نفسه المسجل للمحل ثم إدخال PIN الصحيح.','error');return}
+    if(!shop.ownerUid || claimByPhone){
+      await updateDoc(doc(db,'shops',shopId),{
+        ownerUid:uid(),
+        ownerPhoneKey:verifiedCurrentPhoneKey()||state.authPhoneKey||phoneKey,
+        previousOwnerUid: shop.ownerUid || '',
+        securityUpgradedAt:serverTimestamp()
+      });
+      await setDoc(doc(db,'shopPhones',phoneKey),{shopId,name:shop.name||shopId,phone:shop.phone||phone,phoneKey,ownerUid:uid(),updatedAt:serverTimestamp()},{merge:true});
+    }
+    state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.shopName=shop.name||shopId; state.role='trader'; save();
+    await saveUserAccountProfile({traderShopId:shopId});
+    startListeners(); render(); msg(claimByPhone?'تم نقل ربط المحل إلى حساب الهاتف الموثق واسترجاع البيانات بنجاح':'تم استرجاع المحل والبيانات من Firebase بنجاح','success');
   }catch(e){msg(e.message||'تعذر استرجاع المحل','error')}
 }
 
@@ -999,47 +1095,78 @@ function setupStopQrScan(){
 
 async function recoverCustomerByPhone(){
   if(!requireAuth()) return;
-  const name=$('custName').value.trim(), phone=$('custPhone').value.trim(), shopId=$('joinShopId').value.trim();
-  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف العميل');
-  if(!phoneKey||!shopId){msg('أدخل رقم الهاتف وكود المحل لاسترجاع الحساب','error');return}
-  try{
-    const sid=String(shopId).trim();
-    const shopSnap=await getDoc(doc(db,'shops',sid));
-    if(!shopSnap.exists()){msg('كود المحل غير صحيح','error');return}
-    const phoneSnap=await getDoc(doc(db,'shops',sid,'customerPhones',phoneKey));
-    if(!phoneSnap.exists()){msg('لا يوجد عميل بهذا الرقم عند هذا التاجر. يمكنك الربط كعميل جديد.','error');return}
-    const customerId=phoneSnap.data().customerId;
-    const custSnap=await getDoc(doc(db,'shops',sid,'customers',customerId));
-    if(!custSnap.exists()){msg('تم العثور على الرقم لكن سجل العميل غير موجود','error');return}
-    const shop=shopSnap.data(); const c=custSnap.data();
-    if(c.customerUid && c.customerUid!==uid()){msg('هذا العميل مربوط بحساب دخول آخر. ادخل بنفس الحساب السابق.','error');return}
-    if(!c.customerUid){await updateDoc(doc(db,'shops',sid,'customers',customerId),{customerUid:uid(),securityUpgradedAt:serverTimestamp()});}
-    await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
-    if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
-    state.customerLinks=state.customerLinks.filter(x=>!(x.shopId===sid));
-    state.customerLinks.push({shopId:sid,customerId,customerName:c.name||name||'عميل',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
-    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=c.name||name||'عميل'; state.customerPhone=c.phone||phone; state.shopName=shop.name||sid; state.profileDone=true; save(); startListeners(); render(); msg('تم استرجاع حساب العميل والبيانات من Firebase بنجاح','success');
-  }catch(e){msg(e.message||'تعذر استرجاع حساب العميل','error')}
+  const name=($('custName')?.value||'').trim(), phone=($('custPhone')?.value||'').trim();
+  const selected=setupShopSelections().map(x=>x.shopId).filter(Boolean);
+  const typed=extractShopCodeFromText(($('joinShopId')?.value||'').trim());
+  const shopIds=[...new Set(selected.length?selected:(typed?[typed]:[]))];
+  const phoneKey=requireVerifiedPhoneInput(phone,'رقم هاتف العميل');
+  if(!phoneKey||!shopIds.length){msg('أدخل رقم الهاتف واختر متجرًا واحدًا على الأقل لاسترجاع الحساب','error');return}
+  let ok=0, last='';
+  for(const sidRaw of shopIds){
+    try{
+      const sid=String(sidRaw).trim();
+      const shopSnap=await getDoc(doc(db,'shops',sid));
+      if(!shopSnap.exists()){msg('كود المحل غير صحيح: '+sid,'error');continue}
+      const phoneSnap=await getDoc(doc(db,'shops',sid,'customerPhones',phoneKey));
+      if(!phoneSnap.exists()){msg('لا يوجد عميل بهذا الرقم عند المتجر: '+sid,'error');continue}
+      const customerId=phoneSnap.data().customerId;
+      const custSnap=await getDoc(doc(db,'shops',sid,'customers',customerId));
+      if(!custSnap.exists()){msg('تم العثور على الرقم لكن سجل العميل غير موجود','error');continue}
+      const shop=shopSnap.data(); const c=custSnap.data();
+      const claimCustomerByPhone = c.customerUid && c.customerUid!==uid() && canClaimRecordByVerifiedPhone(c.phoneKey||phoneKey);
+      if(c.customerUid && c.customerUid!==uid() && !claimCustomerByPhone){msg('هذا العميل مربوط بحساب دخول آخر. ادخل برقم SMS نفسه المسجل عند التاجر.','error');continue}
+      if(!c.customerUid || claimCustomerByPhone){
+        await updateDoc(doc(db,'shops',sid,'customers',customerId),{customerUid:uid(),previousCustomerUid:c.customerUid||'',securityUpgradedAt:serverTimestamp()});
+        await setDoc(doc(db,'shops',sid,'customerPhones',phoneKey),{customerId,shopId:sid,phoneKey,customerUid:uid(),updatedAt:serverTimestamp()},{merge:true});
+      }
+      await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
+      await setDoc(doc(db,'customerPhoneLinks',phoneKey,'shops',sid),{customerId,shopId:sid,shopName:shop.name||sid,name:c.name||name||'عميل',phone:c.phone||phone,phoneKey,updatedAt:serverTimestamp()},{merge:true});
+      if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
+      state.customerLinks=state.customerLinks.filter(x=>x.shopId!==sid);
+      state.customerLinks.push({shopId:sid,customerId,customerName:c.name||name||'عميل',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
+      state.activeShopId=state.activeShopId||sid; state.shopId=state.activeShopId; state.customerId=currentCustomerLink()?.customerId||customerId; state.customerName=c.name||name||'عميل'; state.customerPhone=c.phone||phone; state.shopName=currentCustomerLink()?.shopName||shop.name||sid; state.profileDone=true; state.role='customer';
+      ok++; last=shop.name||sid;
+    }catch(e){msg(e.message||'تعذر استرجاع حساب العميل','error')}
+  }
+  if(ok){
+    save(); await saveUserAccountProfile(); startListeners(); render(); msg(ok===1?`تم استرجاع حساب العميل لدى ${last}`:`تم استرجاع ${ok} حسابات عميل بنجاح`,'success');
+  }
 }
+
 
 async function createShop(){
   if(!requireAuth()) return;
   const name=$('shopName').value.trim(), phone=$('shopPhone').value.trim(), pin=$('shopPin').value.trim();
-  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف المحل');
+  const phoneKey=requireVerifiedPhoneInput(phone,'رقم هاتف المحل');
   if(!name||!phoneKey||!pin){msg('أدخل اسم المحل ورقم الهاتف ورمز الإدارة','error');return}
-  const shopId=id('SHOP');
   const phoneRef=doc(db,'shopPhones',phoneKey);
-  const shopRef=doc(db,'shops',shopId);
   try{
+    const existingPhone=await getDoc(phoneRef);
+    if(existingPhone.exists()){
+      const shopId=existingPhone.data().shopId;
+      const shopSnap=await getDoc(doc(db,'shops',shopId));
+      if(shopSnap.exists() && String(shopSnap.data().pin||'')===String(pin)){
+        msg('هذا الرقم لديه محل سابق. سيتم استرجاعه بدل إنشاء محل مكرر.','notice');
+        await recoverShopByPhone();
+        return;
+      }
+      msg('يوجد محل مسجل بهذا الرقم. أدخل PIN الصحيح ثم اضغط استرجاع محل موجود.','error');
+      return;
+    }
+    const shopId=id('SHOP');
+    const shopRef=doc(db,'shops',shopId);
     await runTransaction(db, async(tx)=>{
       const existing=await tx.get(phoneRef);
       if(existing.exists()) throw new Error('يوجد محل تجاري مسجل مسبقًا بنفس رقم الهاتف. لا يمكن تكرار رقم هاتف المحل.');
-      tx.set(shopRef,{shopId,name,phone,phoneKey,pin,ownerUid:uid(),ownerPhoneKey:state.authPhoneKey||phoneKey,currency:'YER',allowCustomerOrders:true,allowReturns:true,requireCustomerApproval:true,defaultCreditLimit:0,defaultCustomerStatus:'active',invoicePrefix:'INV',createdAt:serverTimestamp()});
+      tx.set(shopRef,{shopId,name,phone,phoneKey,pin,ownerUid:uid(),ownerPhoneKey:verifiedCurrentPhoneKey()||state.authPhoneKey||phoneKey,currency:'YER',allowCustomerOrders:true,allowReturns:true,requireCustomerApproval:true,defaultCreditLimit:0,defaultCustomerStatus:'active',invoicePrefix:'INV',createdAt:serverTimestamp(),securityMode:isPhoneAuthSession()?'phone_verified':'legacy'});
       tx.set(phoneRef,{shopId,name,phone,phoneKey,ownerUid:uid(),createdAt:serverTimestamp()});
     });
-    state.shopId=shopId; state.traderPin=pin; state.profileDone=true; save(); startListeners(); render(); msg('تم إنشاء المحل. أعطِ هذا الكود للعملاء: '+shopId,'success');
+    state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.role='trader'; state.shopName=name; save();
+    await saveUserAccountProfile({traderShopId:shopId});
+    startListeners(); render(); msg('تم إنشاء المحل وربطه برقم الهاتف الموثق. أعطِ هذا الكود للعملاء: '+shopId,'success');
   }catch(e){msg(e.message||'تعذر إنشاء المحل','error')}
 }
+
 async function joinShop(){
   if(!requireAuth()) return;
   const name=($('custName')?.value||'').trim(), phone=($('custPhone')?.value||'').trim();
@@ -1066,33 +1193,53 @@ async function joinShop(){
 async function linkCustomerToShop(shopId,name,phone,first=false){
   if(!requireAuth()) return;
   const sid=String(shopId||'').trim();
-  const phoneKey=validPhoneOrWarn(phone,'رقم هاتف العميل');
+  const phoneKey=requireVerifiedPhoneInput(phone,'رقم هاتف العميل');
   if(!sid){msg('أدخل كود التاجر/المحل','error');return}
   if(!phoneKey){return}
-  if((state.customerLinks||[]).some(x=>x.shopId===sid)){msg('أنت مرتبط بهذا التاجر مسبقًا','error');return}
-  const customerId=id('CUS');
+  if((state.customerLinks||[]).some(x=>x.shopId===sid)){msg('أنت مرتبط بهذا التاجر مسبقًا','error');return {ok:true,already:true,shopId:sid};}
+  let customerId=id('CUS');
+  let customerName=name;
+  let customerPhone=phone;
+  let shop=null;
+  let existed=false;
   const shopRef=doc(db,'shops',sid);
-  const customerRef=doc(db,'shops',sid,'customers',customerId);
   const phoneRef=doc(db,'shops',sid,'customerPhones',phoneKey);
   try{
-    let shop=null;
     await runTransaction(db, async(tx)=>{
       const s=await tx.get(shopRef); if(!s.exists()) throw new Error('كود المحل غير صحيح');
-      const existing=await tx.get(phoneRef);
-      if(existing.exists()) throw new Error('هذا الرقم مرتبط مسبقًا بهذا التاجر كعميل. لا يمكن إضافة أكثر من عميل لنفس التاجر بنفس رقم الهاتف.');
       shop=s.data();
-      tx.set(customerRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),balance:0,creditLimit:Number(shop.defaultCreditLimit||0),status:shop.defaultCustomerStatus||'active',createdAt:serverTimestamp()});
-      tx.set(phoneRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),createdAt:serverTimestamp()});
-      tx.set(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()});
-      tx.set(doc(db,'customerPhoneLinks',phoneKey,'shops',sid),{customerId,shopId:sid,shopName:shop.name||sid,name,phone,phoneKey,createdAt:serverTimestamp()});
+      const existing=await tx.get(phoneRef);
+      if(existing.exists()){
+        existed=true;
+        customerId=existing.data().customerId;
+        const existingCustomerRef=doc(db,'shops',sid,'customers',customerId);
+        const cs=await tx.get(existingCustomerRef);
+        if(!cs.exists()) throw new Error('رقم العميل موجود لكن سجل العميل غير موجود');
+        const c=cs.data();
+        const canUseExisting=(!c.customerUid || c.customerUid===uid() || canClaimRecordByVerifiedPhone(c.phoneKey||phoneKey));
+        if(!canUseExisting) throw new Error('هذا الرقم مرتبط مسبقًا بهذا التاجر بحساب آخر. ادخل بنفس رقم SMS المسجل لهذا العميل.');
+        customerName=c.name||name||'عميل';
+        customerPhone=c.phone||phone;
+        tx.update(existingCustomerRef,{customerUid:uid(),previousCustomerUid:c.customerUid&&c.customerUid!==uid()?c.customerUid:'',securityUpgradedAt:serverTimestamp()});
+        tx.set(phoneRef,{customerId,shopId:sid,phoneKey,customerUid:uid(),updatedAt:serverTimestamp()},{merge:true});
+      }else{
+        const customerRef=doc(db,'shops',sid,'customers',customerId);
+        tx.set(customerRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),balance:0,creditLimit:Number(shop.defaultCreditLimit||0),status:shop.defaultCustomerStatus||'active',createdAt:serverTimestamp(),securityMode:isPhoneAuthSession()?'phone_verified':'legacy'});
+        tx.set(phoneRef,{customerId,shopId:sid,name,phone,phoneKey,customerUid:uid(),createdAt:serverTimestamp()});
+      }
+      tx.set(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
+      tx.set(doc(db,'customerPhoneLinks',phoneKey,'shops',sid),{customerId,shopId:sid,shopName:shop.name||sid,name:customerName||name,phone:customerPhone||phone,phoneKey,updatedAt:serverTimestamp()},{merge:true});
     });
     if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
-    state.customerLinks.push({shopId:sid,customerId,customerName:name,customerPhone:phone,phoneKey,shopName:shop.name||sid});
-    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=name; state.customerPhone=phone; state.shopName=shop.name||sid; state.profileDone=true; save(); startListeners(); render(); msg(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك','success');
-    try{ await notifyShopLinked(sid, customerId, name, phone, shop?.name||sid); }catch(e){console.warn('link notify failed', e)}
-    return {ok:true, shopId:sid, shopName:shop?.name||sid, customerId, customerName:name, customerPhone:phone};
+    state.customerLinks.push({shopId:sid,customerId,customerName:customerName||name,customerPhone:customerPhone||phone,phoneKey,shopName:shop.name||sid});
+    state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=customerName||name; state.customerPhone=customerPhone||phone; state.shopName=shop.name||sid; state.profileDone=true; state.role='customer'; save();
+    await saveUserAccountProfile();
+    startListeners(); render(); msg(existed?`تم استرجاع وربط حسابك السابق لدى ${shop.name||sid}`:(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك'),'success');
+    try{ if(!existed) await notifyShopLinked(sid, customerId, customerName||name, customerPhone||phone, shop?.name||sid); }catch(e){console.warn('link notify failed', e)}
+    return {ok:true, shopId:sid, shopName:shop?.name||sid, customerId, customerName:customerName||name, customerPhone:customerPhone||phone, existed};
   }catch(e){msg(e.message||'تعذر ربط العميل بالمحل','error'); return {ok:false,error:e};}
 }
+
 async function notifyShopLinked(shopId, customerId, customerName, customerPhone, shopName){
   if(!db || !shopId || !customerId) return;
   const now=Date.now();
@@ -1111,7 +1258,7 @@ async function addAnotherShop(){
 async function recoverShopLinkInMyStores(){
   const sid=($('recoverShopCode')?.value||'').trim();
   const phone=($('recoverCustomerPhone')?.value||state.customerPhone||'').trim();
-  const phoneKey=validPhoneOrWarn(phone,'رقم الهاتف المسجل عند التاجر');
+  const phoneKey=requireVerifiedPhoneInput(phone,'رقم الهاتف المسجل عند التاجر');
   if(!sid||!phoneKey){msg('أدخل كود المحل ورقم الهاتف السابق','error');return}
   if((state.customerLinks||[]).some(x=>x.shopId===sid)){msg('هذا المتجر موجود مسبقًا في قائمة متاجري','error');return}
   try{
@@ -1123,8 +1270,12 @@ async function recoverShopLinkInMyStores(){
     const custSnap=await getDoc(doc(db,'shops',sid,'customers',customerId));
     if(!custSnap.exists()) throw new Error('حساب العميل غير موجود أو تم حذفه من عند التاجر');
     const shop=shopSnap.data(); const c=custSnap.data();
-    if(c.customerUid && c.customerUid!==uid()){msg('هذا العميل مربوط بحساب دخول آخر. ادخل بنفس الحساب السابق.','error');return}
-    if(!c.customerUid){await updateDoc(doc(db,'shops',sid,'customers',customerId),{customerUid:uid(),securityUpgradedAt:serverTimestamp()});}
+    const claimCustomerByPhone = c.customerUid && c.customerUid!==uid() && canClaimRecordByVerifiedPhone(c.phoneKey||phoneKey);
+    if(c.customerUid && c.customerUid!==uid() && !claimCustomerByPhone){msg('هذا العميل مربوط بحساب دخول آخر. إذا كان رقم الهاتف موثقًا عبر SMS بنفس رقم العميل، استخدم نفس الرقم لاسترجاع الحساب.','error');return}
+    if(!c.customerUid || claimCustomerByPhone){
+      await updateDoc(doc(db,'shops',sid,'customers',customerId),{customerUid:uid(),previousCustomerUid:c.customerUid||'',securityUpgradedAt:serverTimestamp()});
+      await setDoc(doc(db,'shops',sid,'customerPhones',phoneKey),{customerId,shopId:sid,phoneKey,customerUid:uid(),updatedAt:serverTimestamp()},{merge:true});
+    }
     await setDoc(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey,linkedAt:serverTimestamp()},{merge:true});
     if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
     state.customerLinks.push({shopId:sid,customerId,customerName:c.name||state.customerName||'',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
@@ -2597,6 +2748,7 @@ function renderSchedules(){
     await initFirebase();
     render();
     await waitForAuth();
+    if(uid()) await afterSuccessfulAuthLogin();
     if(state.profileDone && uid()) { ensureLiveDataListeners(); notifyAndroidSession(); }
     render();
     if(state.profileDone && state.role==='customer' && state.pendingJoinShopId && !(state.customerLinks||[]).some(x=>x.shopId===state.pendingJoinShopId)){ show('shopcode'); }
