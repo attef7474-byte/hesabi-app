@@ -13,6 +13,32 @@ android {
         versionCode 4
         versionName "1.0.4"
     }
+
+    signingConfigs {
+        release {
+            storeFile file("../hesabi-release-key.jks")
+            storePassword "Hesabi7474!"
+            keyAlias "hesabi"
+            keyPassword "Hesabi7474!"
+        }
+        debug {
+            storeFile file("../hesabi-release-key.jks")
+            storePassword "Hesabi7474!"
+            keyAlias "hesabi"
+            keyPassword "Hesabi7474!"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
 }
 
 configurations.all {

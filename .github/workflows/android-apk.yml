@@ -28,13 +28,13 @@ jobs:
         with:
           gradle-version: 8.10.2
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --no-daemon
+      - name: Build signed release APK
+        run: gradle :app:assembleRelease --no-daemon
 
       - name: Prepare APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/hesabi-app-latest.apk
+          cp app/build/outputs/apk/release/app-release.apk release/hesabi-app-latest.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -49,4 +49,7 @@ jobs:
           gh release delete latest-android -y --cleanup-tag || true
           git tag -f latest-android
           git push -f origin latest-android
-          gh release create latest-android release/hesabi-app-latest.apk             --title "Hesabi Android Latest"             --notes "آخر APK مبني تلقائيًا من فرع main. افتح الرابط من الهاتف وحمّل hesabi-app-latest.apk ثم ثبته."             --latest
+          gh release create latest-android release/hesabi-app-latest.apk \
+            --title "Hesabi Android Latest" \
+            --notes "آخر APK موقّع تلقائيًا من فرع main. افتح الرابط من الهاتف وحمّل hesabi-app-latest.apk ثم ثبته." \
+            --latest

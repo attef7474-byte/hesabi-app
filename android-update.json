@@ -3,6 +3,6 @@
   "latestVersionName": "1.0.4",
   "required": false,
   "title": "تحديث جديد لتطبيق حسابي التجاري",
-  "message": "تم إضافة فحص التحديث من داخل الإعدادات وتحميل آخر APK من GitHub Release مع تحسين توافق أندرويد.",
+  "message": "تم تثبيت توقيع واحد دائم للتطبيق حتى تعمل التحديثات القادمة بدون تعارض.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
