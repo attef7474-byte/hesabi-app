@@ -6,7 +6,7 @@
   <title>حسابي التجاري - Firebase</title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#162033;--muted:#667085;--primary:#0f766e;--danger:#b42318;--warn:#b54708;--ok:#027a48;--line:#e4e7ec;--soft:#ecfdf3;--shadow:0 8px 24px rgba(16,24,40,.08)}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif} button,input,select,textarea{font:inherit} .app{max-width:760px;margin:0 auto;min-height:100vh;padding:14px 14px 84px}.top{position:sticky;top:0;z-index:10;background:rgba(246,247,251,.94);backdrop-filter:blur(10px);padding:10px 0}.title{display:flex;gap:10px;align-items:center;justify-content:space-between}.title h1{font-size:20px;margin:0}.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 10px;background:#fff;color:var(--muted);font-size:12px}.online{color:var(--ok)}.offline{color:var(--danger)}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#f8fafc;border:1px solid var(--line);border-radius:16px;padding:12px}.metric b{display:block;font-size:18px;margin-top:4px}.muted{color:var(--muted);font-size:13px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.list{display:grid;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.item h3{margin:0 0 5px;font-size:15px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.btn{border:0;border-radius:13px;padding:10px 13px;background:var(--primary);color:#fff;cursor:pointer}.btn.secondary{background:#eef4ff;color:#1849a9}.btn.light{background:#f2f4f7;color:#344054}.btn.danger{background:var(--danger)}.btn.warn{background:var(--warn)}.btn.ok{background:var(--ok)}.btn:disabled{opacity:.55;cursor:not-allowed}.form{display:grid;gap:10px}.field label{display:block;font-size:13px;color:var(--muted);margin:0 0 5px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:13px;padding:11px;background:#fff}.field textarea{min-height:70px;resize:vertical}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px;z-index:20}.nav-inner{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:6px}.tab{border:0;border-radius:14px;padding:9px 5px;background:#f2f4f7;color:#344054;font-size:12px}.tab.active{background:var(--primary);color:#fff}.hidden{display:none!important}.notice{border:1px dashed #99f6e4;background:#f0fdfa;border-radius:16px;padding:12px;color:#115e59}.error{border-color:#fecaca;background:#fff1f2;color:#991b1b}.success{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.status{font-size:12px;border-radius:999px;padding:4px 8px;background:#f2f4f7}.pending{background:#fff7ed;color:#9a3412}.approved{background:#ecfdf3;color:#027a48}.rejected{background:#fef2f2;color:#b42318}.cancelled{background:#f1f5f9;color:#475569}.mono{direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap;background:#101828;color:#d0d5dd;border-radius:14px;padding:12px;overflow:auto}.setupChoice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bigChoice{border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;background:#fff}.bigChoice strong{display:block;font-size:18px;margin-bottom:7px}@media(max-width:420px){.grid{grid-template-columns:1fr}.setupChoice{grid-template-columns:1fr}.app{padding:10px 10px 84px}.btn{width:100%}.actions .btn{width:auto;flex:1}.nav-inner{gap:4px}.tab{font-size:11px;padding:8px 2px}}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif} button,input,select,textarea{font:inherit} .app{max-width:760px;margin:0 auto;min-height:100vh;padding:14px 14px 84px}.top{position:sticky;top:0;z-index:10;background:rgba(246,247,251,.94);backdrop-filter:blur(10px);padding:10px 0}.title{display:flex;gap:10px;align-items:center;justify-content:space-between}.title h1{font-size:20px;margin:0}.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 10px;background:#fff;color:var(--muted);font-size:12px}.online{color:var(--ok)}.offline{color:var(--danger)}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#f8fafc;border:1px solid var(--line);border-radius:16px;padding:12px}.metric b{display:block;font-size:18px;margin-top:4px}.muted{color:var(--muted);font-size:13px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.list{display:grid;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.item h3{margin:0 0 5px;font-size:15px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.btn{border:0;border-radius:13px;padding:10px 13px;background:var(--primary);color:#fff;cursor:pointer}.btn.secondary{background:#eef4ff;color:#1849a9}.btn.light{background:#f2f4f7;color:#344054}.btn.danger{background:var(--danger)}.btn.warn{background:var(--warn)}.btn.ok{background:var(--ok)}.btn:disabled{opacity:.55;cursor:not-allowed}.form{display:grid;gap:10px}.field label{display:block;font-size:13px;color:var(--muted);margin:0 0 5px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:13px;padding:11px;background:#fff}.field textarea{min-height:70px;resize:vertical}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px;z-index:20}.nav-inner{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:6px}.tab{border:0;border-radius:14px;padding:9px 5px;background:#f2f4f7;color:#344054;font-size:12px}.tab.active{background:var(--primary);color:#fff}.hidden{display:none!important}.notice{border:1px dashed #99f6e4;background:#f0fdfa;border-radius:16px;padding:12px;color:#115e59}.error{border-color:#fecaca;background:#fff1f2;color:#991b1b}.success{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.status{font-size:12px;border-radius:999px;padding:4px 8px;background:#f2f4f7}.pending{background:#fff7ed;color:#9a3412}.approved{background:#ecfdf3;color:#027a48}.rejected{background:#fef2f2;color:#b42318}.cancelled{background:#f1f5f9;color:#475569}.mono{direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap;background:#101828;color:#d0d5dd;border-radius:14px;padding:12px;overflow:auto}.setupChoice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.auth-tab-btn{border:1px solid var(--line);background:#fff;color:#334155;border-radius:14px;padding:10px;font-weight:800}.auth-tab-btn.active{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border-color:transparent}.sms-code-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.mini-help{font-size:12px;color:var(--muted);line-height:1.6}.bigChoice{border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;background:#fff}.bigChoice strong{display:block;font-size:18px;margin-bottom:7px}@media(max-width:420px){.grid{grid-template-columns:1fr}.setupChoice{grid-template-columns:1fr}.app{padding:10px 10px 84px}.btn{width:100%}.actions .btn{width:auto;flex:1}.nav-inner{gap:4px}.tab{font-size:11px;padding:8px 2px}}
   </style>
 
   <style id="hesabi-ui-polish">
@@ -188,15 +188,28 @@
 
   <section id="authSetup" class="card hidden">
     <h2>تسجيل الدخول الآمن</h2>
-    <p class="muted">للنشر التجاري يجب الدخول بحساب آمن. استخدم رقم الهاتف وكلمة مرور. يجب تفعيل Email/Password من Firebase Authentication. إذا كانت شاشة الدخول لا تظهر عند فتح الملف المحلي، استخدم هذه النسخة المعدلة أو ارفع التطبيق على Firebase Hosting.</p>
-    <div class="form">
+    <p class="muted">الدخول الأساسي الآن برقم الهاتف وكود تحقق SMS من Firebase. الحساب لا يتم إنشاؤه إلا بعد مطابقة كود التحقق.</p>
+    <div class="auth-tabs">
+      <button class="auth-tab-btn active" id="smsAuthTab" type="button">دخول بكود SMS</button>
+      <button class="auth-tab-btn" id="legacyAuthTab" type="button">دخول قديم بكلمة مرور</button>
+    </div>
+    <div class="form" id="smsAuthBox">
+      <div class="field"><label>رقم الهاتف الدولي</label><input id="smsPhone" inputmode="tel" placeholder="مثال: +967771749776"></div>
+      <div id="recaptcha-container"></div>
+      <button class="btn" id="sendSmsCodeBtn">إرسال كود التحقق</button>
+      <div class="field"><label>كود التحقق 6 أرقام</label><input id="smsCode" inputmode="numeric" maxlength="6" placeholder="مثال: 123456"></div>
+      <button class="btn ok" id="verifySmsCodeBtn">تحقق ودخول</button>
+      <div class="notice">إذا كان الرقم رقم تجربة في Firebase استخدم الكود المحدد هناك. بعد الدخول اختر تاجر أو عميل أو استرجع حسابك بنفس الرقم.</div>
+      <div class="mini-help">ملاحظة: إذا لم تصل رسالة SMS تأكد أن مزود Phone مفعل في Firebase وأن الدومين مسموح.</div>
+    </div>
+    <div class="form hidden" id="legacyAuthBox">
       <div class="field"><label>رقم الهاتف</label><input id="authPhone" placeholder="مثال: 777123456"></div>
       <div class="field"><label>كلمة المرور</label><input id="authPass" type="password" placeholder="6 أحرف على الأقل"></div>
       <div class="actions">
         <button class="btn" id="loginBtn">دخول</button>
-        <button class="btn secondary" id="signupBtn">إنشاء حساب آمن</button>
+        <button class="btn secondary" id="signupBtn">إنشاء حساب قديم</button>
       </div>
-      <div class="notice">بعد الدخول سيحفظ التطبيق معرف المستخدم UID ويربط به المحل أو حساب العميل، وهذا هو أساس قواعد الأمان.</div>
+      <div class="notice">هذا الخيار مؤقت للحسابات القديمة التي كانت تعمل برقم الهاتف وكلمة مرور.</div>
     </div>
   </section>
 
@@ -241,7 +254,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, addDoc, getDoc, updateDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
 const LS='hesabi_firebase_v3';
 const OLD_LS='hesabi_firebase_v2';
@@ -260,6 +273,7 @@ const DEFAULT_FIREBASE_CONFIG = {
 };
 if(!state.firebaseConfig?.apiKey){ state.firebaseConfig = DEFAULT_FIREBASE_CONFIG; save(); }
 let app=null, db=null, auth=null, currentUser=null, authReady=false, unsub=[];
+let phoneConfirmationResult=null, recaptchaVerifier=null, smsSending=false, smsVerifying=false;
 let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
@@ -319,6 +333,25 @@ function normalizePhone(v){
   if(x.startsWith('967') && x.length>=12) x='0'+x.slice(3);
   if(x.startsWith('7') && x.length===9) x='0'+x;
   return x;
+}
+function phoneKeyToInternational(phoneKey){
+  let x=normalizePhone(phoneKey);
+  if(x.startsWith('0')) x=x.slice(1);
+  if(x.startsWith('967')) return '+'+x;
+  return '+967'+x;
+}
+function toInternationalPhone(v){
+  let raw=String(v||'').trim();
+  const ar='٠١٢٣٤٥٦٧٨٩'; const fa='۰۱۲۳۴۵۶۷۸۹';
+  raw=raw.replace(/[٠-٩]/g,d=>String(ar.indexOf(d))).replace(/[۰-۹]/g,d=>String(fa.indexOf(d)));
+  let x=raw.replace(/[^0-9+]/g,'');
+  if(x.startsWith('+')) return x;
+  x=x.replace(/[^0-9]/g,'');
+  if(x.startsWith('00')) x=x.slice(2);
+  if(x.startsWith('967')) return '+'+x;
+  if(x.startsWith('0')) x=x.slice(1);
+  if(x.startsWith('7') && x.length===9) return '+967'+x;
+  return '+'+x;
 }
 function authEmailFromPhone(phoneKey){return 'u'+phoneKey+'@hesabi.local'}
 function uid(){return currentUser?.uid || state.uid || ''}
@@ -677,6 +710,81 @@ function fillCfg(){['apiKey','authDomain','projectId','storageBucket','messaging
 $('saveFirebaseConfig').onclick=async()=>{state.firebaseConfig={apiKey:$('cfg_apiKey').value.trim(),authDomain:$('cfg_authDomain').value.trim(),projectId:$('cfg_projectId').value.trim(),storageBucket:$('cfg_storageBucket').value.trim(),messagingSenderId:$('cfg_messagingSenderId').value.trim(),appId:$('cfg_appId').value.trim()}; if(!state.firebaseConfig.apiKey||!state.firebaseConfig.projectId){msg('أدخل apiKey و projectId على الأقل','error');return} save(); await initFirebase(); render(); msg('تم حفظ إعدادات Firebase','success')}
 
 function bindAuthButtons(){
+  bindSmsAuthButtons();
+  bindLegacyAuthButtons();
+}
+function setAuthMode(mode){
+  const sms=mode!=='legacy';
+  $('smsAuthBox')?.classList.toggle('hidden', !sms);
+  $('legacyAuthBox')?.classList.toggle('hidden', sms);
+  $('smsAuthTab')?.classList.toggle('active', sms);
+  $('legacyAuthTab')?.classList.toggle('active', !sms);
+}
+function ensureRecaptcha(){
+  if(recaptchaVerifier) return recaptchaVerifier;
+  if(!auth) throw new Error('Firebase Auth غير جاهز');
+  recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size:'invisible' });
+  return recaptchaVerifier;
+}
+function setSmsBusy(kind,busy){
+  if(kind==='send') smsSending=busy; else smsVerifying=busy;
+  const send=$('sendSmsCodeBtn'), verify=$('verifySmsCodeBtn');
+  if(send){send.disabled=smsSending||smsVerifying; send.textContent=smsSending?'جاري إرسال الكود...':'إرسال كود التحقق'}
+  if(verify){verify.disabled=smsSending||smsVerifying; verify.textContent=smsVerifying?'جاري التحقق...':'تحقق ودخول'}
+}
+function bindSmsAuthButtons(){
+  $('smsAuthTab')?.addEventListener('click',()=>setAuthMode('sms'));
+  $('legacyAuthTab')?.addEventListener('click',()=>setAuthMode('legacy'));
+  const send=$('sendSmsCodeBtn'), verify=$('verifySmsCodeBtn');
+  if(send && !send.dataset.bound){
+    send.dataset.bound='1';
+    send.onclick=async()=>{
+      const raw=($('smsPhone')?.value||'').trim();
+      const phone=toInternationalPhone(raw);
+      const phoneKey=normalizePhone(raw);
+      if(!phoneKey || phoneKey.length<7 || !phone.startsWith('+')){msg('أدخل رقم الهاتف بصيغة صحيحة مثل +967771749776','error');return}
+      try{
+        setSmsBusy('send',true);
+        const verifier=ensureRecaptcha();
+        phoneConfirmationResult = await signInWithPhoneNumber(auth, phone, verifier);
+        state.pendingSmsPhone=phone; state.pendingSmsPhoneKey=phoneKey; save();
+        msg('تم إرسال كود التحقق إلى '+phone,'success');
+        setTimeout(()=>{$('smsCode')?.focus()},300);
+      }catch(e){
+        console.error(e);
+        try{await recaptchaVerifier?.clear?.()}catch{}
+        recaptchaVerifier=null;
+        msg('تعذر إرسال كود التحقق: '+friendlyAuthError(e),'error');
+      }finally{setSmsBusy('send',false)}
+    };
+  }
+  if(verify && !verify.dataset.bound){
+    verify.dataset.bound='1';
+    verify.onclick=async()=>{
+      const code=String($('smsCode')?.value||'').replace(/\D/g,'');
+      if(!phoneConfirmationResult){msg('اضغط أولًا على إرسال كود التحقق','error');return}
+      if(code.length!==6){msg('أدخل كود التحقق المكون من 6 أرقام','error');return}
+      try{
+        setSmsBusy('verify',true);
+        const cred=await phoneConfirmationResult.confirm(code);
+        currentUser=cred.user; authReady=true;
+        state.uid=cred.user.uid;
+        state.authPhoneNumber=cred.user.phoneNumber || state.pendingSmsPhone || '';
+        state.authPhoneKey=state.pendingSmsPhoneKey || normalizePhone(state.authPhoneNumber||'');
+        state.authProvider='phone';
+        delete state.pendingSmsPhone; delete state.pendingSmsPhoneKey;
+        save();
+        phoneConfirmationResult=null;
+        msg('تم التحقق من رقم الهاتف وتسجيل الدخول بنجاح','success');
+        render();
+      }catch(e){
+        console.error(e);
+        msg('كود التحقق غير صحيح أو منتهي: '+friendlyAuthError(e),'error');
+      }finally{setSmsBusy('verify',false)}
+    };
+  }
+}
+function bindLegacyAuthButtons(){
   if(!$('loginBtn')) return;
   $('loginBtn').onclick=async()=>{
     const phoneKey=validPhoneOrWarn($('authPhone').value,'رقم الهاتف'); const pass=$('authPass').value;
@@ -684,7 +792,7 @@ function bindAuthButtons(){
     try{
       $('loginBtn').disabled=true;
       const cred=await signInWithEmailAndPassword(auth,authEmailFromPhone(phoneKey),pass);
-      currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; save();
+      currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; state.authProvider='email'; save();
       msg('تم تسجيل الدخول','success');
       render();
     }
@@ -697,7 +805,7 @@ function bindAuthButtons(){
     try{
       $('signupBtn').disabled=true;
       const cred=await createUserWithEmailAndPassword(auth,authEmailFromPhone(phoneKey),pass);
-      currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; save();
+      currentUser=cred.user; authReady=true; state.uid=cred.user.uid; state.authEmail=cred.user.email; state.authPhoneKey=phoneKey; state.authProvider='email'; save();
       msg('تم إنشاء الحساب الآمن. اختر الآن نوع الحساب: تاجر أو عميل.','success');
       render();
     }
@@ -711,7 +819,12 @@ function friendlyAuthError(e){
   if(code.includes('email-already-in-use')) return 'هذا الرقم لديه حساب سابق. استخدم زر دخول بدل إنشاء حساب.';
   if(code.includes('invalid-credential')||code.includes('wrong-password')) return 'رقم الهاتف أو كلمة المرور غير صحيحة.';
   if(code.includes('weak-password')) return 'كلمة المرور ضعيفة. استخدم 6 أحرف أو أرقام على الأقل.';
-  if(code.includes('configuration-not-found')) return 'يجب تفعيل Authentication ثم Email/Password في Firebase.';
+  if(code.includes('configuration-not-found')) return 'يجب تفعيل مزود الدخول المطلوب من Firebase Authentication.';
+  if(code.includes('captcha-check-failed')) return 'فشل تحقق reCAPTCHA. حدّث الصفحة وحاول مرة أخرى.';
+  if(code.includes('invalid-phone-number')) return 'رقم الهاتف غير صحيح. استخدم الصيغة الدولية مثل +967771749776.';
+  if(code.includes('too-many-requests')) return 'تم إرسال محاولات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.';
+  if(code.includes('invalid-verification-code')) return 'كود التحقق غير صحيح.';
+  if(code.includes('code-expired')) return 'انتهت صلاحية كود التحقق. أرسل كود جديد.';
   if(code.includes('network-request-failed')) return 'فشل الاتصال بالإنترنت أو Firebase. تحقق من الشبكة.';
   return m;
 }
