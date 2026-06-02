@@ -126,6 +126,10 @@
     .quick-home-btn .qbadge{position:absolute;top:5px;left:5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
     .quick-summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px}
     .quick-summary-row .metric{padding:8px;border-radius:15px}.quick-summary-row .metric b{font-size:15px}.quick-summary-row .metric span{font-size:11px}
+
+    .tab{position:relative}
+    .tab .nav-badge{position:absolute;top:2px;left:4px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:9.5px;display:inline-flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 0 0 2px #fff;line-height:1}
+    .quick-home-btn .qbadge{background:#dc2626!important;color:#fff!important;box-shadow:0 0 0 2px #fff}
     @media(max-width:520px){.quick-home-grid{grid-template-columns:repeat(3,1fr);gap:7px}.quick-home-btn{min-height:64px;padding:8px 4px;border-radius:14px}.quick-home-btn .qicon{font-size:20px}.quick-home-btn .qlabel{font-size:10.5px}.quick-summary-row{grid-template-columns:repeat(2,1fr)}}
 </style>
 
@@ -415,6 +419,25 @@ function unreadNotifications(){
   return getNotifications().filter(n=>!state.readNotifyIds[notificationKey(n)]);
 }
 function unreadCount(){return unreadNotifications().length}
+function unreadByPage(page){
+  return unreadNotifications().filter(n=>n.page===page).length;
+}
+function unreadCounters(){
+  const pages={orders:0,messages:0,payments:0,returns:0,schedules:0,notifications:unreadCount()};
+  for(const n of unreadNotifications()){
+    if(Object.prototype.hasOwnProperty.call(pages,n.page)) pages[n.page]++;
+  }
+  return pages;
+}
+function badgeHtml(count, cls='qbadge'){
+  const n=Number(count||0);
+  return n>0?`<span class="${cls}">${n>99?'99+':n}</span>`:'';
+}
+function markPageNotificationsRead(page){
+  const before=unreadByPage(page);
+  if(before>0){ markNotificationsRead(n=>n.page===page); return true; }
+  return false;
+}
 function checkNotifications(){
   ensureNotifyState();
   const notes=getNotifications();
@@ -695,11 +718,10 @@ async function recoverShopLinkInMyStores(){
 
 function customerUidById(customerId){ const c=(cache.customers||[]).find(x=>x.customerId===customerId); return c?.customerUid||'' }
 function renderNav(){
-  const n=unreadCount();
-  const bell=n?`🔔 ${n}`:'🔔';
-  const trader=[['home','الرئيسية'],['search','بحث'],['items','الأصناف'],['customers','العملاء'],['orders','الطلبات'],['messages','الرسائل'],['payments','السداد'],['invoices','الفواتير'],['statement','كشف الحساب'],['audit','السجل'],['stock','المخزون'],['returns','المرتجعات'],['schedules','الاستحقاقات'],['collections','التحصيل'],['reports','التقارير'],['policies','السياسات'],['notifications',bell],['settings','الإعدادات']];
-  const customer=[['home','الرئيسية'],['search','بحث'],['shops','متاجري'],['items','شراء'],['orders','طلباتي'],['messages','الرسائل'],['payments','السداد'],['invoices','الفواتير'],['statement','كشف الحساب'],['returns','المرتجعات'],['schedules','الاستحقاقات'],['reports','التقارير'],['notifications',bell],['settings','الإعدادات']];
-  $('navInner').innerHTML=(state.role==='trader'?trader:customer).map(([k,t])=>`<button class="tab ${active===k?'active':''}" data-tab="${k}">${t}</button>`).join('');
+  const c=unreadCounters();
+  const trader=[['home','الرئيسية',0],['search','بحث',0],['items','الأصناف',0],['customers','العملاء',0],['orders','الطلبات',c.orders],['messages','الرسائل',c.messages],['payments','السداد',c.payments],['invoices','الفواتير',0],['statement','كشف الحساب',0],['audit','السجل',0],['stock','المخزون',0],['returns','المرتجعات',c.returns],['schedules','الاستحقاقات',c.schedules],['collections','التحصيل',0],['reports','التقارير',0],['policies','السياسات',0],['notifications','الإشعارات',c.notifications],['settings','الإعدادات',0]];
+  const customer=[['home','الرئيسية',0],['search','بحث',0],['shops','متاجري',0],['items','شراء',0],['orders','طلباتي',c.orders],['messages','الرسائل',c.messages],['payments','السداد',c.payments],['invoices','الفواتير',0],['statement','كشف الحساب',0],['returns','المرتجعات',c.returns],['schedules','الاستحقاقات',c.schedules],['reports','التقارير',0],['notifications','الإشعارات',c.notifications],['settings','الإعدادات',0]];
+  $('navInner').innerHTML=(state.role==='trader'?trader:customer).map(([k,t,count])=>`<button class="tab ${active===k?'active':''}" data-tab="${k}">${t}${badgeHtml(count,'nav-badge')}</button>`).join('');
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.tab));
 }
 function show(p){
@@ -708,6 +730,10 @@ function show(p){
   ['home','search','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','settings'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
   renderNav();
   ({home:renderHome,search:renderSearch,items:renderItems,orders:renderOrders,customers:renderCustomers,shops:renderShops,messages:renderMessages,payments:renderPayments,invoices:renderInvoices,statement:renderStatement,audit:renderAudit,stock:renderStock,returns:renderReturns,schedules:renderSchedules,collections:renderCollections,reports:renderReports,policies:renderPolicies,notifications:renderNotifications,settings:renderSettings}[p])();
+  if(['orders','messages','payments','returns','schedules'].includes(p) && markPageNotificationsRead(p)){
+    renderNav();
+    if(active==='home') renderHome();
+  }
 }
 
 function startListeners(){
@@ -830,22 +856,22 @@ function renderSearch(){
 
 
 function homeQuickItems(){
-  const n=unreadCount();
+  const c=unreadCounters();
   const trader=[
-    ['search','🔎','بحث',0],['items','📦','الأصناف',cache.items.length],['customers','👥','العملاء',cache.customers.length],['orders','🧾','الطلبات',cache.orders.filter(o=>o.status==='pending'||o.status==='pending_trader'||o.status==='pending_customer').length],
-    ['messages','💬','الرسائل',getNotifications().filter(x=>x.type==='message'&&!state.readNotifyIds?.[notificationKey(x)]).length],['payments','💵','السداد',cache.payments.filter(p=>p.status==='pending').length],['invoices','📄','الفواتير',cache.invoices.length],['statement','📊','كشف الحساب',0],
-    ['stock','🏬','المخزون',cache.items.filter(i=>Number(i.stock||0)<=Number(i.minStock||0)).length],['returns','↩️','المرتجعات',cache.returns.filter(r=>r.status==='pending').length],['schedules','⏰','الاستحقاقات',cache.schedules.filter(s=>s.status==='pending').length],['collections','🧮','التحصيل',0],
-    ['reports','📈','التقارير',0],['audit','🗂️','السجل',0],['policies','⚙️','السياسات',0],['notifications','🔔','الإشعارات',n],['settings','🛠️','الإعدادات',0]
+    ['search','🔎','بحث',0],['items','📦','الأصناف',0],['customers','👥','العملاء',0],['orders','🧾','الطلبات',c.orders],
+    ['messages','💬','الرسائل',c.messages],['payments','💵','السداد',c.payments],['invoices','📄','الفواتير',0],['statement','📊','كشف الحساب',0],
+    ['stock','🏬','المخزون',0],['returns','↩️','المرتجعات',c.returns],['schedules','⏰','الاستحقاقات',c.schedules],['collections','🧮','التحصيل',0],
+    ['reports','📈','التقارير',0],['audit','🗂️','السجل',0],['policies','⚙️','السياسات',0],['notifications','🔔','الإشعارات',c.notifications],['settings','🛠️','الإعدادات',0]
   ];
   const customer=[
-    ['search','🔎','بحث',0],['shops','🏪','متاجري',(state.customerLinks||[]).length],['items','🛒','شراء',catalogCartTotal().items],['orders','🧾','طلباتي',cache.orders.filter(o=>o.status==='pending'||o.status==='pending_trader'||o.status==='pending_customer').length],
-    ['messages','💬','الرسائل',getNotifications().filter(x=>x.type==='message'&&!state.readNotifyIds?.[notificationKey(x)]).length],['payments','💵','السداد',cache.payments.filter(p=>p.status==='pending').length],['invoices','📄','الفواتير',cache.invoices.length],['statement','📊','كشف الحساب',0],
-    ['returns','↩️','المرتجعات',cache.returns.filter(r=>r.status==='pending').length],['schedules','⏰','الاستحقاقات',cache.schedules.filter(s=>s.status==='pending').length],['reports','📈','التقارير',0],['notifications','🔔','الإشعارات',n],['settings','🛠️','الإعدادات',0]
+    ['search','🔎','بحث',0],['shops','🏪','متاجري',0],['items','🛒','شراء',0],['orders','🧾','طلباتي',c.orders],
+    ['messages','💬','الرسائل',c.messages],['payments','💵','السداد',c.payments],['invoices','📄','الفواتير',0],['statement','📊','كشف الحساب',0],
+    ['returns','↩️','المرتجعات',c.returns],['schedules','⏰','الاستحقاقات',c.schedules],['reports','📈','التقارير',0],['notifications','🔔','الإشعارات',c.notifications],['settings','🛠️','الإعدادات',0]
   ];
   return state.role==='trader'?trader:customer;
 }
 function renderHomeQuickGrid(){
-  return `<div class="quick-home-grid">${homeQuickItems().map(([page,icon,label,count])=>`<button class="quick-home-btn" data-home-page="${page}" aria-label="${esc(label)}"><span class="qicon">${icon}</span><span class="qlabel">${esc(label)}</span>${Number(count||0)>0?`<span class="qbadge">${Number(count)>99?'99+':Number(count)}</span>`:''}</button>`).join('')}</div>`;
+  return `<div class="quick-home-grid">${homeQuickItems().map(([page,icon,label,count])=>`<button class="quick-home-btn" data-home-page="${page}" aria-label="${esc(label)}"><span class="qicon">${icon}</span><span class="qlabel">${esc(label)}</span>${badgeHtml(count)}</button>`).join('')}</div>`;
 }
 function bindHomeQuickGrid(){
   document.querySelectorAll('[data-home-page]').forEach(b=>b.onclick=()=>show(b.getAttribute('data-home-page')||'home'));
@@ -1630,9 +1656,8 @@ function renderNotifications(){
   ensureNotifyState();
   const notes=getNotifications();
   const unread=unreadNotifications();
-  $('page_notifications').innerHTML=`<div class="card"><div class="row"><h2>الإشعارات</h2><span class="status ${unread.length?'pending':'approved'}">${unread.length} جديد</span></div><div class="actions"><button class="btn secondary" id="markAllRead">تعليم الكل كمقروء</button></div><div class="notify-list">${notes.map(n=>{const isRead=!!(state.readNotifyIds&&state.readNotifyIds[notificationKey(n)]);return `<div class="notify-row ${isRead?'':'unread'}"><div class="notify-icon">${notifyIcon(n.type)}</div><div><div class="notify-title">${esc(n.title)}</div><div class="notify-body">${esc(n.body||'')}</div></div><div class="notify-meta"><span class="notify-time">${notifyTime(n.createdMs)}</span><span class="notify-state">${isRead?'مقروء':'جديد'}</span><button class="btn light notify-open" data-open-note="${esc(n.page)}">فتح</button></div></div>`}).join('')||'<p class="muted">لا توجد إشعارات.</p>'}</div></div>`;
-  markNotificationsRead();
-  setTimeout(()=>{$('markAllRead')&&($('markAllRead').onclick=()=>{markNotificationsRead(); renderNotifications(); renderNav(); msg('تم تعليم الإشعارات كمقروءة','success')}); document.querySelectorAll('[data-open-note]').forEach(b=>b.onclick=()=>openNotificationPage(b.dataset.openNote)); renderNav();});
+  $('page_notifications').innerHTML=`<div class="card"><div class="row"><h2>الإشعارات</h2><span class="status ${unread.length?'pending':'approved'}">${unread.length} جديد</span></div><div class="actions"><button class="btn secondary" id="markAllRead">تعليم الكل كمقروء</button></div><div class="notify-list">${notes.map(n=>{const isRead=!!(state.readNotifyIds&&state.readNotifyIds[notificationKey(n)]);return `<div class="notify-row ${isRead?'':'unread'}"><div class="notify-icon">${notifyIcon(n.type)}</div><div><div class="notify-title">${esc(n.title)}</div><div class="notify-body">${esc(n.body||'')}</div></div><div class="notify-meta"><span class="notify-time">${notifyTime(n.createdMs)}</span><span class="notify-state">${isRead?'مقروء':'جديد'}</span><button class="btn light notify-open" data-open-note="${esc(n.page)}" data-note-id="${esc(notificationKey(n))}">فتح</button></div></div>`}).join('')||'<p class="muted">لا توجد إشعارات.</p>'}</div></div>`;
+  setTimeout(()=>{$('markAllRead')&&($('markAllRead').onclick=()=>{markNotificationsRead(); renderNotifications(); renderNav(); msg('تم تعليم الإشعارات كمقروءة','success')}); document.querySelectorAll('[data-open-note]').forEach(b=>b.onclick=()=>{ensureNotifyState(); if(b.dataset.noteId) state.readNotifyIds[b.dataset.noteId]=Date.now(); save(); openNotificationPage(b.dataset.openNote);}); renderNav();});
 }
 
 
