@@ -819,7 +819,17 @@ async function linkCustomerToShop(shopId,name,phone,first=false){
     if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
     state.customerLinks.push({shopId:sid,customerId,customerName:name,customerPhone:phone,phoneKey,shopName:shop.name||sid});
     state.activeShopId=sid; state.shopId=sid; state.customerId=customerId; state.customerName=name; state.customerPhone=phone; state.shopName=shop.name||sid; state.profileDone=true; save(); startListeners(); render(); msg(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك','success');
-  }catch(e){msg(e.message||'تعذر ربط العميل بالمحل','error')}
+    try{ await notifyShopLinked(sid, customerId, name, phone, shop?.name||sid); }catch(e){console.warn('link notify failed', e)}
+    return {ok:true, shopId:sid, shopName:shop?.name||sid, customerId, customerName:name, customerPhone:phone};
+  }catch(e){msg(e.message||'تعذر ربط العميل بالمحل','error'); return {ok:false,error:e};}
+}
+async function notifyShopLinked(shopId, customerId, customerName, customerPhone, shopName){
+  if(!db || !shopId || !customerId) return;
+  const now=Date.now();
+  const traderText=`تم ارتباط عميل جديد بالمتجر: ${customerName||'عميل'} - رقم الهاتف: ${customerPhone||'-'}`;
+  const customerText=`تم ارتباطك بنجاح بالمتجر: ${shopName||shopId}. يمكنك الآن الطلب والسداد ومتابعة حسابك.`;
+  await addDoc(collection(db,'shops',shopId,'messages'),{shopId,customerId,customerUid:uid(),customerName:customerName||'عميل',fromRole:'customer',fromName:customerName||'عميل',text:traderText,type:'customer_linked',createdAt:serverTimestamp(),createdMs:now,readByTrader:false,readByCustomer:true});
+  await addDoc(collection(db,'shops',shopId,'messages'),{shopId,customerId,customerUid:uid(),customerName:customerName||'عميل',fromRole:'trader',fromName:shopName||'التاجر',text:customerText,type:'link_confirmed',createdAt:serverTimestamp(),createdMs:now+1,readByTrader:true,readByCustomer:false});
 }
 async function addAnotherShop(){
   const sid=($('newShopCode')?.value||'').trim();
@@ -2068,8 +2078,8 @@ function renderShopCode(){
     $('page_shopcode').innerHTML=`<div class="card shop-code-panel"><h2>كود التاجر</h2><p class="muted">اطبع أو شارك هذا الكود. العميل يفتح التطبيق ويمسح الكود أو يفتح الرابط فيتم تعبئة كود المحل تلقائيًا.</p><div id="shopCodePrintArea" class="print-area"><div class="print-title">${esc(cache.shop?.name||state.shopName||'حسابي التجاري')}</div><div class="print-sub">امسح الكود للارتباط بالتاجر</div><div class="shop-qr-box"><img alt="QR" src="${qrImageUrl(link)}"></div><div class="shop-code-big">${esc(code)}</div></div><div class="field"><label>رابط الربط المباشر</label><input class="shop-link-input" id="shopJoinLink" value="${esc(link)}" readonly></div><div class="settings-compact-actions"><button class="btn secondary" id="copyTraderCode">نسخ الكود</button><button class="btn light" id="copyJoinLink">نسخ الرابط</button><button class="btn ok" id="shareTraderQr">مشاركة</button><button class="btn light" id="printTraderQr">طباعة</button></div></div>`;
     setTimeout(()=>{ $('copyTraderCode').onclick=async()=>{await navigator.clipboard?.writeText(code);msg('تم نسخ كود التاجر','success')}; $('copyJoinLink').onclick=async()=>{await navigator.clipboard?.writeText(link);msg('تم نسخ رابط الربط','success')}; $('shareTraderQr').onclick=async()=>{try{if(navigator.share) await navigator.share({title:'كود التاجر',text:`كود التاجر: ${code}`,url:link}); else {await navigator.clipboard?.writeText(link); msg('تم نسخ الرابط','success')}}catch{}}; $('printTraderQr').onclick=()=>printShopQr(); });
   }else{
-    $('page_shopcode').innerHTML=`<div class="card"><h2>مسح كود التاجر</h2><p class="muted">يمكنك مسح QR من تاجر، أو إدخال الكود يدويًا للارتباط مباشرة.</p><video id="qrScanVideo" class="scan-video" playsinline></video><div class="settings-compact-actions"><button class="btn secondary" id="startQrScan">تشغيل الكاميرا</button><button class="btn light" id="stopQrScan">إيقاف</button></div><div class="form compact-form"><div class="field"><label>كود التاجر</label><input id="scanShopCode" value="${esc(pending)}" placeholder="SHOP-XXXXX"></div><div class="grid"><div class="field"><label>اسمك عند التاجر</label><input id="scanCustomerName" value="${esc(state.customerName||'')}"></div><div class="field"><label>رقم هاتفك</label><input id="scanCustomerPhone" value="${esc(state.customerPhone||state.authPhoneKey||'')}"></div></div><button class="btn ok compact-main-btn" id="connectScannedShop">ربط بهذا التاجر</button></div><div class="notice">إذا كنت مرتبطًا بنفس الرقم سابقًا عند التاجر، استخدم صفحة متاجري للاسترجاع، أو أدخل نفس الرقم هنا وسيمنع التطبيق التكرار.</div></div>`;
-    setTimeout(()=>{ $('startQrScan').onclick=startQrScanner; $('stopQrScan').onclick=stopQrScanner; $('connectScannedShop').onclick=connectScannedShop; });
+    $('page_shopcode').innerHTML=`<div class="card"><h2>مسح كود التاجر</h2><p class="muted">يمكنك مسح QR من تاجر، أو إدخال الكود يدويًا للارتباط مباشرة. إذا لم تعمل الكاميرا داخل تطبيق أندرويد، افتح الرابط في المتصفح أو أدخل الكود يدويًا حتى يتم تفعيل صلاحية الكاميرا في التطبيق.</p><video id="qrScanVideo" class="scan-video" playsinline></video><div class="settings-compact-actions"><button class="btn secondary" id="startQrScan">تشغيل الكاميرا</button><button class="btn light" id="stopQrScan">إيقاف</button><button class="btn light" id="openScanInBrowser">فتح في المتصفح</button></div><div class="form compact-form"><div class="field"><label>كود التاجر</label><input id="scanShopCode" value="${esc(pending)}" placeholder="SHOP-XXXXX"></div><div class="grid"><div class="field"><label>اسمك عند التاجر</label><input id="scanCustomerName" value="${esc(state.customerName||'')}"></div><div class="field"><label>رقم هاتفك</label><input id="scanCustomerPhone" value="${esc(state.customerPhone||state.authPhoneKey||'')}"></div></div><div id="connectShopStatus" class="muted hidden" style="text-align:center;font-weight:800">جاري الارتباط...</div><button class="btn ok compact-main-btn" id="connectScannedShop">ربط بهذا التاجر</button></div><div class="notice">إذا كنت مرتبطًا بنفس الرقم سابقًا عند التاجر، استخدم صفحة متاجري للاسترجاع، أو أدخل نفس الرقم هنا وسيمنع التطبيق التكرار.</div></div>`;
+    setTimeout(()=>{ $('startQrScan').onclick=startQrScanner; $('stopQrScan').onclick=stopQrScanner; $('connectScannedShop').onclick=connectScannedShop; $('openScanInBrowser').onclick=openCurrentPageInBrowser; });
   }
 }
 function printShopQr(){
@@ -2089,7 +2099,7 @@ async function startQrScanner(){
     qrScanTimer=setInterval(async()=>{
       try{const codes=await detector.detect(video); if(codes&&codes.length){const code=extractShopCodeFromText(codes[0].rawValue||''); if(code){$('scanShopCode').value=code; state.pendingJoinShopId=code; save(); stopQrScanner(); msg('تم قراءة كود التاجر: '+code,'success')}}}catch{}
     },700);
-  }catch(e){msg('تعذر تشغيل الكاميرا. تأكد من السماح بالكاميرا أو أدخل الكود يدويًا.','error')}
+  }catch(e){msg('تعذر تشغيل الكاميرا داخل هذه البيئة. إذا كنت داخل تطبيق أندرويد WebView فغالبًا يحتاج التطبيق لصلاحية CAMERA. أدخل الكود يدويًا أو افتح الرابط في المتصفح.','error')}
 }
 function stopQrScanner(){
   try{ if(qrScanTimer){clearInterval(qrScanTimer); qrScanTimer=null;} if(qrScanStream){qrScanStream.getTracks().forEach(t=>t.stop()); qrScanStream=null;} const v=$('qrScanVideo'); if(v){v.pause(); v.srcObject=null; v.classList.remove('active');} }catch{}
@@ -2100,8 +2110,33 @@ async function connectScannedShop(){
   const phone=($('scanCustomerPhone')?.value||state.customerPhone||state.authPhoneKey||'').trim();
   if(!sid){msg('أدخل أو امسح كود التاجر أولًا','error');return}
   if(!name||!phone){msg('أدخل الاسم ورقم الهاتف للربط بالتاجر','error');return}
-  state.pendingJoinShopId=sid; save();
-  await linkCustomerToShop(sid,name,phone,false);
+  const btn=$('connectScannedShop');
+  const st=$('connectShopStatus');
+  try{
+    if(st){st.textContent='جاري الارتباط...'; st.classList.remove('hidden');}
+    if(btn){btn.disabled=true; btn.textContent='جاري الارتباط...';}
+    state.pendingJoinShopId=sid; save();
+    const res=await linkCustomerToShop(sid,name,phone,false);
+    if(res?.ok){
+      state.pendingJoinShopId=''; save();
+      if(st){st.textContent='تم الارتباط بالمتجر: '+(res.shopName||sid); st.classList.remove('hidden');}
+      msg('تم الارتباط بالمتجر: '+(res.shopName||sid),'success');
+      setTimeout(()=>{ show('home'); }, 900);
+    }else{
+      if(st){st.classList.add('hidden');}
+    }
+  }finally{
+    if(btn){btn.disabled=false; btn.textContent='ربط بهذا التاجر';}
+  }
+}
+function openCurrentPageInBrowser(){
+  try{
+    const u=new URL(location.href);
+    const code=extractShopCodeFromText($('scanShopCode')?.value||state.pendingJoinShopId||URL_JOIN_SHOP_ID||'');
+    if(code) u.searchParams.set('joinShop', code);
+    u.searchParams.set('v', String(Date.now()));
+    location.href=u.toString();
+  }catch(e){ location.href='https://hesabi-app-edc7e.web.app?v='+Date.now(); }
 }
 
 function renderSettings(){
