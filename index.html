@@ -203,7 +203,18 @@
 
   <style id="hesabi-settings-tabs-style">
     .settings-page-head{padding-bottom:10px}.settings-tabs-bar{display:flex;gap:7px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none}.settings-tabs-bar::-webkit-scrollbar{display:none}.settings-top-tab{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:#334155;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;box-shadow:0 4px 12px rgba(15,23,42,.04)}.settings-top-tab.active{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border-color:transparent}.settings-tab-pane{animation:settingsFade .12s ease}.settings-section-title{margin:8px 2px 4px;color:#0f766e;font-weight:900;font-size:13px}.settings-shortcut-btn{min-width:120px}.settings-file-label{display:inline-flex;align-items:center;justify-content:center}.settings-tab-pane .card{margin:8px 0}.settings-tab-pane .field input,.settings-tab-pane .field select{min-height:38px;padding:8px 10px}.settings-tab-pane .btn{min-height:36px;padding:8px 11px;font-size:12px;border-radius:13px}@keyframes settingsFade{from{opacity:.6;transform:translateY(2px)}to{opacity:1;transform:none}}
-  </style>
+  
+    /* رسائل الصور والصوت */
+    .wa-composer{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:end}
+    .wa-tools{display:flex;gap:5px;flex-wrap:wrap;align-items:center;grid-column:1 / -1}
+    .wa-mini-btn{border:1px solid var(--line);background:#fff;color:#334155;border-radius:999px;padding:7px 10px;font-weight:800;font-size:12px;min-height:34px;box-shadow:none;cursor:pointer}
+    .wa-mini-btn.rec{background:#fff1f2;color:#b42318;border-color:#fecaca}
+    .wa-mini-btn.stop{background:#b42318;color:#fff;border-color:#b42318}
+    .wa-attach-preview{grid-column:1 / -1;border:1px dashed #99f6e4;background:#f0fdfa;border-radius:14px;padding:7px 9px;font-size:12px;color:#115e59;display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .wa-attach-preview.hidden{display:none!important}
+    .wa-media{margin-top:5px}.wa-img{max-width:190px;max-height:180px;border-radius:12px;border:1px solid #e2e8f0;display:block}.wa-audio{width:220px;max-width:100%;height:34px}.wa-file-note{font-size:11px;color:#64748b;margin-top:3px}
+    @media(max-width:420px){.wa-composer{grid-template-columns:1fr}.wa-tools{gap:4px}.wa-mini-btn{padding:6px 8px}.wa-img{max-width:160px}.wa-audio{width:180px}}
+</style>
 
 </head>
 <body>
@@ -321,6 +332,10 @@ let appUnlockedSession=false;
 let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
+let pendingMessageAttachment=null;
+let activeRecorder=null;
+let activeRecorderChunks=[];
+let activeRecorderStartedAt=0;
 let previousPage='home';
 const APP_VERSION='2026-06-02-تسجيل-هاتف-وربط-نهائي';
 
@@ -1974,11 +1989,11 @@ function renderMessages(){
     const opts=cache.customers.map(c=>`<option value="${c.customerId}" ${c.customerId===selected?'selected':''}>${esc(c.name)} - ${esc(c.phone||'')}</option>`).join('');
     const msgs=selected?cache.messages.filter(m=>m.customerId===selected):[];
     const cust=cache.customers.find(c=>c.customerId===selected);
-    $('page_messages').innerHTML=`<div class="card wa-chat-card"><div class="wa-chat-head"><h2>محادثة ${esc(cust?.name||'العميل')}</h2><span class="status ${unreadChatCount(msgs)?'pending':'approved'}">${unreadChatCount(msgs)} جديد</span></div><div class="field wa-contact-select"><label>اختر العميل</label><select id="messageCustomer">${opts}</select></div>${renderMessageList(msgs)}<div class="wa-composer"><textarea id="messageText" placeholder="اكتب رسالة..."></textarea><button class="btn" id="sendMessage" ${selected?'':'disabled'}>إرسال</button></div></div>`;
-    setTimeout(()=>{markVisibleMessagesRead(msgs); scrollChatToBottom(); $('messageCustomer')&&($('messageCustomer').onchange=()=>{state.selectedMessageCustomer=$('messageCustomer').value; save(); renderMessages()}); $('sendMessage')&&($('sendMessage').onclick=()=>sendMessageToCustomer($('messageCustomer').value));});
+    $('page_messages').innerHTML=`<div class="card wa-chat-card"><div class="wa-chat-head"><h2>محادثة ${esc(cust?.name||'العميل')}</h2><span class="status ${unreadChatCount(msgs)?'pending':'approved'}">${unreadChatCount(msgs)} جديد</span></div><div class="field wa-contact-select"><label>اختر العميل</label><select id="messageCustomer">${opts}</select></div>${renderMessageList(msgs)}${renderMessageComposer(selected?'':'disabled')}</div>`;
+    setTimeout(()=>{markVisibleMessagesRead(msgs); scrollChatToBottom(); $('messageCustomer')&&($('messageCustomer').onchange=()=>{state.selectedMessageCustomer=$('messageCustomer').value; save(); renderMessages()}); bindMessageComposerTools(); $('sendMessage')&&($('sendMessage').onclick=()=>sendMessageToCustomer($('messageCustomer').value));});
   }else{
-    $('page_messages').innerHTML=`<div class="card wa-chat-card"><div class="wa-chat-head"><h2>${esc(state.shopName||state.shopId||'التاجر')}</h2><span class="status ${unreadChatCount(cache.messages)?'pending':'approved'}">${unreadChatCount(cache.messages)} جديد</span></div>${renderMessageList(cache.messages)}<div class="wa-composer"><textarea id="messageText" placeholder="اكتب رسالة..."></textarea><button class="btn" id="sendMessage">إرسال</button></div></div>`;
-    setTimeout(()=>{markVisibleMessagesRead(cache.messages); scrollChatToBottom(); $('sendMessage').onclick=sendCustomerMessage;});
+    $('page_messages').innerHTML=`<div class="card wa-chat-card"><div class="wa-chat-head"><h2>${esc(state.shopName||state.shopId||'التاجر')}</h2><span class="status ${unreadChatCount(cache.messages)?'pending':'approved'}">${unreadChatCount(cache.messages)} جديد</span></div>${renderMessageList(cache.messages)}${renderMessageComposer('')}</div>`;
+    setTimeout(()=>{markVisibleMessagesRead(cache.messages); scrollChatToBottom(); bindMessageComposerTools(); $('sendMessage').onclick=sendCustomerMessage;});
   }
 }
 function unreadChatCount(msgs=[]){
@@ -1999,7 +2014,7 @@ function renderMessageList(msgs){
     const day=messageDayLabel(m.createdMs); const dayHtml=day!==lastDay?`<div class="wa-day">${esc(day)}</div>`:''; lastDay=day;
     const mine=m.fromRole===state.role;
     const unread=!mine && (state.role==='trader' ? !m.readByTrader : !m.readByCustomer);
-    return `${dayHtml}<div class="wa-bubble ${mine?'mine':'theirs'}"><div class="wa-name">${mine?'أنت':esc(m.fromName||(m.fromRole==='trader'?'التاجر':'العميل'))}${unread?' <span class="wa-unread-chip">جديد</span>':''}</div><div class="wa-text">${esc(m.text||'')}</div><div class="wa-meta"><span>${messageTimeLabel(m.createdMs)}</span><span>${messageStatusLabel(m)}</span></div></div>`;
+    return `${dayHtml}<div class="wa-bubble ${mine?'mine':'theirs'}"><div class="wa-name">${mine?'أنت':esc(m.fromName||(m.fromRole==='trader'?'التاجر':'العميل'))}${unread?' <span class="wa-unread-chip">جديد</span>':''}</div>${m.text?`<div class="wa-text">${esc(m.text||'')}</div>`:''}${renderMessageAttachment(m)}<div class="wa-meta"><span>${messageTimeLabel(m.createdMs)}</span><span>${messageStatusLabel(m)}</span></div></div>`;
   }).join('')}</div>`;
 }
 function scrollChatToBottom(){const el=$('chatThread'); if(el) el.scrollTop=el.scrollHeight;}
@@ -2013,16 +2028,107 @@ async function markVisibleMessagesRead(msgs=[]){
     }
   }catch(e){console.warn('mark messages read failed',e)}
 }
+function renderMessageComposer(disabled=''){
+  return `<div class="wa-composer">
+    <div id="messageAttachPreview" class="wa-attach-preview hidden"></div>
+    <textarea id="messageText" placeholder="اكتب رسالة..."></textarea>
+    <button class="btn" id="sendMessage" ${disabled}>إرسال</button>
+    <div class="wa-tools">
+      <button type="button" class="wa-mini-btn" id="pickMessageImage">📷 صورة</button>
+      <button type="button" class="wa-mini-btn" id="pickMessageAudio">🎧 ملف صوت</button>
+      <button type="button" class="wa-mini-btn rec" id="recordMessageAudio">🎙 تسجيل صوت</button>
+      <input id="messageImageFile" type="file" accept="image/*" class="hidden">
+      <input id="messageAudioFile" type="file" accept="audio/*" class="hidden">
+    </div>
+  </div>`;
+}
+function renderMessageAttachment(m){
+  const a=m.attachment||null;
+  if(!a||!a.dataUrl) return '';
+  if(a.type==='image') return `<div class="wa-media"><img class="wa-img" src="${esc(a.dataUrl)}" alt="صورة مرفقة"><div class="wa-file-note">${esc(a.name||'صورة')}</div></div>`;
+  if(a.type==='audio') return `<div class="wa-media"><audio class="wa-audio" controls src="${esc(a.dataUrl)}"></audio><div class="wa-file-note">${esc(a.name||'تسجيل صوتي')}</div></div>`;
+  return '';
+}
+function updateMessageAttachPreview(){
+  const box=$('messageAttachPreview'); if(!box) return;
+  if(!pendingMessageAttachment){box.classList.add('hidden'); box.innerHTML=''; return;}
+  const kind=pendingMessageAttachment.type==='image'?'صورة مرفقة':'صوت مرفق';
+  box.classList.remove('hidden');
+  box.innerHTML=`<span>${kind}: ${esc(pendingMessageAttachment.name||'ملف')}</span><button type="button" class="wa-mini-btn" id="clearMessageAttachment">حذف</button>`;
+  $('clearMessageAttachment').onclick=()=>{pendingMessageAttachment=null; updateMessageAttachPreview();};
+}
+async function makeMessageAttachment(file,type){
+  if(!file) return null;
+  const max=type==='image'?650000:850000;
+  if(file.size>max) throw new Error(type==='image'?'حجم الصورة كبير. اختر صورة أقل من 650KB.':'حجم الصوت كبير. اختر ملفًا أقل من 850KB أو سجّل مدة أقصر.');
+  const data=await fileToDataUrl(file,max+10000);
+  return {type,name:file.name|| (type==='image'?'image':'voice'),mime:file.type||'',size:file.size||0,dataUrl:data.dataUrl};
+}
+function bindMessageComposerTools(){
+  pendingMessageAttachment=null; updateMessageAttachPreview();
+  $('pickMessageImage')&&($('pickMessageImage').onclick=()=>$('messageImageFile')?.click());
+  $('pickMessageAudio')&&($('pickMessageAudio').onclick=()=>$('messageAudioFile')?.click());
+  $('messageImageFile')&&($('messageImageFile').onchange=async(e)=>{try{pendingMessageAttachment=await makeMessageAttachment(e.target.files?.[0],'image'); updateMessageAttachPreview();}catch(err){msg(err.message,'error')} finally{e.target.value='';}});
+  $('messageAudioFile')&&($('messageAudioFile').onchange=async(e)=>{try{pendingMessageAttachment=await makeMessageAttachment(e.target.files?.[0],'audio'); updateMessageAttachPreview();}catch(err){msg(err.message,'error')} finally{e.target.value='';}});
+  $('recordMessageAudio')&&($('recordMessageAudio').onclick=toggleVoiceRecording);
+}
+async function toggleVoiceRecording(){
+  const btn=$('recordMessageAudio');
+  if(activeRecorder && activeRecorder.state==='recording'){
+    activeRecorder.stop();
+    if(btn){btn.textContent='⏳ تجهيز الصوت...'; btn.disabled=true;}
+    return;
+  }
+  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){msg('التسجيل الصوتي غير مدعوم في هذا المتصفح. يمكنك اختيار ملف صوت بدلًا من ذلك.','error');return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    activeRecorderChunks=[];
+    activeRecorderStartedAt=Date.now();
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
+    activeRecorder=new MediaRecorder(stream,{mimeType:mime});
+    activeRecorder.ondataavailable=e=>{if(e.data&&e.data.size) activeRecorderChunks.push(e.data)};
+    activeRecorder.onstop=async()=>{
+      try{
+        stream.getTracks().forEach(t=>t.stop());
+        const blob=new Blob(activeRecorderChunks,{type:activeRecorder.mimeType||'audio/webm'});
+        if(blob.size>850000){throw new Error('التسجيل طويل جدًا. سجّل مدة أقصر.')}
+        const file=new File([blob],`voice-${Date.now()}.webm`,{type:blob.type});
+        pendingMessageAttachment=await makeMessageAttachment(file,'audio');
+        updateMessageAttachPreview();
+        msg('تم تجهيز التسجيل الصوتي، اضغط إرسال','success');
+      }catch(e){msg(e.message||'تعذر تجهيز التسجيل','error')}
+      finally{if(btn){btn.textContent='🎙 تسجيل صوت'; btn.disabled=false; btn.classList.remove('stop');} activeRecorder=null; activeRecorderChunks=[];}
+    };
+    activeRecorder.start();
+    if(btn){btn.textContent='⏹ إيقاف التسجيل'; btn.classList.add('stop');}
+    setTimeout(()=>{try{if(activeRecorder?.state==='recording') activeRecorder.stop();}catch{}},30000);
+  }catch(e){msg('تعذر تشغيل الميكروفون. تأكد من صلاحية الميكروفون أو استخدم ملف صوت.','error');}
+}
+function buildMessagePayload(text,attachment){
+  const payload={text:text||''};
+  if(attachment) payload.attachment=attachment;
+  return payload;
+}
 async function sendCustomerMessage(){
-  const text=($('messageText')?.value||'').trim(); if(!text){msg('اكتب الرسالة أولًا','error');return}
-  await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,fromRole:'customer',fromName:state.customerName,text,createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:false,readByCustomer:true});
-  $('messageText').value=''; msg('تم إرسال الرسالة','success')
+  const text=($('messageText')?.value||'').trim();
+  if(!text && !pendingMessageAttachment){msg('اكتب رسالة أو أرفق صورة/صوت أولًا','error');return}
+  const attachment=pendingMessageAttachment;
+  const btn=$('sendMessage'); if(btn) btn.disabled=true;
+  try{
+    await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,fromRole:'customer',fromName:state.customerName,...buildMessagePayload(text,attachment),createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:false,readByCustomer:true});
+    $('messageText').value=''; pendingMessageAttachment=null; updateMessageAttachPreview(); msg('تم إرسال الرسالة','success');
+  }finally{if(btn) btn.disabled=false;}
 }
 async function sendMessageToCustomer(customerId){
   const c=cache.customers.find(x=>x.customerId===customerId); if(!c){msg('اختر العميل','error');return}
-  const text=($('messageText')?.value||'').trim(); if(!text){msg('اكتب الرسالة أولًا','error');return}
-  await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,fromRole:'trader',fromName:cache.shop?.name||'التاجر',text,createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:true,readByCustomer:false});
-  $('messageText').value=''; msg('تم إرسال الرسالة','success')
+  const text=($('messageText')?.value||'').trim();
+  if(!text && !pendingMessageAttachment){msg('اكتب رسالة أو أرفق صورة/صوت أولًا','error');return}
+  const attachment=pendingMessageAttachment;
+  const btn=$('sendMessage'); if(btn) btn.disabled=true;
+  try{
+    await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,fromRole:'trader',fromName:cache.shop?.name||'التاجر',...buildMessagePayload(text,attachment),createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:true,readByCustomer:false});
+    $('messageText').value=''; pendingMessageAttachment=null; updateMessageAttachPreview(); msg('تم إرسال الرسالة','success');
+  }finally{if(btn) btn.disabled=false;}
 }
 
 
