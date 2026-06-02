@@ -163,6 +163,30 @@
     body[data-theme="dark"] .settings-mini-card{background:#1e293b;border-color:#334155}
     @media(max-width:420px){.app{padding-bottom:88px!important}.nav-inner{gap:4px!important}.tab{min-height:45px!important}.tab .nav-ico{font-size:18px}.tab .nav-label{font-size:9px}.settings-compact-grid{grid-template-columns:1fr}.settings-compact-actions{grid-template-columns:1fr 1fr}}
   </style>
+
+  <style id="hesabi-setup-fixed-back-icon">
+    .setup-back-floating{position:fixed!important;bottom:calc(16px + env(safe-area-inset-bottom))!important;right:50%!important;transform:translateX(50%)!important;width:54px!important;height:54px!important;border:0!important;border-radius:999px!important;background:linear-gradient(135deg,var(--primary),var(--primary2))!important;color:#fff!important;box-shadow:0 10px 28px rgba(15,118,110,.28)!important;z-index:10050!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:24px!important;font-weight:900!important;cursor:pointer!important}
+    .setup-back-floating.hidden{display:none!important}
+    body[data-theme="dark"] .setup-back-floating{box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
+  </style>
+
+  <style id="hesabi-customer-setup-shop-tools">
+    .shop-code-input-row{display:grid;grid-template-columns:1fr 42px 42px 42px;gap:6px;align-items:center}
+    .icon-mini-btn{border:1px solid var(--line);border-radius:14px;background:#f8fafc;min-height:42px;font-size:18px;box-shadow:var(--shadow2);cursor:pointer}
+    .icon-mini-btn:active,.mini-action-btn:active{transform:scale(.97)}
+    .setup-scan-video{width:100%;max-height:190px;border-radius:18px;background:#0f172a;display:none;object-fit:cover}
+    .setup-scan-video.active{display:block}
+    .compact-shop-results{border:1px solid var(--line);border-radius:18px;background:#fff;padding:8px;max-height:270px;overflow:auto}
+    .setup-results-head,.setup-selected-title{font-weight:900;color:#0f766e;margin:4px 0 8px;font-size:13px}
+    .setup-shop-table th,.setup-shop-table td{padding:6px 7px;font-size:12px;line-height:1.35}
+    .mini-line{font-size:11px;line-height:1.25}.mono-cell{direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;font-size:11px}
+    .mini-action-btn{border:0;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;padding:7px 9px;font-weight:900;font-size:12px;cursor:pointer}
+    .selected-setup-shops{display:grid;gap:6px}.compact-note{font-size:12px;border:1px dashed var(--line);border-radius:14px;padding:8px;background:#fbfdff}
+    .setup-selected-list{display:flex;gap:6px;flex-wrap:wrap}.setup-store-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #99f6e4;background:#ecfeff;color:#115e59;border-radius:999px;padding:5px 8px;font-size:12px;max-width:100%}
+    .setup-store-chip small{direction:ltr;color:#64748b}.setup-store-chip button{border:0;border-radius:50%;width:22px;height:22px;background:#fee2e2;color:#991b1b;font-weight:900;cursor:pointer}
+    @media(max-width:420px){.shop-code-input-row{grid-template-columns:1fr 38px 38px 38px}.icon-mini-btn{min-height:38px;font-size:16px}.setup-shop-table th,.setup-shop-table td{padding:5px;font-size:11px}}
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -250,10 +274,11 @@
 </div>
 
 <nav id="nav" class="nav hidden"><div id="navInner" class="nav-inner"></div></nav>
+<button id="setupBackFloating" class="setup-back-floating hidden" type="button" aria-label="رجوع">↩️</button>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, addDoc, getDoc, updateDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
 const LS='hesabi_firebase_v3';
@@ -699,6 +724,8 @@ function render(){
   $('profileSetup').classList.toggle('hidden', !signed || !state.role || !!state.profileDone);
   $('main').classList.toggle('hidden', !signed || !state.profileDone);
   $('nav').classList.toggle('hidden', !signed || !state.profileDone);
+  if($('setupBackFloating')) $('setupBackFloating').classList.toggle('hidden', !signed || !!state.profileDone);
+  bindSetupBackFloating();
   $('subTitle').textContent = signed ? (state.profileDone ? (state.role==='trader'?`تاجر | كود المحل: ${state.shopId||'-'} | حساب آمن`:`عميل | التاجر الحالي: ${state.shopName||state.shopId||'-'} | عدد التجار: ${(state.customerLinks||[]).length||1} | حساب آمن`) : 'تم تسجيل الدخول الآمن') : '';
   if(!hasCfg){fillCfg(); return}
   if(hasCfg && !signed){bindAuthButtons(); return}
@@ -842,10 +869,52 @@ function backToRoleChoice(){
   render();
 }
 
+async function backFromRoleChoice(){
+  try{ if(auth) await signOut(auth); }catch(e){ console.warn('sign out before role choice back failed', e); }
+  currentUser=null;
+  state.role='';
+  state.profileDone=false;
+  delete state.uid;
+  delete state.authEmail;
+  delete state.authPhoneNumber;
+  delete state.authPhoneKey;
+  delete state.authProvider;
+  delete state.pendingSmsPhone;
+  delete state.pendingSmsPhoneKey;
+  save();
+  render();
+}
+
+function bindSetupBackFloating(){
+  const btn=$('setupBackFloating');
+  if(!btn || btn.dataset.bound==='1') return;
+  btn.dataset.bound='1';
+  btn.onclick=()=>{
+    if(state.role && !state.profileDone) backToRoleChoice();
+    else backFromRoleChoice();
+  };
+}
+
 function renderProfileSetup(){
-  if(state.role==='trader') $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">إذا فتحت نسخة جديدة ولم تظهر بياناتك، لا تنشئ محلًا جديدًا. استخدم زر استرجاع محل موجود بنفس رقم الهاتف و PIN.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" placeholder="مثال: 777123456"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء محل جديد</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button><button class="btn light" id="backToRoleChoice">↩ رجوع لاختيار تاجر أو عميل</button></div>`;
-  else $('profileSetup').innerHTML=`<h2>تهيئة العميل</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">إذا اختفت بياناتك بعد التحديث، أدخل نفس رقم هاتفك وكود المحل ثم اضغط استرجاع حساب عميل موجود. لن يتم إنشاء حساب مكرر.</div><div class="form"><div class="field"><label>اسم العميل</label><input id="custName"></div><div class="field"><label>رقم الهاتف</label><input id="custPhone"></div><div class="field"><label>كود المحل من التاجر</label><input id="joinShopId" placeholder="SHOP-XXXXX"></div><button class="btn" id="joinShop">ربط كعميل جديد</button><button class="btn secondary" id="recoverCustomer">استرجاع حساب عميل موجود</button><button class="btn light" id="backToRoleChoice">↩ رجوع لاختيار تاجر أو عميل</button></div>`;
-  setTimeout(()=>{ if($('backToRoleChoice')) $('backToRoleChoice').onclick=backToRoleChoice; if(state.role==='trader'){ $('createShop').onclick=createShop; $('recoverShop').onclick=recoverShopByPhone; } else { if(URL_JOIN_SHOP_ID && $('joinShopId')) $('joinShopId').value=URL_JOIN_SHOP_ID; $('joinShop').onclick=joinShop; $('recoverCustomer').onclick=recoverCustomerByPhone; } });
+  if(state.role==='trader') $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">إذا فتحت نسخة جديدة ولم تظهر بياناتك، لا تنشئ محلًا جديدًا. استخدم زر استرجاع محل موجود بنفس رقم الهاتف و PIN.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" placeholder="مثال: 777123456"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء محل جديد</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button></div>`;
+  else {
+    const phoneDefault=esc(state.customerPhone||state.authPhoneNumber||state.authPhoneKey||'');
+    const nameDefault=esc(state.customerName||'');
+    $('profileSetup').innerHTML=`<h2>تهيئة العميل</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">يمكنك إدخال كود التاجر يدويًا، أو مسح QR، أو البحث عن المتاجر المسجلة، ثم إضافة متجر أو عدة متاجر والربط بها دفعة واحدة.</div><div class="form customer-setup-form"><div class="field"><label>اسم العميل</label><input id="custName" value="${nameDefault}" placeholder="اسمك عند التاجر"></div><div class="field"><label>رقم الهاتف</label><input id="custPhone" value="${phoneDefault}" placeholder="77xxxxxxx أو +967..."></div><div class="field"><label>كود المحل من التاجر</label><div class="shop-code-input-row"><input id="joinShopId" placeholder="SHOP-XXXXX"><button class="icon-mini-btn" id="setupScanShopQr" type="button" title="مسح كود التاجر">📷</button><button class="icon-mini-btn" id="setupSearchStores" type="button" title="بحث عن متجر">🔎</button><button class="icon-mini-btn" id="setupAddStore" type="button" title="إضافة متجر للقائمة">➕</button></div></div><video id="setupQrVideo" class="scan-video setup-scan-video" playsinline></video><div class="settings-compact-actions setup-scan-actions hidden" id="setupScanActions"><button class="btn light" id="setupStopQrScan" type="button">إيقاف الكاميرا</button></div><div class="field"><label>بحث عن متجر مسجل</label><input id="shopSearchQuery" placeholder="اكتب اسم المتجر أو كود التاجر أو رقم الهاتف"></div><div id="shopSearchResults" class="compact-shop-results hidden"></div><div id="selectedSetupShops" class="selected-setup-shops"></div><button class="btn" id="joinShop">ربط المتاجر المحددة</button><button class="btn secondary" id="recoverCustomer">استرجاع حساب عميل موجود</button></div>`;
+  }
+  setTimeout(()=>{
+    if(state.role==='trader'){ $('createShop').onclick=createShop; $('recoverShop').onclick=recoverShopByPhone; }
+    else {
+      if(URL_JOIN_SHOP_ID && $('joinShopId')) {$('joinShopId').value=URL_JOIN_SHOP_ID; setupAddShopSelection(URL_JOIN_SHOP_ID,'من الرابط',false);}
+      $('joinShop').onclick=joinShop; $('recoverCustomer').onclick=recoverCustomerByPhone;
+      $('setupAddStore').onclick=()=>setupAddShopSelection(($('joinShopId')?.value||''),'',true);
+      $('setupSearchStores').onclick=setupSearchStores;
+      $('shopSearchQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();setupSearchStores();}};
+      $('setupScanShopQr').onclick=setupStartQrScan;
+      $('setupStopQrScan').onclick=setupStopQrScan;
+      renderSelectedSetupShops();
+    }
+  });
 }
 
 async function recoverShopByPhone(){
@@ -865,6 +934,67 @@ async function recoverShopByPhone(){
     if(!shop.ownerUid){await updateDoc(doc(db,'shops',shopId),{ownerUid:uid(),ownerPhoneKey:state.authPhoneKey||phoneKey,securityUpgradedAt:serverTimestamp()});}
     state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.shopName=shop.name||shopId; save(); startListeners(); render(); msg('تم استرجاع المحل والبيانات من Firebase بنجاح','success');
   }catch(e){msg(e.message||'تعذر استرجاع المحل','error')}
+}
+
+
+function setupShopSelections(){
+  if(!Array.isArray(state.setupSelectedShops)) state.setupSelectedShops=[];
+  state.setupSelectedShops=state.setupSelectedShops.filter(x=>x&&x.shopId);
+  return state.setupSelectedShops;
+}
+function setupAddShopSelection(raw, name='', showMessage=true){
+  const sid=extractShopCodeFromText(raw||'');
+  if(!sid){ if(showMessage) msg('أدخل أو اختر كود متجر صحيح أولًا','error'); return false; }
+  const list=setupShopSelections();
+  if(list.some(x=>x.shopId===sid)){ if(showMessage) msg('هذا المتجر موجود في قائمة الربط','error'); return false; }
+  list.push({shopId:sid,shopName:name||sid});
+  state.setupSelectedShops=list; save(); renderSelectedSetupShops();
+  if(showMessage) msg('تمت إضافة المتجر لقائمة الربط','success');
+  return true;
+}
+function setupRemoveShopSelection(shopId){
+  state.setupSelectedShops=setupShopSelections().filter(x=>x.shopId!==shopId);
+  save(); renderSelectedSetupShops();
+}
+function renderSelectedSetupShops(){
+  const box=$('selectedSetupShops'); if(!box) return;
+  const list=setupShopSelections();
+  if(!list.length){box.innerHTML='<div class="muted compact-note">لم يتم اختيار متاجر بعد. يمكنك اختيار متجر أو عدة متاجر قبل الربط.</div>'; return;}
+  box.innerHTML=`<div class="setup-selected-title">المتاجر المختارة (${list.length})</div><div class="setup-selected-list">${list.map(x=>`<span class="setup-store-chip"><b>${esc(x.shopName||x.shopId)}</b><small>${esc(x.shopId)}</small><button type="button" data-remove-setup-shop="${esc(x.shopId)}">×</button></span>`).join('')}</div>`;
+  box.querySelectorAll('[data-remove-setup-shop]').forEach(b=>b.onclick=()=>setupRemoveShopSelection(b.getAttribute('data-remove-setup-shop')));
+}
+async function setupSearchStores(){
+  if(!db){msg('الاتصال بقاعدة البيانات غير جاهز','error');return}
+  const q=($('shopSearchQuery')?.value||$('joinShopId')?.value||'').trim();
+  const out=$('shopSearchResults'); if(out){out.classList.remove('hidden'); out.innerHTML='<div class="muted compact-note">جاري البحث عن المتاجر...</div>';}
+  try{
+    const snap=await getDocs(collection(db,'shops'));
+    const rows=snap.docs.map(d=>({id:d.id,...d.data()})).filter(sh=>{
+      if(!q) return true;
+      return searchMatch(`${sh.shopId||sh.id} ${sh.name||''} ${sh.phone||''} ${sh.phoneKey||''}`, q);
+    }).slice(0,50);
+    if(!out) return;
+    if(!rows.length){out.innerHTML='<div class="catalog-search-empty">لم يتم العثور على متجر مطابق.</div>';return;}
+    out.innerHTML=`<div class="setup-results-head">نتائج المتاجر</div><div class="table-wrap"><table class="mini-table setup-shop-table"><thead><tr><th>المتجر</th><th>الكود</th><th></th></tr></thead><tbody>${rows.map(sh=>`<tr><td><b>${esc(sh.name||'متجر')}</b><div class="muted mini-line">${esc(sh.phone||'')}</div></td><td class="mono-cell">${esc(sh.shopId||sh.id)}</td><td><button class="mini-action-btn" data-pick-shop="${esc(sh.shopId||sh.id)}" data-pick-name="${esc(sh.name||'متجر')}">اختيار</button></td></tr>`).join('')}</tbody></table></div>`;
+    out.querySelectorAll('[data-pick-shop]').forEach(b=>b.onclick=()=>{const sid=b.getAttribute('data-pick-shop'); const nm=b.getAttribute('data-pick-name')||sid; if($('joinShopId')) $('joinShopId').value=sid; setupAddShopSelection(sid,nm,true);});
+  }catch(e){ if(out) out.innerHTML='<div class="notice error">تعذر البحث عن المتاجر: '+esc(e.message||e)+'</div>'; }
+}
+let setupQrStream=null, setupQrTimer=null;
+async function setupStartQrScan(){
+  try{
+    if(!('BarcodeDetector' in window)){msg('هذا المتصفح لا يدعم مسح QR بالكاميرا. استخدم إدخال الكود أو البحث عن المتجر.','error');return}
+    const video=$('setupQrVideo'); if(!video) return;
+    $('setupScanActions')?.classList.remove('hidden');
+    setupQrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject=setupQrStream; video.classList.add('active'); await video.play();
+    const detector=new BarcodeDetector({formats:['qr_code']});
+    setupQrTimer=setInterval(async()=>{
+      try{const codes=await detector.detect(video); if(codes&&codes.length){const code=extractShopCodeFromText(codes[0].rawValue||''); if(code){$('joinShopId').value=code; setupAddShopSelection(code,'من QR',true); setupStopQrScan();}}}catch{}
+    },700);
+  }catch(e){msg('تعذر تشغيل الكاميرا. إذا كنت داخل تطبيق أندرويد فقد يحتاج التطبيق إلى صلاحية الكاميرا. يمكنك إدخال الكود يدويًا أو استخدام البحث.','error')}
+}
+function setupStopQrScan(){
+  try{ if(setupQrTimer){clearInterval(setupQrTimer); setupQrTimer=null;} if(setupQrStream){setupQrStream.getTracks().forEach(t=>t.stop()); setupQrStream=null;} const v=$('setupQrVideo'); if(v){v.pause(); v.srcObject=null; v.classList.remove('active');} $('setupScanActions')?.classList.add('hidden'); }catch{}
 }
 
 async function recoverCustomerByPhone(){
@@ -912,9 +1042,26 @@ async function createShop(){
 }
 async function joinShop(){
   if(!requireAuth()) return;
-  const name=$('custName').value.trim(), phone=$('custPhone').value.trim(), shopId=$('joinShopId').value.trim();
-  if(!name||!phone||!shopId){msg('أدخل الاسم والهاتف وكود المحل','error');return}
-  await linkCustomerToShop(shopId,name,phone,true);
+  const name=($('custName')?.value||'').trim(), phone=($('custPhone')?.value||'').trim();
+  const selected=setupShopSelections().map(x=>x.shopId).filter(Boolean);
+  const typed=extractShopCodeFromText(($('joinShopId')?.value||'').trim());
+  const shopIds=[...new Set(selected.length?selected:(typed?[typed]:[]))];
+  if(!name||!phone||!shopIds.length){msg('أدخل الاسم والهاتف واختر متجرًا واحدًا على الأقل','error');return}
+  const btn=$('joinShop');
+  try{
+    if(btn){btn.disabled=true; btn.textContent='جاري ربط المتاجر...';}
+    let okCount=0, lastName='';
+    for(let i=0;i<shopIds.length;i++){
+      const res=await linkCustomerToShop(shopIds[i],name,phone,i===0);
+      if(res?.ok){okCount++; lastName=res.shopName||lastName;}
+    }
+    if(okCount>0){
+      state.setupSelectedShops=[]; save();
+      msg(okCount===1 ? `تم الارتباط بالمتجر: ${lastName||shopIds[0]}` : `تم الارتباط بعدد ${okCount} متاجر بنجاح`,'success');
+    }
+  }finally{
+    if(btn){btn.disabled=false; btn.textContent='ربط المتاجر المحددة';}
+  }
 }
 async function linkCustomerToShop(shopId,name,phone,first=false){
   if(!requireAuth()) return;
