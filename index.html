@@ -131,7 +131,15 @@
     .tab .nav-badge{position:absolute;top:2px;left:4px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:9.5px;display:inline-flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 0 0 2px #fff;line-height:1}
     .quick-home-btn .qbadge{background:#dc2626!important;color:#fff!important;box-shadow:0 0 0 2px #fff}
     @media(max-width:520px){.quick-home-grid{grid-template-columns:repeat(3,1fr);gap:7px}.quick-home-btn{min-height:64px;padding:8px 4px;border-radius:14px}.quick-home-btn .qicon{font-size:20px}.quick-home-btn .qlabel{font-size:10.5px}.quick-summary-row{grid-template-columns:repeat(2,1fr)}}
-</style>
+
+    .appearance-preview{border:1px solid var(--line);border-radius:18px;padding:12px;background:linear-gradient(135deg,#fff,#f0fdfa);display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .small-btn{border:0;border-radius:12px;padding:7px 10px;background:var(--primary);color:#fff;font-weight:800;cursor:pointer}
+    body[data-theme="dark"] .card, body[data-theme="dark"] .item, body[data-theme="dark"] .field input, body[data-theme="dark"] .field select, body[data-theme="dark"] .field textarea{background:#1e293b;color:#e5e7eb;border-color:#334155}
+    body[data-theme="dark"] .top, body[data-theme="dark"] .nav{background:rgba(15,23,42,.94);border-color:#334155}
+    body[data-theme="dark"] .tab{background:#334155;color:#e5e7eb}
+    body[data-compact="no"] .item, body[data-compact="no"] .compact-table td, body[data-compact="no"] .compact-table th{padding:12px!important}
+
+  </style>
 
 </head>
 <body>
@@ -518,6 +526,82 @@ function ensureLiveDataListeners(){
   listenersStartedKey=key;
   resetCacheForLiveData();
   startListeners();
+}
+
+
+function appearanceKey(){
+  return uid() || state.uid || state.authPhoneKey || 'guest';
+}
+function defaultAppearance(){
+  return {theme:'light',accent:'teal',brightness:100,background:'glass',compact:true};
+}
+function getAppearance(){
+  const d=defaultAppearance();
+  try{
+    if(!state.appearanceByUser || typeof state.appearanceByUser!=='object') state.appearanceByUser={};
+    const key=appearanceKey();
+    const saved=state.appearanceByUser[key] || state.appearance || {};
+    return {...d,...saved,brightness:Number(saved.brightness||d.brightness),compact:saved.compact!==false};
+  }catch(e){return d;}
+}
+function saveAppearanceSettings(settings){
+  try{
+    const current=getAppearance();
+    const clean={...current,...(settings||{})};
+    clean.theme=clean.theme==='dark'?'dark':'light';
+    clean.accent=['teal','blue','green','purple','orange'].includes(clean.accent)?clean.accent:'teal';
+    clean.background=['glass','soft','plain'].includes(clean.background)?clean.background:'glass';
+    clean.brightness=Math.min(120,Math.max(75,Number(clean.brightness||100)));
+    clean.compact=clean.compact!==false;
+    if(!state.appearanceByUser || typeof state.appearanceByUser!=='object') state.appearanceByUser={};
+    state.appearanceByUser[appearanceKey()]=clean;
+    delete state.appearance;
+    save();
+    applyAppearance();
+  }catch(e){console.warn('save appearance failed',e)}
+}
+function applyAppearance(){
+  try{
+    const a=getAppearance();
+    const palettes={
+      teal:['#0f766e','#14b8a6','#0b5f5a'],
+      blue:['#2563eb','#60a5fa','#1d4ed8'],
+      green:['#15803d','#22c55e','#166534'],
+      purple:['#7c3aed','#a78bfa','#6d28d9'],
+      orange:['#ea580c','#fb923c','#c2410c']
+    };
+    const [p1,p2,p3]=palettes[a.accent]||palettes.teal;
+    const root=document.documentElement;
+    root.style.setProperty('--primary',p1);
+    root.style.setProperty('--primary2',p2);
+    root.style.setProperty('--primaryDark',p3);
+    if(a.theme==='dark'){
+      root.style.setProperty('--bg','#0f172a');
+      root.style.setProperty('--bg2','#111827');
+      root.style.setProperty('--card','rgba(30,41,59,.96)');
+      root.style.setProperty('--text','#e5e7eb');
+      root.style.setProperty('--muted','#cbd5e1');
+      root.style.setProperty('--line','#334155');
+      root.style.setProperty('--soft','#0f2f33');
+    }else{
+      root.style.setProperty('--bg', a.background==='plain'?'#f8fafc':'#eef6f7');
+      root.style.setProperty('--bg2','#f8fbff');
+      root.style.setProperty('--card','rgba(255,255,255,.94)');
+      root.style.setProperty('--text','#102033');
+      root.style.setProperty('--muted','#64748b');
+      root.style.setProperty('--line','#dbe7ee');
+      root.style.setProperty('--soft','#ecfeff');
+    }
+    if(document.body){
+      document.body.dataset.theme=a.theme;
+      document.body.dataset.background=a.background;
+      document.body.dataset.compact=a.compact?'yes':'no';
+      document.body.style.filter=`brightness(${Number(a.brightness||100)}%)`;
+      if(a.background==='plain') document.body.style.background=a.theme==='dark'?'#0f172a':'#f8fafc';
+      else if(a.background==='soft') document.body.style.background=a.theme==='dark'?'linear-gradient(180deg,#111827,#0f172a)':'linear-gradient(180deg,#f8fbff,#eef6f7)';
+      else document.body.style.background='';
+    }
+  }catch(e){console.warn('apply appearance failed',e)}
 }
 
 function render(){
