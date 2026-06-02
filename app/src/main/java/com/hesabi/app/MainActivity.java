@@ -4,13 +4,17 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.Settings;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -30,6 +34,7 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentActivity;
 
 import java.io.File;
+import java.util.Objects;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -46,6 +51,19 @@ public class MainActivity extends FragmentActivity {
     private ValueCallback<Uri[]> filePathCallback;
     private Uri cameraImageUri;
     private String lastSessionJson = "{}";
+    private long latestApkDownloadId = -1L;
+    private File latestApkFile;
+
+    private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
+            long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
+            if (id == latestApkDownloadId) {
+                openDownloadedApk();
+            }
+        }
+    };
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override
@@ -53,6 +71,12 @@ public class MainActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
 
         requestBasePermissions();
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(downloadReceiver, filter);
+        }
 
         webView = new WebView(this);
         setContentView(webView);
@@ -204,6 +228,26 @@ public class MainActivity extends FragmentActivity {
         }
 
         @JavascriptInterface
+        public int getVersionCode() {
+            try {
+                PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) return (int) info.getLongVersionCode();
+                return info.versionCode;
+            } catch (Exception e) {
+                return 1;
+            }
+        }
+
+        @JavascriptInterface
+        public String getVersionName() {
+            try {
+                return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            } catch (Exception e) {
+                return "1.0.0";
+            }
+        }
+
+        @JavascriptInterface
         public void openLatestApk() {
             runOnUiThread(MainActivity.this::downloadLatestApk);
         }
@@ -254,18 +298,52 @@ public class MainActivity extends FragmentActivity {
 
     private void downloadLatestApk() {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+                Toast.makeText(this, "اسمح للتطبيق بتثبيت التحديثات من هذا المصدر ثم اضغط تحديث مرة أخرى.", Toast.LENGTH_LONG).show();
+                Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()));
+                startActivity(settingsIntent);
+                return;
+            }
+
+            latestApkFile = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "hesabi-app-latest.apk");
+            if (latestApkFile.exists()) latestApkFile.delete();
+
             Uri uri = Uri.parse(LATEST_APK_URL);
             DownloadManager.Request request = new DownloadManager.Request(uri);
             request.setTitle("تحديث حسابي التجاري");
             request.setDescription("تحميل آخر إصدار من GitHub");
+            request.setAllowedOverMetered(true);
+            request.setAllowedOverRoaming(true);
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "hesabi-app-latest.apk");
+            request.setDestinationUri(Uri.fromFile(latestApkFile));
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-            dm.enqueue(request);
-            Toast.makeText(this, "بدأ تحميل التحديث. افتح الإشعار بعد اكتمال التحميل للتثبيت.", Toast.LENGTH_LONG).show();
+            latestApkDownloadId = dm.enqueue(request);
+            Toast.makeText(this, "بدأ تحميل التحديث. ستظهر شاشة التثبيت تلقائيًا بعد اكتمال التحميل.", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(LATEST_APK_URL)));
         }
+    }
+
+    private void openDownloadedApk() {
+        try {
+            if (latestApkFile == null || !latestApkFile.exists()) {
+                Toast.makeText(this, "تم التحميل، لكن لم يتم العثور على ملف التحديث. افتح التنزيلات.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", latestApkFile);
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(install);
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر فتح شاشة التثبيت: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) {}
+        super.onDestroy();
     }
 
     @Override

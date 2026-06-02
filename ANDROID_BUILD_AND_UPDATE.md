@@ -1,27 +1,40 @@
-# حسابي التجاري - بناء أندرويد والتحديث من الهاتف
+# حسابي التجاري - Android APK وتحديث من داخل التطبيق
 
-هذه الإضافة تجعل المستودع يبني APK تلقائيًا عند الرفع إلى `main`.
+## الرفع من Termux
 
-## ماذا تم تفعيله داخل تطبيق Android
+افتح Termux ونفذ من داخل نسخة المستودع:
 
-- WebView أصلي يفتح رابط التطبيق: `https://hesabi-app-edc7e.web.app/`.
-- صلاحيات كاميرا وميكروفون وصور وتنبيهات.
-- دعم اختيار صورة من المعرض أو التقاط صورة بالكاميرا من داخل التطبيق.
-- دعم تسجيل الصوت داخل WebView عبر صلاحية الميكروفون.
-- دعم قفل التطبيق بالبصمة/الوجه من Android BiometricPrompt عبر الجسر `HesabiAndroid`.
-- زر/دالة داخل الجسر لتحميل آخر APK من GitHub Release.
+```bash
+cd /sdcard/Download/hesabi-app
+cp -r /sdcard/Download/hesabi-android-update-in-app-files/android_files/. .
+git status
+git add .
+git commit -m "feat: add in-app Android update support"
+git push https://attef7474-byte:TOKEN_HERE@github.com/attef7474-byte/hesabi-app.git main
+```
 
-## أين أجد ملف APK؟
+استبدل `TOKEN_HERE` بالتوكن الجديد داخل Termux فقط.
 
-بعد أي رفع إلى `main`:
+## بعد الرفع
 
-1. افتح GitHub من الهاتف.
-2. ادخل إلى مستودع `attef7474-byte/hesabi-app`.
-3. افتح Releases.
-4. افتح آخر إصدار باسم `Hesabi Android Latest`.
-5. حمّل الملف: `hesabi-app-latest.apk`.
-6. ثبته على الهاتف.
+1. افتح GitHub > Actions > Build Android APK.
+2. اضغط Run workflow على فرع main إذا لم يبدأ تلقائيًا.
+3. بعد النجاح حمّل artifact أو افتح Release باسم `latest-android`.
+4. ثبت APK على الهاتف.
 
-## ملاحظة مهمة عن التحديث فوق نسخة قديمة
+## كيف يعمل التحديث الداخلي؟
 
-البناء الحالي Debug APK مناسب للتجربة السريعة. للتحديث السلس فوق النسخة السابقة دائمًا يجب استخدام توقيع ثابت Release Keystore عبر GitHub Secrets. إذا ظهر خطأ "التطبيق غير مثبت" عند التحديث، احذف النسخة القديمة وثبت الجديدة، أو أضف توقيع Release ثابت لاحقًا.
+- ملف `android-update.json` في جذر الموقع يحتوي آخر رقم إصدار.
+- صفحة الإعدادات تفحص هذا الملف.
+- إذا كان `latestVersionCode` أكبر من إصدار APK المثبت، يظهر زر تحميل وتثبيت.
+- عند الضغط، تطبيق أندرويد يحمل APK من GitHub Release ثم يفتح شاشة تثبيت أندرويد.
+- أندرويد سيطلب سماح "Install unknown apps" مرة واحدة.
+
+## عند إصدار نسخة جديدة
+
+عدّل رقم الإصدار في:
+
+- `app/build.gradle`: `versionCode` و `versionName`
+- `android-update.json`: `latestVersionCode` و `latestVersionName`
+
+ثم ارفع إلى GitHub وشغل Build Android APK.

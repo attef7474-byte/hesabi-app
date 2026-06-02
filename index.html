@@ -337,7 +337,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-02-كاميرا-ورسائل-مضغوطة';
+const APP_VERSION='2026-06-02-تحديث-أندرويد-داخلي';
 
 function getJoinShopParam(){
   try{
@@ -2953,6 +2953,63 @@ async function updatePhoneReferencesAfterChange(oldKey,newKey,newIntl){
   await setDoc(doc(db,'phoneUidLinks',newKey),{phoneKey:newKey,uid:uid(),provider:'phone',updatedAt:serverTimestamp()},{merge:true});
 }
 
+
+
+async function checkAndroidUpdate(silent=false){
+  try{
+    if(!window.HesabiAndroid){
+      state.androidUpdateInfo={native:false,hasUpdate:false,message:'التحديث التلقائي متاح فقط داخل تطبيق أندرويد.'};
+      save();
+      return state.androidUpdateInfo;
+    }
+    const currentCode = Number(window.HesabiAndroid.getVersionCode?.() || 1);
+    const currentName = String(window.HesabiAndroid.getVersionName?.() || '');
+    const res = await fetch('/android-update.json?v=' + Date.now(), {cache:'no-store'});
+    if(!res.ok) throw new Error('تعذر قراءة ملف التحديث');
+    const info = await res.json();
+    const latestCode = Number(info.latestVersionCode || 0);
+    const hasUpdate = latestCode > currentCode;
+    state.androidUpdateInfo = {...info,native:true,currentCode,currentName,latestCode,hasUpdate,checkedAt:Date.now()};
+    save();
+    if(!silent){
+      msg(hasUpdate ? 'يوجد تحديث جديد للتطبيق' : 'التطبيق محدث بالفعل','success');
+      render();
+    }
+    return state.androidUpdateInfo;
+  }catch(e){
+    console.warn('update check failed', e);
+    state.androidUpdateInfo={native:!!window.HesabiAndroid,hasUpdate:false,error:e.message||String(e),checkedAt:Date.now()};
+    save();
+    if(!silent) msg('تعذر فحص التحديثات: '+(e.message||e),'error');
+    return state.androidUpdateInfo;
+  }
+}
+function renderAndroidUpdateCard(){
+  const u=state.androidUpdateInfo || {};
+  const currentName = u.currentName || (window.HesabiAndroid?.getVersionName?.() || 'ويب');
+  const currentCode = u.currentCode || (window.HesabiAndroid?.getVersionCode?.() || '-');
+  if(!window.HesabiAndroid){
+    return `<div class="settings-mini-card"><h3>تحديث تطبيق أندرويد</h3><p class="muted">أنت تستخدم نسخة الويب. التحديث الداخلي يعمل عند فتح التطبيق من APK.</p><button class="btn light compact-main-btn" id="checkAndroidUpdateBtn">فحص التحديثات</button></div>`;
+  }
+  if(u.hasUpdate){
+    const required = u.required ? '<br><b style="color:#b42318">هذا التحديث مطلوب</b>' : '';
+    return `<div class="settings-mini-card"><h3>يوجد تحديث جديد</h3><p class="muted">الإصدار الحالي: ${esc(currentName)} (${esc(currentCode)})<br>الإصدار الجديد: ${esc(u.latestVersionName||'')} (${esc(u.latestCode||u.latestVersionCode||'')})${required}<br>${esc(u.message||'')}</p><div class="settings-compact-actions"><button class="btn ok compact-main-btn" id="installAndroidUpdateBtn">تحميل وتثبيت</button><button class="btn light" id="checkAndroidUpdateBtn">فحص مجدد</button></div></div>`;
+  }
+  return `<div class="settings-mini-card"><h3>تحديث التطبيق</h3><p class="muted">التطبيق محدث. الإصدار الحالي: ${esc(currentName)} (${esc(currentCode)})${u.error?'<br>آخر خطأ: '+esc(u.error):''}</p><div class="settings-compact-actions"><button class="btn secondary" id="checkAndroidUpdateBtn">فحص التحديثات</button><button class="btn light" id="installAndroidUpdateBtn">تحميل آخر APK</button></div></div>`;
+}
+function installAndroidUpdate(){
+  try{
+    if(window.HesabiAndroid?.openLatestApk){
+      window.HesabiAndroid.openLatestApk();
+      msg('بدأ تحميل التحديث. وافق على التثبيت عند اكتمال التحميل.','notice');
+      return;
+    }
+  }catch(e){}
+  const u=state.androidUpdateInfo||{};
+  const apk=u.apkUrl || 'https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk';
+  location.href=apk;
+}
+
 function settingsTabKey(){return 'hesabi_settings_tab_'+(uid() || state.authPhoneKey || 'guest')}
 function getSettingsTab(){try{return sessionStorage.getItem(settingsTabKey()) || 'security'}catch{return 'security'}}
 function setSettingsTab(tab){try{sessionStorage.setItem(settingsTabKey(), tab)}catch{}}
@@ -2990,7 +3047,7 @@ function renderSettings(){
   </div>
   <div class="settings-tab-pane" data-settings-pane="system">
     <div class="settings-section-title">النظام والتحديث والأكواد</div>
-    <div class="card"><h2>بيانات المستخدم</h2><div class="settings-compact-grid"><div class="settings-mini-card"><h3>الحساب الحالي</h3><p class="muted">الدور: ${userRoleText}<br>كود المحل: ${esc(state.shopId||'-')}<br>رقم الحساب: ${esc(state.authPhoneIntl||state.phoneNumber||state.authPhoneKey||'-')}<br>إصدار التطبيق: ${APP_VERSION}</p></div><div class="settings-mini-card"><h3>تحديث التطبيق</h3><p class="muted">تحميل آخر نسخة بدون حذف حسابك أو بياناتك المحلية.</p><button class="btn ok compact-main-btn" id="forceAppUpdateBtn">تحديث الآن</button></div></div></div>
+    <div class="card"><h2>بيانات المستخدم</h2><div class="settings-compact-grid"><div class="settings-mini-card"><h3>الحساب الحالي</h3><p class="muted">الدور: ${userRoleText}<br>كود المحل: ${esc(state.shopId||'-')}<br>رقم الحساب: ${esc(state.authPhoneIntl||state.phoneNumber||state.authPhoneKey||'-')}<br>إصدار الواجهة: ${APP_VERSION}</p></div>${renderAndroidUpdateCard()}</div></div>
     <div class="card"><h2>الأكواد والروابط</h2><p class="muted">اختصارات لكود التاجر، مسح الكود، ومشاركة رابط التطبيق.</p><div class="settings-compact-actions">${shopCodeShortcut}<button class="btn secondary" id="copyShop">نسخ كود المحل</button></div><div class="form"><div class="field"><label>رابط التطبيق للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="https://hesabi-app-edc7e.web.app"></div><div class="settings-compact-actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إشعار تحديث للعملاء</button>':''}</div></div></div>
     <div class="card"><h2>النسخ والعمليات</h2><p class="muted">أدوات الجهاز الحالي فقط. استخدمها بحذر.</p><div class="settings-compact-actions"><button class="btn light" id="exportData">تصدير الإعدادات</button><label class="btn light settings-file-label">استيراد<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار الدور</button><button class="btn danger" id="wipeAll">مسح هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج</button></div></div>
   </div>`;
@@ -3000,6 +3057,8 @@ function renderSettings(){
     bindPhoneAndSoundSettingsControls();
     bindSecurityLockSettingsControls();
     if($('forceAppUpdateBtn')) $('forceAppUpdateBtn').onclick=forceAppUpdate;
+    if($('checkAndroidUpdateBtn')) $('checkAndroidUpdateBtn').onclick=()=>checkAndroidUpdate(false);
+    if($('installAndroidUpdateBtn')) $('installAndroidUpdateBtn').onclick=installAndroidUpdate;
     if($('copyShop')) $('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId||'');
     if($('enableNotify')) $('enableNotify').onclick=enableNotifications;
     if($('exportData')) $('exportData').onclick=exportData;
