@@ -82,6 +82,21 @@
       .invoice-title-btn{width:auto}
     }
 
+
+    /* WhatsApp/Telegram style compact messaging and notifications */
+    .wa-chat-card{padding:10px;border-radius:20px}
+    .wa-chat-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .wa-chat-head h2{margin:0;font-size:16px}
+    .wa-contact-select{margin:0 0 8px}
+    .wa-thread{background:linear-gradient(180deg,#eef8f7,#f8fbff);border:1px solid #dbe7ee;border-radius:18px;padding:8px;min-height:260px;max-height:58vh;overflow:auto;display:flex;flex-direction:column;gap:5px;scroll-behavior:smooth}
+    .wa-day{align-self:center;background:rgba(15,118,110,.10);color:#0f766e;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:800;margin:3px 0}
+    .wa-bubble{max-width:84%;border:1px solid #dbe7ee;border-radius:14px;padding:5px 8px;box-shadow:0 2px 7px rgba(15,23,42,.04);line-height:1.35}
+    .wa-bubble.mine{align-self:flex-end;background:#dcfce7;border-color:#bbf7d0;border-bottom-right-radius:5px}
+    .wa-bubble.theirs{align-self:flex-start;background:#fff;border-bottom-left-radius:5px}
+    .wa-name{font-size:10px;color:#0f766e;font-weight:900;margin-bottom:1px}.wa-text{font-size:13px;white-space:pre-wrap;word-break:break-word}.wa-meta{display:flex;gap:5px;align-items:center;justify-content:flex-end;color:#64748b;font-size:10px;margin-top:1px}.wa-ticks{font-weight:900;color:#0f766e}.wa-unread-chip{font-size:10px;background:#fef3c7;color:#92400e;border-radius:999px;padding:1px 6px;font-weight:800}
+    .wa-composer{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:8px}.wa-composer textarea{min-height:40px!important;max-height:82px;border-radius:18px;padding:9px 12px}.wa-composer .btn{min-height:40px;padding:8px 13px;border-radius:18px;width:auto!important}.wa-empty{text-align:center;color:#64748b;font-size:12px;padding:18px 4px}
+    .notify-list{display:grid;gap:5px;margin-top:8px}.notify-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid #dbe7ee;border-radius:14px;background:#fff;padding:6px 8px;min-height:42px}.notify-row.unread{background:#ecfeff;border-color:#99f6e4}.notify-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#f1f5f9;font-size:15px}.notify-title{font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.notify-body{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.notify-meta{text-align:left;display:grid;gap:3px;justify-items:end}.notify-time{font-size:10px;color:#64748b;white-space:nowrap}.notify-state{font-size:10px;border-radius:999px;padding:2px 7px;background:#f1f5f9;color:#475569;font-weight:800}.notify-row.unread .notify-state{background:#ccfbf1;color:#0f766e}.notify-open{min-height:28px!important;padding:4px 8px!important;border-radius:10px!important;font-size:11px!important;width:auto!important}
+    @media(max-width:420px){.wa-thread{max-height:60vh}.wa-bubble{max-width:90%}.wa-text{font-size:12.5px}.notify-row{grid-template-columns:auto 1fr auto;padding:5px 6px}.notify-icon{width:25px;height:25px}.notify-title{font-size:12.5px}.notify-body{font-size:10.5px}.wa-composer{grid-template-columns:1fr 72px}}
     @media(max-width:420px){.app{padding:10px 10px 98px}.top{margin:0 -10px 8px;padding:10px}.title h1{font-size:20px}.card{border-radius:20px;padding:12px}.actions .btn{flex:1 1 calc(50% - 8px)}.nav-inner{padding-bottom:2px}.tab{min-width:74px}}
   </style>
 
@@ -1258,15 +1273,45 @@ function renderMessages(){
     const selected=state.selectedMessageCustomer || cache.customers[0]?.customerId || '';
     const opts=cache.customers.map(c=>`<option value="${c.customerId}" ${c.customerId===selected?'selected':''}>${esc(c.name)} - ${esc(c.phone||'')}</option>`).join('');
     const msgs=selected?cache.messages.filter(m=>m.customerId===selected):[];
-    $('page_messages').innerHTML=`<div class="card"><h2>مراسلة العملاء</h2><div class="field"><label>اختر العميل</label><select id="messageCustomer">${opts}</select></div>${renderMessageList(msgs)}<div class="form"><div class="field"><label>رسالة نصية</label><textarea id="messageText" placeholder="اكتب رسالتك للعميل..."></textarea></div><button class="btn" id="sendMessage" ${selected?'':'disabled'}>إرسال رسالة</button></div></div>`;
-    setTimeout(()=>{$('messageCustomer')&&($('messageCustomer').onchange=()=>{state.selectedMessageCustomer=$('messageCustomer').value; save(); renderMessages()}); $('sendMessage')&&($('sendMessage').onclick=()=>sendMessageToCustomer($('messageCustomer').value));});
+    const cust=cache.customers.find(c=>c.customerId===selected);
+    $('page_messages').innerHTML=`<div class="card wa-chat-card"><div class="wa-chat-head"><h2>محادثة ${esc(cust?.name||'العميل')}</h2><span class="status ${unreadChatCount(msgs)?'pending':'approved'}">${unreadChatCount(msgs)} جديد</span></div><div class="field wa-contact-select"><label>اختر العميل</label><select id="messageCustomer">${opts}</select></div>${renderMessageList(msgs)}<div class="wa-composer"><textarea id="messageText" placeholder="اكتب رسالة..."></textarea><button class="btn" id="sendMessage" ${selected?'':'disabled'}>إرسال</button></div></div>`;
+    setTimeout(()=>{markVisibleMessagesRead(msgs); scrollChatToBottom(); $('messageCustomer')&&($('messageCustomer').onchange=()=>{state.selectedMessageCustomer=$('messageCustomer').value; save(); renderMessages()}); $('sendMessage')&&($('sendMessage').onclick=()=>sendMessageToCustomer($('messageCustomer').value));});
   }else{
-    $('page_messages').innerHTML=`<div class="card"><h2>رسائل مع ${esc(state.shopName||state.shopId)}</h2>${renderMessageList(cache.messages)}<div class="form"><div class="field"><label>رسالة نصية</label><textarea id="messageText" placeholder="اكتب رسالتك للتاجر..."></textarea></div><button class="btn" id="sendMessage">إرسال رسالة</button></div></div>`;
-    setTimeout(()=>{$('sendMessage').onclick=sendCustomerMessage;});
+    $('page_messages').innerHTML=`<div class="card wa-chat-card"><div class="wa-chat-head"><h2>${esc(state.shopName||state.shopId||'التاجر')}</h2><span class="status ${unreadChatCount(cache.messages)?'pending':'approved'}">${unreadChatCount(cache.messages)} جديد</span></div>${renderMessageList(cache.messages)}<div class="wa-composer"><textarea id="messageText" placeholder="اكتب رسالة..."></textarea><button class="btn" id="sendMessage">إرسال</button></div></div>`;
+    setTimeout(()=>{markVisibleMessagesRead(cache.messages); scrollChatToBottom(); $('sendMessage').onclick=sendCustomerMessage;});
   }
 }
+function unreadChatCount(msgs=[]){
+  return (msgs||[]).filter(m=> state.role==='trader' ? (m.fromRole==='customer' && !m.readByTrader) : (m.fromRole==='trader' && !m.readByCustomer)).length;
+}
+function messageStatusLabel(m){
+  const mine=m.fromRole===state.role;
+  if(!mine) return '';
+  const seen=state.role==='trader' ? !!m.readByCustomer : !!m.readByTrader;
+  return seen ? '<span class="wa-ticks">✓✓</span> مقروءة' : '<span class="wa-ticks">✓</span> مرسلة';
+}
+function messageDayLabel(ms){try{return new Date(Number(ms||Date.now())).toLocaleDateString('ar-YE')}catch{return ''}}
+function messageTimeLabel(ms){try{return new Date(Number(ms||Date.now())).toLocaleTimeString('ar-YE',{hour:'2-digit',minute:'2-digit'})}catch{return ''}}
 function renderMessageList(msgs){
-  return `<div class="list" style="margin:10px 0">${msgs.map(m=>`<div class="item" style="background:${m.fromRole==='trader'?'#eef4ff':'#f0fdfa'}"><div class="row"><h3>${m.fromRole==='trader'?'التاجر':'العميل'}: ${esc(m.fromName||'')}</h3><span class="muted">${new Date(Number(m.createdMs||Date.now())).toLocaleString('ar-YE')}</span></div><div>${esc(m.text||'')}</div></div>`).join('')||'<p class="muted">لا توجد رسائل بعد.</p>'}</div>`
+  if(!msgs?.length) return '<div class="wa-thread" id="chatThread"><div class="wa-empty">لا توجد رسائل بعد.</div></div>';
+  let lastDay='';
+  return `<div class="wa-thread" id="chatThread">${msgs.map(m=>{
+    const day=messageDayLabel(m.createdMs); const dayHtml=day!==lastDay?`<div class="wa-day">${esc(day)}</div>`:''; lastDay=day;
+    const mine=m.fromRole===state.role;
+    const unread=!mine && (state.role==='trader' ? !m.readByTrader : !m.readByCustomer);
+    return `${dayHtml}<div class="wa-bubble ${mine?'mine':'theirs'}"><div class="wa-name">${mine?'أنت':esc(m.fromName||(m.fromRole==='trader'?'التاجر':'العميل'))}${unread?' <span class="wa-unread-chip">جديد</span>':''}</div><div class="wa-text">${esc(m.text||'')}</div><div class="wa-meta"><span>${messageTimeLabel(m.createdMs)}</span><span>${messageStatusLabel(m)}</span></div></div>`;
+  }).join('')}</div>`;
+}
+function scrollChatToBottom(){const el=$('chatThread'); if(el) el.scrollTop=el.scrollHeight;}
+async function markVisibleMessagesRead(msgs=[]){
+  try{
+    if(!db||!state.shopId) return;
+    const targets=(msgs||[]).filter(m=> state.role==='trader' ? (m.fromRole==='customer' && !m.readByTrader) : (m.fromRole==='trader' && !m.readByCustomer));
+    for(const m of targets.slice(0,25)){
+      const patch=state.role==='trader'?{readByTrader:true,readByTraderAt:serverTimestamp()}:{readByCustomer:true,readByCustomerAt:serverTimestamp()};
+      await updateDoc(doc(db,'shops',state.shopId,'messages',m.id),patch);
+    }
+  }catch(e){console.warn('mark messages read failed',e)}
 }
 async function sendCustomerMessage(){
   const text=($('messageText')?.value||'').trim(); if(!text){msg('اكتب الرسالة أولًا','error');return}
@@ -1530,10 +1575,13 @@ async function cancelSchedule(scheduleId){
   msg('تم إلغاء الدفعة المجدولة','success');
 }
 
+function notifyIcon(type){return ({order:'🧾',payment:'💵',return:'↩️',schedule:'⏰',message:'💬'}[type]||'🔔')}
+function notifyTime(ms){try{return new Date(Number(ms||Date.now())).toLocaleString('ar-YE',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}catch{return ''}}
 function renderNotifications(){
+  ensureNotifyState();
   const notes=getNotifications();
   const unread=unreadNotifications();
-  $('page_notifications').innerHTML=`<div class="card"><div class="row"><h2>الإشعارات</h2><span class="status ${unread.length?'pending':'approved'}">${unread.length} جديد</span></div><p class="muted">تظهر هنا الطلبات الجديدة، طلبات السداد، المرتجعات، الاستحقاقات، حالات القبول والرفض، والرسائل الجديدة. عند فتح هذه الصفحة تُحذف العلامة من الأيقونة فقط ولا تُحذف البيانات.</p><div class="actions"><button class="btn secondary" id="markAllRead">تعليم الكل كمقروء</button></div><div class="list" style="margin-top:10px">${notes.map(n=>`<div class="item ${state.readNotifyIds&&state.readNotifyIds[notificationKey(n)]?'':'notice'}"><div class="row"><h3>${esc(n.title)}</h3><span class="muted">${new Date(Number(n.createdMs||Date.now())).toLocaleString('ar-YE')}</span></div><div>${esc(n.body||'')}</div><div class="actions"><button class="btn light" data-open-note="${esc(n.page)}">فتح</button></div></div>`).join('')||'<p class="muted">لا توجد إشعارات.</p>'}</div></div>`;
+  $('page_notifications').innerHTML=`<div class="card"><div class="row"><h2>الإشعارات</h2><span class="status ${unread.length?'pending':'approved'}">${unread.length} جديد</span></div><div class="actions"><button class="btn secondary" id="markAllRead">تعليم الكل كمقروء</button></div><div class="notify-list">${notes.map(n=>{const isRead=!!(state.readNotifyIds&&state.readNotifyIds[notificationKey(n)]);return `<div class="notify-row ${isRead?'':'unread'}"><div class="notify-icon">${notifyIcon(n.type)}</div><div><div class="notify-title">${esc(n.title)}</div><div class="notify-body">${esc(n.body||'')}</div></div><div class="notify-meta"><span class="notify-time">${notifyTime(n.createdMs)}</span><span class="notify-state">${isRead?'مقروء':'جديد'}</span><button class="btn light notify-open" data-open-note="${esc(n.page)}">فتح</button></div></div>`}).join('')||'<p class="muted">لا توجد إشعارات.</p>'}</div></div>`;
   markNotificationsRead();
   setTimeout(()=>{$('markAllRead')&&($('markAllRead').onclick=()=>{markNotificationsRead(); renderNotifications(); renderNav(); msg('تم تعليم الإشعارات كمقروءة','success')}); document.querySelectorAll('[data-open-note]').forEach(b=>b.onclick=()=>openNotificationPage(b.dataset.openNote)); renderNav();});
 }
