@@ -213,6 +213,7 @@ const DEFAULT_FIREBASE_CONFIG = {
 };
 if(!state.firebaseConfig?.apiKey){ state.firebaseConfig = DEFAULT_FIREBASE_CONFIG; save(); }
 let app=null, db=null, auth=null, currentUser=null, authReady=false, unsub=[];
+let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
 const APP_VERSION='2026-06-01-كتالوج-ذكي-إصلاح-البحث-والكيبورد';
@@ -331,7 +332,7 @@ function currentCustomerLink(){return (state.customerLinks||[]).find(x=>x.shopId
 function setActiveCustomerShop(shopId){
   const link=(state.customerLinks||[]).find(x=>x.shopId===shopId);
   if(!link){msg('لم يتم العثور على هذا التاجر في روابطك','error');return}
-  state.activeShopId=shopId; state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||''; state.shopName=link.shopName||shopId; save(); cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]}; startListeners(); active='home'; render(); msg('تم التبديل إلى حساب: '+(link.shopName||shopId),'success');
+  state.activeShopId=shopId; state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||''; state.shopName=link.shopName||shopId; save(); resetCacheForLiveData(); listenersStartedKey=''; startListeners(); active='home'; render(); msg('تم التبديل إلى حساب: '+(link.shopName||shopId),'success');
 }
 function beep(){
   if(!state.soundEnabled) return;
@@ -472,6 +473,17 @@ async function waitForAuth(){
     setTimeout(()=>resolveOnce(auth.currentUser||currentUser), 2500);
   });
 }
+function liveDataKey(){return [uid(),state.role||'',state.shopId||'',state.customerId||'',state.activeShopId||''].join('|')}
+function resetCacheForLiveData(){cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]}}
+function ensureLiveDataListeners(){
+  if(!db || !uid() || !state.profileDone || !state.shopId) return;
+  const key=liveDataKey();
+  if(listenersStartedKey===key && unsub.length) return;
+  listenersStartedKey=key;
+  resetCacheForLiveData();
+  startListeners();
+}
+
 function render(){
   normalizeCustomerLinks();
   const hasCfg=!!state.firebaseConfig?.apiKey;
@@ -486,7 +498,7 @@ function render(){
   if(!hasCfg){fillCfg(); return}
   if(hasCfg && !signed){bindAuthButtons(); return}
   if(state.role && !state.profileDone){renderProfileSetup(); return}
-  if(state.profileDone){notifyAndroidSession(); renderNav(); show(active); setTimeout(notifyAndroidSession,600)}
+  if(state.profileDone){ensureLiveDataListeners(); notifyAndroidSession(); renderNav(); show(active); setTimeout(notifyAndroidSession,600)}
 }
 
 function fillCfg(){['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{$('cfg_'+k).value=state.firebaseConfig?.[k]||''})}
@@ -688,7 +700,7 @@ function show(p){
 }
 
 function startListeners(){
-  unsub.forEach(f=>f());unsub=[]; normalizeCustomerLinks(); if(!db||!state.shopId) return;
+  unsub.forEach(f=>f());unsub=[]; normalizeCustomerLinks(); if(!db||!state.shopId) return; listenersStartedKey=liveDataKey();
   const base=(name)=>collection(db,'shops',state.shopId,name);
   unsub.push(onSnapshot(doc(db,'shops',state.shopId),s=>{cache.shop=s.exists()?s.data():null; if(state.role==='customer'){const link=currentCustomerLink(); if(link&&cache.shop?.name&&link.shopName!==cache.shop.name){link.shopName=cache.shop.name; state.shopName=cache.shop.name; save();}} if(state.profileDone) show(active)}));
   unsub.push(onSnapshot(base('items'),s=>{cache.items=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}));
@@ -1954,7 +1966,7 @@ function renderSchedules(){
     await initFirebase();
     render();
     await waitForAuth();
-    if(state.profileDone && uid()) { startListeners(); notifyAndroidSession(); }
+    if(state.profileDone && uid()) { ensureLiveDataListeners(); notifyAndroidSession(); }
     render();
   }catch(e){
     console.error(e);
