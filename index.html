@@ -116,6 +116,17 @@
   .lines-row .compact-table{min-width:420px}.lines-row .compact-table th{background:#0f766e;padding:6px 4px}.lines-row .compact-table td{padding:5px 4px;font-size:11px}
   .mini-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;align-items:center}.btn.mini{padding:6px 8px!important;border-radius:10px!important;min-height:28px!important;font-size:11px!important;width:auto!important;box-shadow:none!important}.compact-main-btn{width:auto!important;min-width:150px;padding:9px 14px!important;min-height:36px!important}.compact-form .field input,.compact-form .field select,.compact-form .field textarea{padding:9px 10px;border-radius:12px}.compact-form .field textarea{min-height:58px}.compact-filters{margin:8px 0}.qty-mini-input{width:74px!important;min-height:32px!important;text-align:center;padding:6px!important;border-radius:10px!important}.selected-table th,.selected-table td{padding:7px 5px!important;font-size:12px!important}.invoice-mini-actions .btn{min-height:34px!important;padding:7px 10px!important;font-size:12px!important}
   @media(max-width:520px){.compact-table{min-width:560px}.compact-table th{font-size:11px;padding:7px 4px}.compact-table td{font-size:11px;padding:5px 4px}.btn.mini{font-size:10px!important;padding:5px 6px!important}.compact-table-wrap{border-radius:14px}.compact-main-btn{width:100%!important}.qty-mini-input{width:58px!important}.compact-table td.name{min-width:105px}}
+
+
+    .quick-home-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+    .quick-home-btn{border:1px solid #dbe7ee;background:linear-gradient(180deg,#fff,#f8fafc);border-radius:16px;padding:9px 6px;min-height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 4px 12px rgba(15,23,42,.05);cursor:pointer;color:#0f172a;position:relative;text-align:center}
+    .quick-home-btn:active{transform:scale(.98)}
+    .quick-home-btn .qicon{font-size:22px;line-height:1}
+    .quick-home-btn .qlabel{font-size:11px;font-weight:900;line-height:1.25}
+    .quick-home-btn .qbadge{position:absolute;top:5px;left:5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
+    .quick-summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px}
+    .quick-summary-row .metric{padding:8px;border-radius:15px}.quick-summary-row .metric b{font-size:15px}.quick-summary-row .metric span{font-size:11px}
+    @media(max-width:520px){.quick-home-grid{grid-template-columns:repeat(3,1fr);gap:7px}.quick-home-btn{min-height:64px;padding:8px 4px;border-radius:14px}.quick-home-btn .qicon{font-size:20px}.quick-home-btn .qlabel{font-size:10.5px}.quick-summary-row{grid-template-columns:repeat(2,1fr)}}
 </style>
 
 </head>
@@ -817,6 +828,29 @@ function renderSearch(){
   document.querySelectorAll('[data-open-statement]').forEach(b=>b.onclick=()=>{state.statementCustomer=b.getAttribute('data-open-statement'); save(); show('statement')});
 }
 
+
+function homeQuickItems(){
+  const n=unreadCount();
+  const trader=[
+    ['search','🔎','بحث',0],['items','📦','الأصناف',cache.items.length],['customers','👥','العملاء',cache.customers.length],['orders','🧾','الطلبات',cache.orders.filter(o=>o.status==='pending'||o.status==='pending_trader'||o.status==='pending_customer').length],
+    ['messages','💬','الرسائل',getNotifications().filter(x=>x.type==='message'&&!state.readNotifyIds?.[notificationKey(x)]).length],['payments','💵','السداد',cache.payments.filter(p=>p.status==='pending').length],['invoices','📄','الفواتير',cache.invoices.length],['statement','📊','كشف الحساب',0],
+    ['stock','🏬','المخزون',cache.items.filter(i=>Number(i.stock||0)<=Number(i.minStock||0)).length],['returns','↩️','المرتجعات',cache.returns.filter(r=>r.status==='pending').length],['schedules','⏰','الاستحقاقات',cache.schedules.filter(s=>s.status==='pending').length],['collections','🧮','التحصيل',0],
+    ['reports','📈','التقارير',0],['audit','🗂️','السجل',0],['policies','⚙️','السياسات',0],['notifications','🔔','الإشعارات',n],['settings','🛠️','الإعدادات',0]
+  ];
+  const customer=[
+    ['search','🔎','بحث',0],['shops','🏪','متاجري',(state.customerLinks||[]).length],['items','🛒','شراء',catalogCartTotal().items],['orders','🧾','طلباتي',cache.orders.filter(o=>o.status==='pending'||o.status==='pending_trader'||o.status==='pending_customer').length],
+    ['messages','💬','الرسائل',getNotifications().filter(x=>x.type==='message'&&!state.readNotifyIds?.[notificationKey(x)]).length],['payments','💵','السداد',cache.payments.filter(p=>p.status==='pending').length],['invoices','📄','الفواتير',cache.invoices.length],['statement','📊','كشف الحساب',0],
+    ['returns','↩️','المرتجعات',cache.returns.filter(r=>r.status==='pending').length],['schedules','⏰','الاستحقاقات',cache.schedules.filter(s=>s.status==='pending').length],['reports','📈','التقارير',0],['notifications','🔔','الإشعارات',n],['settings','🛠️','الإعدادات',0]
+  ];
+  return state.role==='trader'?trader:customer;
+}
+function renderHomeQuickGrid(){
+  return `<div class="quick-home-grid">${homeQuickItems().map(([page,icon,label,count])=>`<button class="quick-home-btn" data-home-page="${page}" aria-label="${esc(label)}"><span class="qicon">${icon}</span><span class="qlabel">${esc(label)}</span>${Number(count||0)>0?`<span class="qbadge">${Number(count)>99?'99+':Number(count)}</span>`:''}</button>`).join('')}</div>`;
+}
+function bindHomeQuickGrid(){
+  document.querySelectorAll('[data-home-page]').forEach(b=>b.onclick=()=>show(b.getAttribute('data-home-page')||'home'));
+}
+
 function renderHome(){
   const approvedOrders=cache.orders.filter(o=>o.status==='approved');
   const totalOrders=approvedOrders.reduce((a,o)=>a+Number(o.total||0),0);
@@ -825,8 +859,11 @@ function renderHome(){
   const debt= state.role==='customer' ? customerDebtInfo().balance : cache.customers.reduce((a,c)=>a+Number(c.balance||0),0);
   const lowStock=cache.items.filter(i=>Number(i.stock||0)<=Number(i.minStock||0) && Number(i.stock||0)>0).length;
   const outStock=cache.items.filter(i=>Number(i.stock||0)<=0).length;
-  $('page_home').innerHTML=`<div class="card"><h2>بحث سريع</h2><p class="muted">للوصول السريع لأي صنف أو عميل أو فاتورة أو طلب أو سداد.</p><div class="actions"><button class="btn secondary" id="homeSearchBtn">فتح البحث</button></div></div><div class="card"><h2>${state.role==='trader'?'لوحة التاجر':'لوحة العميل'}</h2><div class="grid"><div class="metric"><span class="muted">إجمالي المديونية</span><b>${money(debt)}</b></div><div class="metric"><span class="muted">طلبات معلقة</span><b>${pendingOrders}</b></div><div class="metric"><span class="muted">طلبات سداد معلقة</span><b>${pendingPays}</b></div><div class="metric"><span class="muted">مبيعات مقبولة</span><b>${money(totalOrders)}</b></div>${state.role==='trader'?`<div class="metric"><span class="muted">أصناف منخفضة/منتهية</span><b>${lowStock} / ${outStock}</b></div><div class="metric"><span class="muted">عدد العملاء</span><b>${cache.customers.length}</b></div>`:''}</div><p class="muted">${state.role==='trader'?'أعطِ العملاء كود المحل للربط:':'حسابك الحالي مع التاجر:'}</p><div class="mono">${esc(state.role==='customer'?(state.shopName||state.shopId):state.shopId)}</div>${state.role==='customer'?renderCustomerLimitBox():''}</div>
-  <div class="card"><h2>آخر الحالات</h2><div class="list">${[...cache.orders.slice(0,3),...cache.payments.slice(0,3)].map(x=>`<div class="item"><div class="row"><h3>${x.amount!==undefined?'طلب سداد':'طلب شراء'} - ${money(x.total||x.amount)}</h3><span class="status ${x.status}">${statusText(x.status)}</span></div><div class="muted">${esc(x.customerName||'')} ${esc(x.note||x.traderNote||'')}</div></div>`).join('')||'<p class="muted">لا توجد عمليات بعد.</p>'}</div></div>`;
+  const lastRows=[...cache.orders.slice(0,3),...cache.payments.slice(0,3)];
+  $('page_home').innerHTML=`<div class="card"><h2>${state.role==='trader'?'الرئيسية - وصول سريع':'الرئيسية - وصول سريع'}</h2><p class="muted">اضغط على أي أيقونة للانتقال مباشرة إلى الصفحة المطلوبة. تم تصميمها كلوحة مختصرة للهاتف بدل النزول بين القوائم.</p>${renderHomeQuickGrid()}</div>
+  <div class="card"><h2>${state.role==='trader'?'ملخص التاجر':'ملخص العميل'}</h2><div class="quick-summary-row"><div class="metric"><span class="muted">إجمالي المديونية</span><b>${money(debt)}</b></div><div class="metric"><span class="muted">طلبات معلقة</span><b>${pendingOrders}</b></div><div class="metric"><span class="muted">سداد معلق</span><b>${pendingPays}</b></div><div class="metric"><span class="muted">مبيعات مقبولة</span><b>${money(totalOrders)}</b></div>${state.role==='trader'?`<div class="metric"><span class="muted">منخفض/منتهي</span><b>${lowStock} / ${outStock}</b></div><div class="metric"><span class="muted">العملاء</span><b>${cache.customers.length}</b></div>`:''}</div><p class="muted">${state.role==='trader'?'كود المحل للربط:':'حسابك الحالي مع التاجر:'}</p><div class="mono">${esc(state.role==='customer'?(state.shopName||state.shopId):state.shopId)}</div>${state.role==='customer'?renderCustomerLimitBox():''}</div>
+  <div class="card"><h2>آخر الحالات</h2><div class="compact-table-wrap"><table class="compact-table"><thead><tr><th>النوع</th><th>المبلغ</th><th>الحالة</th><th>ملاحظة</th></tr></thead><tbody>${lastRows.map(x=>`<tr><td>${x.amount!==undefined?'سداد':'شراء'}</td><td>${money(x.total||x.amount)}</td><td><span class="status ${x.status}">${statusText(x.status)}</span></td><td>${esc(x.customerName||x.note||x.traderNote||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">لا توجد عمليات بعد.</td></tr>'}</tbody></table></div></div>`;
+  bindHomeQuickGrid();
 }
 function renderCustomerLimitBox(){const d=customerDebtInfo(); return `<div class="notice"><b>سقف الدين:</b> ${money(d.limit)}<br><b>الدين الحالي:</b> ${money(d.balance)}<br><b>المتاح للشراء الآجل:</b> ${money(d.remaining)}</div>`}
 
