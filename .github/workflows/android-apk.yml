@@ -1,0 +1,52 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Prepare APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/hesabi-app-latest.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hesabi-app-latest-apk
+          path: release/hesabi-app-latest.apk
+
+      - name: Publish latest Android release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-android -y --cleanup-tag || true
+          git tag -f latest-android
+          git push -f origin latest-android
+          gh release create latest-android release/hesabi-app-latest.apk             --title "Hesabi Android Latest"             --notes "آخر APK مبني تلقائيًا من فرع main. افتح الرابط من الهاتف وحمّل hesabi-app-latest.apk ثم ثبته."             --latest
