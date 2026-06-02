@@ -1011,23 +1011,6 @@ function bindCatalogButtons(){
   const send=$('sendOrder'); if(send) send.onclick=sendCustomerOrder;
 }
 
-function renderItems(){
-  if(state.role==='trader'){
-    $('page_items').innerHTML=`<div class="card"><h2>إضافة صنف للبيع</h2><div class="form"><div class="field"><label>اسم الصنف</label><input id="itemName"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" placeholder="مثال: مواد غذائية / مشروبات / منظفات" value="عام"></div><div class="field"><label>السعر</label><input id="itemPrice" type="number" min="0"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>الكمية المتوفرة</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد التنبيه المنخفض</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><button class="btn" id="addItem">حفظ الصنف</button></div></div>
-    <div class="card"><h2>الأصناف والمخزون</h2><p class="muted">استخدم التصنيف لتسهيل اختيار العميل عند وجود مئات أو آلاف الأصناف.</p><div class="list">${cache.items.map(i=>renderItemCard(i)).join('')||'<p class="muted">لا توجد أصناف.</p>'}</div></div>`;
-    setTimeout(()=>{ $('addItem').onclick=addItem; bindItemButtons(); });
-  } else {
-    const cs=catalogState();
-    cs.category='الكل'; cs.availableOnly=true; cs.sort='popular';
-    const cart=catalogCartTotal();
-    $('page_items').innerHTML=`<div class="card"><h2>طلب شراء</h2>${cache.shop?.allowCustomerOrders===false?'<div class="notice error">التاجر أوقف استقبال طلبات العملاء مؤقتًا. يمكنك المراسلة فقط.</div>':''}${cs.editingOrderId?`<div class="notice"><b>أنت تعدّل طلبًا معلقًا:</b> ${esc(cs.editingOrderNo||cs.editingOrderId)}<br>يمكنك تغيير الكميات أو نوع الدفع ثم حفظ التعديل، أو إلغاء التعديل والرجوع للطلب كما هو.</div>`:''}</div>
-    <div class="catalog-toolbar only-search"><div class="field catalog-search-wrap"><label>بحث عن صنف</label><input id="catalogSearch" value="${esc(cs.q||'')}" placeholder="اكتب اسم الصنف مثل: زيت، سكر، رز"><div id="catalogSearchPopup" class="catalog-search-popup hidden"></div></div><div class="muted" id="catalogSummary">المحدد الآن: ${cart.items} أصناف / ${cart.count} كمية</div></div>
-    <div id="catalogSelectedOnly">${renderSelectedCartTable(cart)}</div>
-    <div id="catalogCartBar"></div>
-    <div id="orderReviewDynamic" class="hidden"></div>`;
-    setTimeout(bindCatalogButtons);
-  }
-}
 function renderItemCard(i){
   const stock=Number(i.stock||0), min=Number(i.minStock||0);
   const stockClass=stock<=0?'error':(min>0&&stock<=min?'notice':'success');
@@ -1174,13 +1157,6 @@ async function sendCustomerOrder(){
   }catch(e){msg(e.message,'error')}
 }
 
-function renderCustomers(){
-  if(state.role!=='trader'){show('home');return}
-  const options=cache.customers.map(c=>`<option value="${c.customerId}">${esc(c.name)} - دينه ${money(c.balance||0)} - سقفه ${money(c.creditLimit||0)}</option>`).join('');
-  $('page_customers').innerHTML=`<div class="card"><h2>العملاء وسقوف الدين</h2><p class="muted">حدد لكل عميل سقف دين مختلف. لا يمكن إنشاء أو قبول طلب آجل يتجاوز سقف العميل.</p><div class="list">${cache.customers.map(c=>renderCustomerCard(c)).join('')||'<p class="muted">لا يوجد عملاء مرتبطون بعد.</p>'}</div></div>
-  <div class="card"><h2>إنشاء طلب بيع وإرساله للعميل</h2><p class="muted">التاجر يجهز الأصناف للعميل. بعد موافقة العميل يتم خصم الكمية، وإذا كان البيع آجلًا تضاف القيمة إلى حسابه.</p><div class="form"><div class="field"><label>العميل</label><select id="saleCustomer">${options}</select></div>${cache.items.filter(i=>i.isActive!==false).map(i=>`<div class="field"><label>${esc(i.name)} - ${money(i.price)} | المتوفر: ${Number(i.stock||0)}</label><input data-item="${i.id}" data-name="${esc(i.name)}" data-price="${Number(i.price||0)}" data-stock="${Number(i.stock||0)}" type="number" min="0" max="${Number(i.stock||0)}" placeholder="الكمية" ${Number(i.stock||0)>0?'':'disabled'}></div>`).join('')||'<p class="muted">لا توجد أصناف.</p>'}<div class="field"><label>نوع الدفع</label><select id="salePayType"><option value="credit">آجل</option><option value="cash">كاش</option></select></div><div class="field"><label>ملاحظة للعميل</label><textarea id="saleNote"></textarea></div><button class="btn" id="sendTraderSale" ${cache.customers.length&&cache.items.length?'':'disabled'}>إرسال الطلب للعميل للموافقة</button></div></div>`;
-  setTimeout(()=>{document.querySelectorAll('[data-set-limit]').forEach(b=>b.onclick=()=>setCreditLimit(b.dataset.setLimit));document.querySelectorAll('[data-customer-status]').forEach(b=>b.onclick=()=>setCustomerStatus(b.dataset.customerStatus,b.dataset.statusValue)); if($('sendTraderSale')) $('sendTraderSale').onclick=sendTraderSale;});
-}
 function customerStatusLabel(status){return ({active:'نشط',cash_only:'كاش فقط',blocked:'موقوف'}[status]||'نشط')}
 function customerStatusClass(status){return status==='blocked'?'rejected':(status==='cash_only'?'pending':'approved')}
 function renderCustomerCard(c){
@@ -1213,10 +1189,6 @@ async function sendTraderSale(){
   }catch(e){msg(e.message,'error')}
 }
 
-function renderOrders(){
-  $('page_orders').innerHTML=`<div class="card"><h2>${state.role==='trader'?'طلبات البيع والشراء':'طلباتي'}</h2><div class="list">${cache.orders.map(o=>renderOrderCard(o)).join('')||'<p class="muted">لا توجد طلبات.</p>'}</div></div>`;
-  setTimeout(()=>{document.querySelectorAll('[data-approve-order]').forEach(b=>b.onclick=()=>approveOrder(b.dataset.approveOrder));document.querySelectorAll('[data-reject-order]').forEach(b=>b.onclick=()=>rejectOrder(b.dataset.rejectOrder));document.querySelectorAll('[data-customer-approve]').forEach(b=>b.onclick=()=>customerApproveOrder(b.dataset.customerApprove));document.querySelectorAll('[data-customer-reject]').forEach(b=>b.onclick=()=>customerRejectOrder(b.dataset.customerReject));document.querySelectorAll('[data-edit-customer-order]').forEach(b=>b.onclick=()=>loadOrderForEdit(b.dataset.editCustomerOrder));document.querySelectorAll('[data-cancel-customer-order]').forEach(b=>b.onclick=()=>cancelCustomerOrder(b.dataset.cancelCustomerOrder));});
-}
 function renderOrderCard(o){
   const source=o.source==='trader'?'أنشأه التاجر وأُرسل للعميل':'أنشأه العميل وأُرسل للتاجر';
   const canTrader=state.role==='trader'&&(o.status==='pending'||o.status==='pending_trader');
@@ -1322,30 +1294,6 @@ function filteredInvoices(){
   if(to){const ms=new Date(to+'T23:59:59').getTime(); rows=rows.filter(x=>Number(x.createdMs||0)<=ms)}
   return rows;
 }
-function renderInvoices(){
-  const selectedCustomer=state.invFilterCustomer||'';
-  const selectedPay=state.invFilterPay||'';
-  const customerOptions=state.role==='trader'?cache.customers.map(c=>`<option value="${esc(c.customerId)}" ${selectedCustomer===c.customerId?'selected':''}>${esc(c.name)} - ${esc(c.phone||'')}</option>`).join(''):'';
-  const all=(cache.invoices||[]);
-  const rows=all.filter(inv=>{
-    if(state.role==='trader' && selectedCustomer && inv.customerId!==selectedCustomer) return false;
-    if(selectedPay && (inv.paymentType||'cash')!==selectedPay) return false;
-    return true;
-  });
-  const total=rows.reduce((s,x)=>s+Number(x.total||0),0);
-  const credit=rows.filter(x=>x.paymentType==='credit').reduce((s,x)=>s+Number(x.total||0),0);
-  const cash=rows.filter(x=>x.paymentType!=='credit').reduce((s,x)=>s+Number(x.total||0),0);
-  $('page_invoices').innerHTML=`<div class="card"><div class="row"><h2>الفواتير</h2><span class="status approved">${rows.length} / ${all.length} فاتورة</span></div>
-  <div class="grid"><div class="metric"><span class="muted">إجمالي المعروض</span><b>${money(total)}</b></div><div class="metric"><span class="muted">آجل</span><b>${money(credit)}</b></div><div class="metric"><span class="muted">كاش</span><b>${money(cash)}</b></div></div>
-  <div class="card" style="box-shadow:none"><h3>فلترة الفواتير</h3><div class="grid">${state.role==='trader'?`<div class="field"><label>العميل</label><select id="invFilterCustomer"><option value="">كل العملاء</option>${customerOptions}</select></div>`:''}<div class="field"><label>نوع الدفع</label><select id="invFilterPay"><option value="" ${!selectedPay?'selected':''}>الكل</option><option value="cash" ${selectedPay==='cash'?'selected':''}>كاش</option><option value="credit" ${selectedPay==='credit'?'selected':''}>آجل</option></select></div></div><div class="actions"><button class="btn light" id="clearInvoiceFilters">مسح الفلاتر</button></div></div>
-  <div class="list" style="margin-top:10px">${rows.map(inv=>`<div class="item"><div class="row"><h3>${esc(inv.invoiceNo||inv.id)}</h3><span class="status approved">${payTypeText(inv.paymentType)}</span></div><div class="muted">العميل: ${esc(inv.customerName||'')} | الإجمالي: ${money(inv.total)} | ${new Date(Number(inv.createdMs||Date.now())).toLocaleString('ar-YE')}</div><ul>${(inv.items||[]).map(l=>`<li>${esc(l.name)} × ${Number(l.qty)} = ${money(l.total)}</li>`).join('')}</ul><div class="actions"><button class="btn light" data-print-invoice="${inv.id}">مشاركة نص الفاتورة</button></div></div>`).join('')||'<p class="muted">لا توجد فواتير حسب الفلترة الحالية.</p>'}</div></div>`;
-  setTimeout(()=>{
-    if($('invFilterCustomer')) $('invFilterCustomer').onchange=()=>{state.invFilterCustomer=$('invFilterCustomer').value; save(); renderInvoices()};
-    if($('invFilterPay')) $('invFilterPay').onchange=()=>{state.invFilterPay=$('invFilterPay').value; save(); renderInvoices()};
-    if($('clearInvoiceFilters')) $('clearInvoiceFilters').onclick=()=>{state.invFilterCustomer='';state.invFilterPay='';save();renderInvoices()};
-    document.querySelectorAll('[data-print-invoice]').forEach(b=>b.onclick=()=>shareInvoiceText(b.dataset.printInvoice));
-  });
-}
 async function shareInvoiceText(invoiceId){
   const inv=(cache.invoices||[]).find(x=>x.id===invoiceId); if(!inv)return;
   const lines=(inv.items||[]).map(l=>`- ${l.name} × ${l.qty} = ${money(l.total)}`).join('\n');
@@ -1359,28 +1307,6 @@ function ledgerRowsForCustomer(customerId){
   const pays=(cache.payments||[]).filter(x=>x.customerId===customerId&&x.status==='approved').map(x=>({id:'pay-'+x.id,customerId:x.customerId,customerName:x.customerName,type:'payment',amount:-Number(x.amount||0),note:'سداد مقبول '+(x.method||''),sourceType:'paymentRequest',sourceId:x.id,createdMs:x.createdMs||0}));
   return [...invs,...pays].sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
 }
-function renderStatement(){
-  let customerId=state.role==='customer'?state.customerId:(state.statementCustomerId||cache.customers[0]?.customerId||'');
-  const c=state.role==='customer'?customerDebtInfo(customerId).c:(cache.customers.find(x=>x.customerId===customerId)||{});
-  if(state.role==='trader' && customerId && state.statementCustomerId!==customerId){state.statementCustomerId=customerId; save();}
-  const rows=customerId?ledgerRowsForCustomer(customerId):[];
-  let running=0;
-  const debit=rows.filter(r=>Number(r.amount||0)>0 && r.type!=='cash_invoice').reduce((s,r)=>s+Number(r.amount||0),0);
-  const cashInvoices=rows.filter(r=>r.type==='cash_invoice').reduce((s,r)=>s+Number(r.amount||0),0);
-  const payments=Math.abs(rows.filter(r=>Number(r.amount||0)<0).reduce((s,r)=>s+Number(r.amount||0),0));
-  const balance=Number(c.balance||0);
-  const limit=Number(c.creditLimit||0);
-  const remaining=Math.max(limit-balance,0);
-  const options=cache.customers.map(x=>`<option value="${esc(x.customerId)}" ${x.customerId===customerId?'selected':''}>${esc(x.name)} - ${esc(x.phone||'')}</option>`).join('');
-  $('page_statement').innerHTML=`<div class="card"><div class="row"><h2>كشف الحساب</h2><span class="status approved">${esc(c.name||state.customerName||'')}</span></div>${state.role==='trader'?`<div class="field"><label>اختر العميل</label><select id="statementCustomer"><option value="">اختر عميل</option>${options}</select></div>`:''}
-  <div class="grid"><div class="metric"><span class="muted">الرصيد الحالي / الدين</span><b>${money(balance)}</b></div><div class="metric"><span class="muted">سقف الدين</span><b>${money(limit)}</b></div><div class="metric"><span class="muted">المتاح من السقف</span><b>${money(remaining)}</b></div><div class="metric"><span class="muted">إجمالي سدادات مقبولة</span><b>${money(payments)}</b></div><div class="metric"><span class="muted">فواتير آجلة</span><b>${money(debit)}</b></div><div class="metric"><span class="muted">فواتير كاش</span><b>${money(cashInvoices)}</b></div></div>
-  <div class="actions"><button class="btn light" id="shareStatement">مشاركة كشف الحساب نصيًا</button></div></div>
-  <div class="card"><h2>حركات الحساب</h2><div class="list">${rows.map(r=>{running+=Number(r.amount||0);return `<div class="item"><div class="row"><h3>${ledgerTypeText(r.type)}</h3><b>${Number(r.amount||0)>=0?'+':''}${money(r.amount)}</b></div><div class="muted">${esc(r.note||'')} | ${new Date(Number(r.createdMs||Date.now())).toLocaleString('ar-YE')}</div><div class="muted">الرصيد التراكمي حسب الكشف: ${money(running)}</div></div>`}).join('')||'<p class="muted">لا توجد حركات في كشف الحساب بعد.</p>'}</div></div>`;
-  setTimeout(()=>{
-    if($('statementCustomer')) $('statementCustomer').onchange=()=>{state.statementCustomerId=$('statementCustomer').value;save();renderStatement()};
-    if($('shareStatement')) $('shareStatement').onclick=()=>shareStatementText(customerId);
-  });
-}
 async function shareStatementText(customerId){
   const c=state.role==='customer'?customerDebtInfo(customerId).c:(cache.customers.find(x=>x.customerId===customerId)||{});
   const rows=ledgerRowsForCustomer(customerId);
@@ -1388,26 +1314,6 @@ async function shareStatementText(customerId){
   const body=rows.map(r=>{running+=Number(r.amount||0);return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`}).join('\n');
   const text=`كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\nسقف الدين: ${money(Number(c.creditLimit||0))}\n----------------\n${body||'لا توجد حركات.'}`;
   try{ if(navigator.share) await navigator.share({title:'كشف حساب',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب','success');} }catch(e){try{await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب','success')}catch{}}
-}
-function renderAudit(){
-  if(state.role!=='trader'){show('home');return}
-  $('page_audit').innerHTML=`<div class="card"><h2>سجل العمليات</h2><p class="muted">يعرض آخر 100 عملية مهمة: قبول طلب، إنشاء فاتورة، قبول/رفض سداد، رفض طلب. هذا السجل لا يغير البيانات المالية، لكنه يساعد في المراجعة.</p><div class="list">${(cache.auditLogs||[]).map(a=>`<div class="item"><div class="row"><h3>${esc(a.action)}</h3><span class="muted">${new Date(Number(a.createdMs||Date.now())).toLocaleString('ar-YE')}</span></div><div class="muted">بواسطة: ${esc(a.actorName||a.actorRole||'')}</div><div class="mono">${esc(JSON.stringify(a.details||{},null,2))}</div></div>`).join('')||'<p class="muted">لا يوجد سجل عمليات بعد.</p>'}</div></div>`;
-}
-
-
-function renderStock(){
-  if(state.role!=='trader'){show('home');return}
-  const totalValue=cache.items.reduce((a,i)=>a+Number(i.price||0)*Number(i.stock||0),0);
-  const out=cache.items.filter(i=>Number(i.stock||0)<=0);
-  const low=cache.items.filter(i=>Number(i.stock||0)>0 && Number(i.minStock||0)>0 && Number(i.stock||0)<=Number(i.minStock||0));
-  const selected=state.stockFilterItem||'all';
-  const movements=(cache.stockLedger||[]).filter(m=>selected==='all'||m.itemId===selected);
-  const opts='<option value="all">كل الأصناف</option>'+cache.items.map(i=>`<option value="${i.id}" ${selected===i.id?'selected':''}>${esc(i.name)}</option>`).join('');
-  $('page_stock').innerHTML=`<div class="card"><h2>إدارة المخزون</h2><div class="grid"><div class="metric"><span class="muted">قيمة المخزون الحالية</span><b>${money(totalValue)}</b></div><div class="metric"><span class="muted">أصناف منتهية</span><b>${out.length}</b></div><div class="metric"><span class="muted">أصناف قرب النفاد</span><b>${low.length}</b></div><div class="metric"><span class="muted">عدد الأصناف</span><b>${cache.items.length}</b></div></div></div>
-  <div class="card"><h2>تنبيهات المخزون</h2><div class="list">${[...out.map(i=>({i,t:'منتهي',cls:'error'})),...low.map(i=>({i,t:'قرب النفاد',cls:'notice'}))].map(x=>`<div class="item ${x.cls}"><div class="row"><h3>${esc(x.i.name)}</h3><span class="status ${x.cls==='error'?'rejected':'pending'}">${x.t}</span></div><div class="muted">الكمية الحالية: ${Number(x.i.stock||0)} | حد التنبيه: ${Number(x.i.minStock||0)}</div><div class="actions"><button class="btn secondary" data-quick-stock="${x.i.id}">تسوية/إضافة كمية</button></div></div>`).join('')||'<p class="muted">لا توجد تنبيهات مخزون حاليًا.</p>'}</div></div>
-  <div class="card"><h2>تسوية مخزون يدوية</h2><p class="muted">استخدمها عند إضافة بضاعة جديدة، تلف، جرد، أو تصحيح كمية. كل تسوية تسجل في حركة المخزون والسجل.</p><div class="form"><div class="field"><label>الصنف</label><select id="stockAdjItem">${cache.items.map(i=>`<option value="${i.id}">${esc(i.name)} - الحالي: ${Number(i.stock||0)}</option>`).join('')}</select></div><div class="grid"><div class="field"><label>نوع الحركة</label><select id="stockAdjType"><option value="add">إضافة كمية</option><option value="remove">نقص/تلف</option><option value="set">تعيين الكمية النهائية</option></select></div><div class="field"><label>الكمية</label><input id="stockAdjQty" type="number" min="0" placeholder="مثال: 10"></div></div><div class="field"><label>السبب / الملاحظة</label><textarea id="stockAdjReason" placeholder="شراء بضاعة، تلف، جرد..."></textarea></div><button class="btn" id="applyStockAdj" ${cache.items.length?'':'disabled'}>حفظ حركة المخزون</button></div></div>
-  <div class="card"><div class="row"><h2>حركة المخزون</h2><span class="status">${movements.length} حركة</span></div><div class="field"><label>فلترة حسب الصنف</label><select id="stockFilterItem">${opts}</select></div><div class="list">${movements.map(m=>`<div class="item"><div class="row"><h3>${esc(m.itemName||m.itemId||'صنف')}</h3><b style="color:${Number(m.qty||0)>=0?'var(--ok)':'var(--danger)'}">${Number(m.qty||0)>=0?'+':''}${Number(m.qty||0)}</b></div><div class="muted">${stockTypeText(m.type)} | ${new Date(Number(m.createdMs||Date.now())).toLocaleString('ar-YE')}<br>${esc(m.note||'')} ${m.sourceType?`| المصدر: ${esc(m.sourceType)}`:''}</div></div>`).join('')||'<p class="muted">لا توجد حركات مخزون بعد.</p>'}</div></div>`;
-  setTimeout(()=>{document.querySelectorAll('[data-quick-stock]').forEach(b=>b.onclick=()=>editStock(b.dataset.quickStock)); $('applyStockAdj')&&($('applyStockAdj').onclick=manualStockAdjustment); $('stockFilterItem')&&($('stockFilterItem').onchange=()=>{state.stockFilterItem=$('stockFilterItem').value; save(); renderStock();});});
 }
 function stockTypeText(t){return ({sale:'بيع/خصم فاتورة',opening:'رصيد افتتاحي',adjustment_add:'إضافة مخزون',adjustment_remove:'نقص/تلف',adjustment_set:'تسوية نهائية',manual_set:'تعديل كمية'}[t]||t||'حركة')}
 async function manualStockAdjustment(){
@@ -1442,20 +1348,6 @@ function invoiceLineReturnInfo(invoiceId,itemId){
   const approved=(cache.returns||[]).filter(r=>r.invoiceId===invoiceId && r.itemId===itemId && r.status==='approved').reduce((a,r)=>a+Number(r.qty||0),0);
   const pending=(cache.returns||[]).filter(r=>r.invoiceId===invoiceId && r.itemId===itemId && r.status==='pending').reduce((a,r)=>a+Number(r.qty||0),0);
   return {approved,pending};
-}
-function renderReturns(){
-  const rows=cache.returns||[];
-  if(state.role==='customer'){
-    const invoices=(cache.invoices||[]).filter(i=>i.status==='posted' && i.customerId===state.customerId);
-    const invOpts=invoices.map(i=>`<option value="${i.id}">${esc(i.invoiceNo||i.id)} - ${money(i.total)} - ${payTypeText(i.paymentType)}</option>`).join('');
-    $('page_returns').innerHTML=`<div class="card"><h2>طلب مرتجع</h2>${cache.shop?.allowReturns===false?'<div class="notice error">التاجر أوقف استقبال طلبات المرتجع مؤقتًا.</div>':''}<p class="muted">اختر فاتورة ثم اختر الصنف والكمية. لا يمكن إرجاع كمية أكبر من الكمية المتبقية بعد المرتجعات السابقة والمعلقة.</p><div class="form"><div class="field"><label>الفاتورة</label><select id="returnInvoice">${invOpts}</select></div><div id="returnLinesBox"></div><div class="field"><label>سبب المرتجع</label><textarea id="returnReason" placeholder="مثال: صنف تالف، خطأ في الطلب..."></textarea></div><button class="btn" id="sendReturn" ${invoices.length?'':'disabled'}>إرسال طلب المرتجع للتاجر</button></div></div>
-    <div class="card"><h2>طلبات المرتجع الخاصة بي</h2><div class="list">${rows.map(renderReturnCard).join('')||'<p class="muted">لا توجد طلبات مرتجع.</p>'}</div></div>`;
-    setTimeout(()=>{if($('returnInvoice')){$('returnInvoice').onchange=renderReturnLines; renderReturnLines();} if($('sendReturn')) $('sendReturn').onclick=sendReturnRequest;});
-  } else {
-    const pending=rows.filter(r=>r.status==='pending').length;
-    $('page_returns').innerHTML=`<div class="card"><div class="row"><h2>المرتجعات</h2><span class="status ${pending?'pending':'approved'}">${pending} معلّق</span></div><p class="muted">قبول المرتجع يعيد الكمية إلى المخزون، ويخصم قيمته من حساب العميل إذا كانت الفاتورة آجلة، ويسجل حركة مالية ومخزنية وسجل عملية.</p><div class="list">${rows.map(renderReturnCard).join('')||'<p class="muted">لا توجد طلبات مرتجع.</p>'}</div></div>`;
-    setTimeout(()=>{document.querySelectorAll('[data-approve-return]').forEach(b=>b.onclick=()=>approveReturn(b.dataset.approveReturn)); document.querySelectorAll('[data-reject-return]').forEach(b=>b.onclick=()=>rejectReturn(b.dataset.rejectReturn));});
-  }
 }
 function renderReturnLines(){
   const invoiceId=$('returnInvoice')?.value;
@@ -1517,13 +1409,6 @@ async function rejectReturn(returnId){
   msg('تم رفض المرتجع','success');
 }
 
-function renderPayments(){
-  const myDebt=customerDebtInfo().balance;
-  const rows=(cache.payments||[]).slice().sort((a,b)=>(b.createdMs||0)-(a.createdMs||0));
-  $('page_payments').innerHTML=`${state.role==='customer'?`<div class="card"><h2>طلب سداد</h2><div class="metric"><span class="muted">الدين الحالي عليك</span><b>${money(myDebt)}</b></div><div class="form"><div class="field"><label>المبلغ المسدد</label><input id="payAmount" type="number" min="1"></div><div class="field"><label>طريقة السداد</label><select id="payMethod"><option>كاش</option><option>حوالة كريمي</option><option>محفظة</option><option>بنك</option><option>نقد عند التاجر</option><option>أخرى</option></select></div><div class="field"><label>رقم العملية / المرجع</label><input id="payRef" placeholder="رقم الحوالة أو العملية إن وجد"></div><div class="field"><label>صورة الإيصال / التحويل اختياري</label><input id="payReceipt" type="file" accept="image/*"></div><div class="field"><label>ملاحظة</label><textarea id="payNote"></textarea></div><button class="btn" id="sendPayment">إرسال طلب السداد</button><p class="muted">ملاحظة: صورة الإيصال تُحفظ داخل Firestore كنسخة مصغرة للتجربة؛ لا ترسل صورًا كبيرة.</p></div></div>`:''}
-  <div class="card"><h2>${state.role==='trader'?'طلبات السداد من العملاء':'سداداتي'}</h2><div class="list">${rows.map(p=>`<div class="item"><div class="row"><h3>${esc(p.customerName||'')} - ${money(p.amount)}</h3><span class="status ${p.status}">${statusText(p.status)}</span></div><div class="muted">${esc(p.method||'')} | مرجع: ${esc(p.referenceNo||'-')} | ${esc(p.note||'')}${p.scheduleId?' | مرتبط باستحقاق':''}</div>${p.receiptData?`<div class="actions"><button class="btn secondary" data-open-receipt="${p.id}">عرض الإيصال</button></div>`:''}${p.traderNote?`<div class="notice ${p.status==='rejected'?'error':'success'}">ملاحظة التاجر: ${esc(p.traderNote)}</div>`:''}${state.role==='trader'&&p.status==='pending'?`<div class="actions"><button class="btn ok" data-approve-pay="${p.id}">قبول السداد</button><button class="btn danger" data-reject-pay="${p.id}">رفض</button></div>`:''}</div>`).join('')||'<p class="muted">لا توجد طلبات سداد.</p>'}</div></div>`;
-  setTimeout(()=>{ if($('sendPayment')) $('sendPayment').onclick=sendPayment; document.querySelectorAll('[data-approve-pay]').forEach(b=>b.onclick=()=>approvePayment(b.dataset.approvePay));document.querySelectorAll('[data-reject-pay]').forEach(b=>b.onclick=()=>rejectPayment(b.dataset.rejectPay));document.querySelectorAll('[data-open-receipt]').forEach(b=>b.onclick=()=>openReceipt(b.dataset.openReceipt));});
-}
 function openReceipt(paymentId){
   const p=(cache.payments||[]).find(x=>x.id===paymentId);
   if(!p?.receiptData){msg('لا توجد صورة إيصال لهذا السداد','error');return}
@@ -1573,23 +1458,6 @@ async function approvePayment(payId){
 async function rejectPayment(payId){const reason=prompt('اكتب سبب رفض السداد:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'paymentRequests',payId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),reviewedMs:Date.now()}); await addAudit('reject_payment',{paymentId:payId,reason}); msg('تم رفض السداد','success')}
 
 function paymentDate(p){return new Date(Number(p.reviewedMs||p.createdMs||Date.now())).toISOString().slice(0,10)}
-function renderCollections(){
-  if(state.role!=='trader'){show('home');return}
-  const selectedDate=state.collectionDate||todayIso();
-  const selectedStatus=state.collectionStatus||'all';
-  const selectedMethod=state.collectionMethod||'all';
-  const methods=[...new Set((cache.payments||[]).map(p=>p.method||'غير محدد'))];
-  let rows=(cache.payments||[]).slice();
-  rows=rows.filter(p=>paymentDate(p)===selectedDate);
-  if(selectedStatus!=='all') rows=rows.filter(p=>p.status===selectedStatus);
-  if(selectedMethod!=='all') rows=rows.filter(p=>(p.method||'غير محدد')===selectedMethod);
-  const approved=rows.filter(p=>p.status==='approved').reduce((a,p)=>a+Number(p.amount||0),0);
-  const pending=rows.filter(p=>p.status==='pending').reduce((a,p)=>a+Number(p.amount||0),0);
-  const rejected=rows.filter(p=>p.status==='rejected').reduce((a,p)=>a+Number(p.amount||0),0);
-  const byMethod={}; for(const p of rows.filter(x=>x.status==='approved')) byMethod[p.method||'غير محدد']=(byMethod[p.method||'غير محدد']||0)+Number(p.amount||0);
-  $('page_collections').innerHTML=`<div class="card"><h2>التحصيل اليومي</h2><div class="grid"><div class="field"><label>التاريخ</label><input id="collectionDate" type="date" value="${esc(selectedDate)}"></div><div class="field"><label>الحالة</label><select id="collectionStatus"><option value="all">الكل</option><option value="approved">مقبول</option><option value="pending">معلق</option><option value="rejected">مرفوض</option></select></div><div class="field"><label>طريقة الدفع</label><select id="collectionMethod"><option value="all">كل الطرق</option>${methods.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('')}</select></div></div><div class="grid"><div class="metric"><span class="muted">مقبول</span><b>${money(approved)}</b></div><div class="metric"><span class="muted">معلق</span><b>${money(pending)}</b></div><div class="metric"><span class="muted">مرفوض</span><b>${money(rejected)}</b></div><div class="metric"><span class="muted">عدد الطلبات</span><b>${rows.length}</b></div></div><div class="card"><h3>المقبوض حسب طريقة الدفع</h3>${Object.keys(byMethod).map(m=>`<div class="row"><span>${esc(m)}</span><b>${money(byMethod[m])}</b></div>`).join('')||'<p class="muted">لا توجد سدادات مقبولة في هذا التاريخ.</p>'}</div><div class="actions"><button class="btn secondary" id="shareCollection">مشاركة تقرير التحصيل</button></div></div><div class="card"><h2>تفاصيل السدادات</h2><div class="list">${rows.map(p=>`<div class="item"><div class="row"><h3>${esc(p.customerName||'')} - ${money(p.amount)}</h3><span class="status ${p.status}">${statusText(p.status)}</span></div><div class="muted">${esc(p.method||'')} | مرجع: ${esc(p.referenceNo||'-')} | ${paymentDate(p)}</div>${p.receiptData?`<div class="actions"><button class="btn secondary" data-open-receipt="${p.id}">عرض الإيصال</button></div>`:''}</div>`).join('')||'<p class="muted">لا توجد سدادات حسب الفلاتر.</p>'}</div></div>`;
-  setTimeout(()=>{ $('collectionStatus').value=selectedStatus; $('collectionMethod').value=selectedMethod; $('collectionDate').onchange=e=>{state.collectionDate=e.target.value;save();renderCollections()}; $('collectionStatus').onchange=e=>{state.collectionStatus=e.target.value;save();renderCollections()}; $('collectionMethod').onchange=e=>{state.collectionMethod=e.target.value;save();renderCollections()}; $('shareCollection').onclick=shareCollectionReport; document.querySelectorAll('[data-open-receipt]').forEach(b=>b.onclick=()=>openReceipt(b.dataset.openReceipt));});
-}
 async function shareCollectionReport(){
   const date=state.collectionDate||todayIso();
   const rows=(cache.payments||[]).filter(p=>paymentDate(p)===date);
@@ -1609,19 +1477,6 @@ function scheduleStatus(s){
   if(String(s.dueDate||'')<today) return {cls:'rejected',text:'متأخر'};
   if(String(s.dueDate||'')===today) return {cls:'pending',text:'مستحق اليوم'};
   return {cls:'',text:'قادم'};
-}
-function renderSchedules(){
-  const rows=(cache.schedules||[]).slice().sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||'')));
-  const pending=rows.filter(s=>s.status==='pending');
-  const overdue=pending.filter(s=>String(s.dueDate||'')<new Date().toISOString().slice(0,10));
-  const paid=rows.filter(s=>s.status==='paid');
-  const totalPending=pending.reduce((a,s)=>a+Number(s.amount||0),0);
-  const totalPaid=paid.reduce((a,s)=>a+Number(s.amount||0),0);
-  const customerOptions=(cache.customers||[]).map(c=>`<option value="${esc(c.customerId)}">${esc(c.name)} - دينه: ${money(c.balance)}</option>`).join('');
-  const invoiceOptions=(cache.invoices||[]).filter(i=>i.paymentType==='credit').map(i=>`<option value="${esc(i.id)}">${esc(i.invoiceNo||i.id)} - ${esc(i.customerName||'')} - ${money(i.total)}</option>`).join('');
-  const createBox=state.role==='trader'?`<div class="card"><h2>جدولة سداد / أقساط</h2><p class="muted">استخدمها لتقسيم دين العميل إلى دفعات بتاريخ استحقاق. لا تخصم من الدين إلا عند إرسال العميل طلب سداد وموافقة التاجر عليه.</p><div class="form"><div class="field"><label>العميل</label><select id="schedCustomer"><option value="">اختر العميل</option>${customerOptions}</select></div><div class="field"><label>ربط اختياري بفاتورة آجلة</label><select id="schedInvoice"><option value="">بدون ربط بفاتورة</option>${invoiceOptions}</select></div><div class="grid"><div class="field"><label>إجمالي مبلغ الجدولة</label><input id="schedTotal" type="number" min="1"></div><div class="field"><label>عدد الدفعات</label><input id="schedCount" type="number" min="1" value="1"></div><div class="field"><label>تاريخ أول استحقاق</label><input id="schedStart" type="date"></div><div class="field"><label>الفاصل بالأيام</label><input id="schedInterval" type="number" min="1" value="7"></div></div><div class="field"><label>ملاحظة</label><textarea id="schedNote" placeholder="مثال: دفعات أسبوعية"></textarea></div><button class="btn" id="createSchedule">إنشاء الجدولة</button></div></div>`:'';
-  $('page_schedules').innerHTML=`${createBox}<div class="card"><div class="row"><h2>${state.role==='trader'?'استحقاقات العملاء':'استحقاقاتي'}</h2><span class="status ${overdue.length?'rejected':'approved'}">${overdue.length} متأخر</span></div><div class="grid"><div class="metric"><span class="muted">المتبقي المجدول</span><b>${money(totalPending)}</b></div><div class="metric"><span class="muted">المدفوع من الجدولة</span><b>${money(totalPaid)}</b></div><div class="metric"><span class="muted">دفعات معلقة</span><b>${pending.length}</b></div><div class="metric"><span class="muted">إجمالي السجلات</span><b>${rows.length}</b></div></div><div class="list" style="margin-top:10px">${rows.map(renderScheduleCard).join('')||'<p class="muted">لا توجد استحقاقات بعد.</p>'}</div></div>`;
-  setTimeout(()=>{ if($('createSchedule')) $('createSchedule').onclick=createSchedule; document.querySelectorAll('[data-pay-schedule]').forEach(b=>b.onclick=()=>paySchedule(b.dataset.paySchedule)); document.querySelectorAll('[data-cancel-schedule]').forEach(b=>b.onclick=()=>cancelSchedule(b.dataset.cancelSchedule)); if($('schedInvoice')) $('schedInvoice').onchange=fillScheduleFromInvoice; });
 }
 function renderScheduleCard(s){
   const st=scheduleStatus(s);
