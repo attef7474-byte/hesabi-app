@@ -187,6 +187,24 @@
     @media(max-width:420px){.shop-code-input-row{grid-template-columns:1fr 38px 38px 38px}.icon-mini-btn{min-height:38px;font-size:16px}.setup-shop-table th,.setup-shop-table td{padding:5px;font-size:11px}}
   </style>
 
+
+  <style id="hesabi-security-lock-style">
+    .security-lock-card{max-width:440px;margin:18px auto;text-align:center}
+    .security-lock-icon{font-size:46px;line-height:1;margin:6px 0 10px}
+    .security-lock-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .security-lock-actions .btn{min-height:36px;padding:8px 12px;border-radius:13px;width:auto}
+    .security-options{display:grid;gap:8px}
+    .security-option-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:14px;background:#fbfdff;padding:8px}
+    .security-option-row .field{margin:0}
+    .compact-lock-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .lock-small-note{font-size:12px;color:var(--muted);line-height:1.5}
+    @media(max-width:520px){.compact-lock-fields{grid-template-columns:1fr}.security-lock-actions .btn{flex:1 1 100%}}
+  </style>
+
+  <style id="hesabi-settings-tabs-style">
+    .settings-page-head{padding-bottom:10px}.settings-tabs-bar{display:flex;gap:7px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none}.settings-tabs-bar::-webkit-scrollbar{display:none}.settings-top-tab{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:#334155;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;box-shadow:0 4px 12px rgba(15,23,42,.04)}.settings-top-tab.active{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border-color:transparent}.settings-tab-pane{animation:settingsFade .12s ease}.settings-section-title{margin:8px 2px 4px;color:#0f766e;font-weight:900;font-size:13px}.settings-shortcut-btn{min-width:120px}.settings-file-label{display:inline-flex;align-items:center;justify-content:center}.settings-tab-pane .card{margin:8px 0}.settings-tab-pane .field input,.settings-tab-pane .field select{min-height:38px;padding:8px 10px}.settings-tab-pane .btn{min-height:36px;padding:8px 11px;font-size:12px;border-radius:13px}@keyframes settingsFade{from{opacity:.6;transform:translateY(2px)}to{opacity:1;transform:none}}
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -247,6 +265,7 @@
   </section>
 
   <section id="profileSetup" class="card hidden"></section>
+  <section id="appLockScreen" class="card hidden"></section>
 
   <main id="main" class="hidden">
     <section id="page_home"></section>
@@ -268,7 +287,6 @@
     <section id="page_policies" class="hidden"></section>
     <section id="page_notifications" class="hidden"></section>
     <section id="page_shopcode" class="hidden"></section>
-    <section id="page_appsettings" class="hidden"></section>
     <section id="page_settings" class="hidden"></section>
   </main>
 </div>
@@ -278,8 +296,8 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, updatePhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
 const LS='hesabi_firebase_v3';
 const OLD_LS='hesabi_firebase_v2';
@@ -299,6 +317,7 @@ const DEFAULT_FIREBASE_CONFIG = {
 if(!state.firebaseConfig?.apiKey){ state.firebaseConfig = DEFAULT_FIREBASE_CONFIG; save(); }
 let app=null, db=null, auth=null, currentUser=null, authReady=false, unsub=[];
 let phoneConfirmationResult=null, recaptchaVerifier=null, smsSending=false, smsVerifying=false;
+let appUnlockedSession=false;
 let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 let active='home';
@@ -447,6 +466,10 @@ function canClaimRecordByVerifiedPhone(recordPhoneKey){
   return !!(k && verified && k===verified);
 }
 function isPhoneAuthSession(){return state.authProvider==='phone' || !!currentUser?.phoneNumber || !!state.authPhoneNumber}
+function verifiedPhoneDisplay(){
+  const k=verifiedCurrentPhoneKey() || normalizePhone(state.authPhoneNumber || state.authPhoneKey || '');
+  return k ? phoneKeyToInternational(k) : '';
+}
 function requireVerifiedPhoneInput(phone,label='رقم الهاتف'){
   const key=validPhoneOrWarn(phone,label);
   if(!key) return null;
@@ -546,9 +569,37 @@ function setActiveCustomerShop(shopId){
   if(!link){msg('لم يتم العثور على هذا التاجر في روابطك','error');return}
   state.activeShopId=shopId; state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||''; state.shopName=link.shopName||shopId; save(); resetCacheForLiveData(); listenersStartedKey=''; startListeners(); active='home'; render(); msg('تم التبديل إلى حساب: '+(link.shopName||shopId),'success');
 }
-function beep(){
+function beep(kind='notification'){
   if(!state.soundEnabled) return;
-  try{const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC(); const osc=ctx.createOscillator(); const gain=ctx.createGain(); osc.type='sine'; osc.frequency.value=880; gain.gain.value=.08; osc.connect(gain); gain.connect(ctx.destination); osc.start(); setTimeout(()=>{osc.stop();ctx.close();},180)}catch(e){}
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const ctx=new AC();
+    const selected=state.notifySound || 'classic';
+    const presets={
+      classic:[880],
+      soft:[660,880],
+      bell:[1040,1320],
+      message:[740,980],
+      alert:[620,620,980],
+      silent:[]
+    };
+    const notes=presets[selected]||presets.classic;
+    if(!notes.length){ctx.close();return;}
+    let t=ctx.currentTime;
+    notes.forEach((freq,idx)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type=selected==='soft'?'triangle':'sine';
+      osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.0001,t);
+      gain.gain.exponentialRampToValueAtTime(0.08,t+0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t+0.18);
+      t+=0.17;
+    });
+    setTimeout(()=>ctx.close(), Math.ceil((t-ctx.currentTime+0.25)*1000));
+  }catch(e){}
 }
 function notifyLocal(title,body){
   beep();
@@ -802,14 +853,17 @@ function render(){
   $('authSetup').classList.toggle('hidden', !hasCfg || signed);
   $('roleSetup').classList.toggle('hidden', !hasCfg || !signed || !!state.role);
   $('profileSetup').classList.toggle('hidden', !signed || !state.role || !!state.profileDone);
-  $('main').classList.toggle('hidden', !signed || !state.profileDone);
-  $('nav').classList.toggle('hidden', !signed || !state.profileDone);
+  const locked = signed && !!state.profileDone && shouldAppLock();
+  if($('appLockScreen')) $('appLockScreen').classList.toggle('hidden', !locked);
+  $('main').classList.toggle('hidden', !signed || !state.profileDone || locked);
+  $('nav').classList.toggle('hidden', !signed || !state.profileDone || locked);
   if($('setupBackFloating')) $('setupBackFloating').classList.toggle('hidden', !signed || !!state.profileDone);
   bindSetupBackFloating();
   $('subTitle').textContent = signed ? (state.profileDone ? (state.role==='trader'?`تاجر | كود المحل: ${state.shopId||'-'} | حساب آمن`:`عميل | التاجر الحالي: ${state.shopName||state.shopId||'-'} | عدد التجار: ${(state.customerLinks||[]).length||1} | حساب آمن`) : 'تم تسجيل الدخول الآمن') : '';
   if(!hasCfg){fillCfg(); return}
   if(hasCfg && !signed){bindAuthButtons(); return}
   if(state.role && !state.profileDone){renderProfileSetup(); return}
+  if(locked){renderAppLockScreen(); return}
   if(state.profileDone){ensureLiveDataListeners(); notifyAndroidSession(); renderNav(); show(active); setTimeout(notifyAndroidSession,600)}
 }
 
@@ -981,11 +1035,11 @@ function bindSetupBackFloating(){
 function renderProfileSetup(){
   if(state.role==='trader') {
     const phoneDefault=esc(state.authPhoneNumber||state.authPhoneKey||'');
-    $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">رقم الهاتف موثق بكود SMS. استخدم نفس الرقم لإنشاء المحل أو استرجاعه حتى يكون الربط آمنًا ونهائيًا.</div><div class="notice">إذا كان المحل موجودًا مسبقًا، أدخل PIN واضغط استرجاع محل موجود، أو اضغط إنشاء وسيتم تحويلك للاسترجاع إذا كان الرقم موجودًا.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" value="${phoneDefault}" placeholder="مثال: +967771749776"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء/استرجاع محل بهذا الرقم</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button></div>`;
+    $('profileSetup').innerHTML=`<h2>تهيئة التاجر</h2><div class="notice">رقم الهاتف موثق بكود SMS. استخدم نفس الرقم لإنشاء المحل أو استرجاعه حتى يكون الربط آمنًا ونهائيًا.</div><div class="notice">إذا كان المحل موجودًا مسبقًا، أدخل PIN واضغط استرجاع محل موجود، أو اضغط إنشاء وسيتم تحويلك للاسترجاع إذا كان الرقم موجودًا.</div><div class="form"><div class="field"><label>اسم المحل</label><input id="shopName" placeholder="مثال: بقالة الخير"></div><div class="field"><label>رقم هاتف المحل</label><input id="shopPhone" value="${phoneDefault}" readonly inputmode="tel" class="locked-phone" placeholder="رقم الحساب الموثق"></div><div class="field"><label>رمز إدارة المحل PIN</label><input id="shopPin" type="password" placeholder="مثال: 1234"></div><button class="btn" id="createShop">إنشاء/استرجاع محل بهذا الرقم</button><button class="btn secondary" id="recoverShop">استرجاع محل موجود برقم الهاتف</button></div>`;
   } else {
     const phoneDefault=esc(state.customerPhone||state.authPhoneNumber||state.authPhoneKey||'');
     const nameDefault=esc(state.customerName||'');
-    $('profileSetup').innerHTML=`<h2>تهيئة العميل</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">يمكنك إدخال كود التاجر يدويًا، أو مسح QR، أو البحث عن المتاجر المسجلة، ثم إضافة متجر أو عدة متاجر والربط بها دفعة واحدة.</div><div class="form customer-setup-form"><div class="field"><label>اسم العميل</label><input id="custName" value="${nameDefault}" placeholder="اسمك عند التاجر"></div><div class="field"><label>رقم الهاتف</label><input id="custPhone" value="${phoneDefault}" placeholder="77xxxxxxx أو +967..."></div><div class="field"><label>كود المحل من التاجر</label><div class="shop-code-input-row"><input id="joinShopId" placeholder="SHOP-XXXXX"><button class="icon-mini-btn" id="setupScanShopQr" type="button" title="مسح كود التاجر">📷</button><button class="icon-mini-btn" id="setupSearchStores" type="button" title="بحث عن متجر">🔎</button><button class="icon-mini-btn" id="setupAddStore" type="button" title="إضافة متجر للقائمة">➕</button></div></div><video id="setupQrVideo" class="scan-video setup-scan-video" playsinline></video><div class="settings-compact-actions setup-scan-actions hidden" id="setupScanActions"><button class="btn light" id="setupStopQrScan" type="button">إيقاف الكاميرا</button></div><div class="field"><label>بحث عن متجر مسجل</label><input id="shopSearchQuery" placeholder="اكتب اسم المتجر أو كود التاجر أو رقم الهاتف"></div><div id="shopSearchResults" class="compact-shop-results hidden"></div><div id="selectedSetupShops" class="selected-setup-shops"></div><button class="btn" id="joinShop">ربط المتاجر المحددة</button><button class="btn secondary" id="recoverCustomer">استرجاع حساب عميل موجود</button></div>`;
+    $('profileSetup').innerHTML=`<h2>تهيئة العميل</h2><div class="notice">إذا اخترت النوع بالخطأ يمكنك الرجوع إلى صفحة اختيار تاجر أو عميل بدون تسجيل خروج.</div><div class="notice">يمكنك إدخال كود التاجر يدويًا، أو مسح QR، أو البحث عن المتاجر المسجلة، ثم إضافة متجر أو عدة متاجر والربط بها دفعة واحدة.</div><div class="form customer-setup-form"><div class="field"><label>اسم العميل</label><input id="custName" value="${nameDefault}" placeholder="اسمك عند التاجر"></div><div class="field"><label>رقم الهاتف</label><input id="custPhone" value="${phoneDefault}" readonly inputmode="tel" class="locked-phone" placeholder="رقم الحساب الموثق"></div><div class="field"><label>كود المحل من التاجر</label><div class="shop-code-input-row"><input id="joinShopId" placeholder="SHOP-XXXXX"><button class="icon-mini-btn" id="setupScanShopQr" type="button" title="مسح كود التاجر">📷</button><button class="icon-mini-btn" id="setupSearchStores" type="button" title="بحث عن متجر">🔎</button><button class="icon-mini-btn" id="setupAddStore" type="button" title="إضافة متجر للقائمة">➕</button></div></div><video id="setupQrVideo" class="scan-video setup-scan-video" playsinline></video><div class="settings-compact-actions setup-scan-actions hidden" id="setupScanActions"><button class="btn light" id="setupStopQrScan" type="button">إيقاف الكاميرا</button></div><div class="field"><label>بحث عن متجر مسجل</label><input id="shopSearchQuery" placeholder="اكتب اسم المتجر أو كود التاجر أو رقم الهاتف"></div><div id="shopSearchResults" class="compact-shop-results hidden"></div><div id="selectedSetupShops" class="selected-setup-shops"></div><button class="btn" id="joinShop">ربط المتاجر المحددة</button><button class="btn secondary" id="recoverCustomer">استرجاع حساب عميل موجود</button></div>`;
   }
   setTimeout(()=>{
     if(state.role==='trader'){ $('createShop').onclick=createShop; $('recoverShop').onclick=recoverShopByPhone; }
@@ -1304,11 +1358,10 @@ function goBack(){
   show(target);
 }
 function show(p){
-  if(p==='appsettings') p='settings';
   if(state.role!=='trader' && (p==='customers'||p==='audit'||p==='stock'||p==='collections'||p==='policies')) p='home'; if(state.role==='trader' && p==='shops') p='home';
   if(p!==active){ previousPage=active || 'home'; }
   active=p;
-  ['home','search','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','appsettings','settings'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
+  ['home','search','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
   renderNav();
   const renderer={home:renderHome,search:renderSearch,items:renderItems,orders:renderOrders,customers:renderCustomers,shops:renderShops,messages:renderMessages,payments:renderPayments,invoices:renderInvoices,statement:renderStatement,audit:renderAudit,stock:renderStock,returns:renderReturns,schedules:renderSchedules,collections:renderCollections,reports:renderReports,policies:renderPolicies,notifications:renderNotifications,shopcode:renderShopCode,settings:renderSettings}[p] || renderHome;
   renderer();
@@ -2446,28 +2499,6 @@ service cloud.firestore {
 }`;
 
 
-function renderAppSettings(){
-  const a=getAppearance();
-  $('page_appsettings').innerHTML=`<div class="card"><h2>إعدادات التطبيق</h2><p class="muted">هذه الإعدادات خاصة بهذا المستخدم على هذا الجهاز فقط، ولا تغيّر بيانات التاجر أو العميل الآخر ولا تؤثر على المستودع أو قاعدة البيانات.</p>
-    <div class="appearance-preview"><div><b>معاينة الشكل</b><div class="muted">الوضع: ${a.theme==='dark'?'ليلي':'عادي'} | اللون: ${esc(a.accent)} | الإضاءة: ${Number(a.brightness||100)}%</div></div><button class="small-btn" id="applyPreviewBtn">تطبيق</button></div>
-    <div class="form" style="margin-top:12px">
-      <div class="field"><label>الوضع</label><select id="uiTheme"><option value="light" ${a.theme==='light'?'selected':''}>عادي / نهاري</option><option value="dark" ${a.theme==='dark'?'selected':''}>ليلي / داكن</option></select></div>
-      <div class="field"><label>لون التطبيق</label><select id="uiAccent"><option value="teal" ${a.accent==='teal'?'selected':''}>أخضر مزرق</option><option value="blue" ${a.accent==='blue'?'selected':''}>أزرق</option><option value="green" ${a.accent==='green'?'selected':''}>أخضر</option><option value="purple" ${a.accent==='purple'?'selected':''}>بنفسجي</option><option value="orange" ${a.accent==='orange'?'selected':''}>برتقالي</option></select></div>
-      <div class="field"><label>شدة الإضاءة: <span id="brightnessLabel">${Number(a.brightness||100)}%</span></label><input id="uiBrightness" type="range" min="75" max="120" step="5" value="${Number(a.brightness||100)}"></div>
-      <div class="field"><label>الخلفية</label><select id="uiBackground"><option value="glass" ${a.background==='glass'?'selected':''}>خلفية حديثة</option><option value="soft" ${a.background==='soft'?'selected':''}>هادئة</option><option value="plain" ${a.background==='plain'?'selected':''}>بسيطة</option></select></div>
-      <div class="field"><label>كثافة العرض</label><select id="uiCompact"><option value="yes" ${a.compact!==false?'selected':''}>صفوف صغيرة - عرض أكبر بيانات</option><option value="no" ${a.compact===false?'selected':''}>مريح - مسافات أكبر</option></select></div>
-      <div class="actions"><button class="btn ok" id="saveAppearanceBtn">حفظ إعداداتي</button><button class="btn light" id="resetAppearanceBtn">إرجاع الافتراضي</button></div>
-    </div>
-  </div>`;
-  const readForm=()=>({theme:$('uiTheme').value,accent:$('uiAccent').value,brightness:Number($('uiBrightness').value||100),background:$('uiBackground').value,compact:$('uiCompact').value!=='no'});
-  const live=()=>{ $('brightnessLabel').textContent=($('uiBrightness').value||100)+'%'; saveAppearanceSettings(readForm()); renderAppSettings(); };
-  $('uiTheme').onchange=live; $('uiAccent').onchange=live; $('uiBackground').onchange=live; $('uiCompact').onchange=live;
-  $('uiBrightness').oninput=()=>{ $('brightnessLabel').textContent=($('uiBrightness').value||100)+'%'; saveAppearanceSettings(readForm()); };
-  $('saveAppearanceBtn').onclick=()=>{saveAppearanceSettings(readForm()); msg('تم حفظ إعدادات التطبيق لهذا المستخدم فقط','success')};
-  $('applyPreviewBtn').onclick=()=>{saveAppearanceSettings(readForm()); msg('تم تطبيق الشكل','success')};
-  $('resetAppearanceBtn').onclick=()=>{saveAppearanceSettings({theme:'light',accent:'teal',brightness:100,background:'glass',compact:true}); renderAppSettings(); msg('تم إرجاع إعدادات التطبيق الافتراضية','success')};
-}
-
 function renderAppearanceSettingsBlock(){
   const a=getAppearance();
   return `<div class="card"><h2>شكل التطبيق</h2><p class="muted">هذه الخيارات خاصة بهذا المستخدم على هذا الجهاز فقط ولا تؤثر على حساب أو جهاز آخر.</p>
@@ -2560,12 +2591,258 @@ function openCurrentPageInBrowser(){
   }catch(e){ location.href='https://hesabi-app-edc7e.web.app?v='+Date.now(); }
 }
 
+
+
+function appLockKey(){return 'hesabi_app_lock_'+(uid() || state.authPhoneKey || 'guest')}
+function simpleHash(v){let h=5381; const s=String(v||''); for(let i=0;i<s.length;i++){h=((h<<5)+h)^s.charCodeAt(i)} return String(h>>>0)}
+function getAppLockSettings(){
+  try{return {enabled:false,method:'pin',...JSON.parse(localStorage.getItem(appLockKey())||'{}')}}catch{return {enabled:false,method:'pin'}}
+}
+function saveAppLockSettings(cfg){localStorage.setItem(appLockKey(), JSON.stringify({updatedAt:Date.now(),...cfg}))}
+function shouldAppLock(){const cfg=getAppLockSettings(); return !!cfg.enabled && !appUnlockedSession}
+function bytesToBase64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function base64urlToBytes(s){s=String(s||'').replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+function randomChallenge(){const a=new Uint8Array(32); crypto.getRandomValues(a); return a}
+async function registerAppBiometricCredential(){
+  if(!window.PublicKeyCredential || !navigator.credentials?.create) throw new Error('هذا الجهاز أو المتصفح لا يدعم البصمة/الوجه داخل الويب');
+  const userId = new TextEncoder().encode(uid() || state.authPhoneKey || String(Date.now()));
+  const cred=await navigator.credentials.create({publicKey:{challenge:randomChallenge(),rp:{name:'حسابي التجاري'},user:{id:userId,name:verifiedPhoneDisplay()||state.authEmail||'hesabi-user',displayName:actorName?actorName():'مستخدم حسابي'},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],timeout:60000,authenticatorSelection:{userVerification:'preferred'},attestation:'none'}});
+  if(!cred?.rawId) throw new Error('لم يتم إنشاء مفتاح البصمة/الوجه');
+  return {credentialId:bytesToBase64url(cred.rawId),createdAt:Date.now()};
+}
+async function verifyAppBiometricCredential(cfg){
+  if(!window.PublicKeyCredential || !navigator.credentials?.get) throw new Error('هذا الجهاز أو المتصفح لا يدعم البصمة/الوجه داخل الويب');
+  if(!cfg.biometricCredentialId) throw new Error('لم يتم تفعيل البصمة/الوجه لهذا الحساب بعد');
+  const assertion=await navigator.credentials.get({publicKey:{challenge:randomChallenge(),allowCredentials:[{id:base64urlToBytes(cfg.biometricCredentialId),type:'public-key'}],userVerification:'preferred',timeout:60000}});
+  return !!assertion;
+}
+function renderAppLockScreen(){
+  const cfg=getAppLockSettings();
+  const method=cfg.method||'pin';
+  const label={pin:'رمز PIN',pattern:'النقش',password:'كلمة المرور',biometric:'البصمة / الوجه'}[method]||'رمز الدخول';
+  const inputType=method==='password'?'password':'password';
+  const fallback = method==='biometric' && cfg.fallbackHash;
+  $('appLockScreen').innerHTML=`<div class="security-lock-card"><div class="security-lock-icon">🔐</div><h2>قفل التطبيق</h2><p class="muted">افتح التطبيق باستخدام ${label}. هذا القفل خاص بهذا الجهاز ولا يغيّر تسجيل Firebase.</p>${method==='biometric'?`<button class="btn ok" id="unlockBiometricBtn">فتح بالبصمة أو الوجه</button>${fallback?'<div class="muted" style="margin:8px 0">أو استخدم رمز الاحتياط</div>':''}`:''}${method!=='biometric'||fallback?`<div class="field" style="margin-top:10px"><label>${method==='biometric'?'رمز الاحتياط':label}</label><input id="appLockInput" type="${inputType}" inputmode="${method==='pin'||method==='pattern'?'numeric':'text'}" placeholder="أدخل ${method==='biometric'?'رمز الاحتياط':label}"></div><button class="btn" id="unlockAppBtn" style="margin-top:8px">فتح التطبيق</button>`:''}<div id="lockMsg" class="muted" style="margin-top:10px"></div></div>`;
+  if($('unlockAppBtn')) $('unlockAppBtn').onclick=unlockAppWithCode;
+  if($('appLockInput')) $('appLockInput').onkeydown=e=>{if(e.key==='Enter') unlockAppWithCode()};
+  if($('unlockBiometricBtn')) $('unlockBiometricBtn').onclick=async()=>{const el=$('lockMsg'); try{el.textContent='جاري التحقق من البصمة/الوجه...'; if(await verifyAppBiometricCredential(cfg)){appUnlockedSession=true; msg('تم فتح التطبيق','success'); render();}}catch(e){el.textContent=e.message||'تعذر التحقق. استخدم رمز الاحتياط إن وجد.'}};
+}
+function unlockAppWithCode(){
+  const cfg=getAppLockSettings();
+  const v=($('appLockInput')?.value||'').trim();
+  const expected = cfg.method==='biometric' ? cfg.fallbackHash : cfg.secretHash;
+  if(!v){$('lockMsg').textContent='أدخل رمز الدخول';return}
+  if(simpleHash(v)===expected){appUnlockedSession=true; render(); msg('تم فتح التطبيق','success')}
+  else {$('lockMsg').textContent='رمز الدخول غير صحيح'}
+}
+function renderSecurityLockSettingsBlock(){
+  const cfg=getAppLockSettings();
+  const enabled=!!cfg.enabled;
+  const method=cfg.method||'pin';
+  return `<div class="card"><h2>قفل الدخول للتطبيق</h2><p class="muted">افتراضيًا هذه الميزة ملغية. عند تفعيلها سيطلب التطبيق فتحًا محليًا بعد الدخول: بصمة/وجه إذا كان الجهاز يدعمها، أو PIN، أو نقش، أو كلمة مرور.</p><div class="settings-compact-grid"><div class="settings-mini-card"><h3>التفعيل</h3><div class="field"><label>حالة القفل</label><select id="appLockEnabled"><option value="no" ${!enabled?'selected':''}>ملغي</option><option value="yes" ${enabled?'selected':''}>مفعل</option></select></div><div class="field"><label>طريقة الدخول</label><select id="appLockMethod"><option value="pin" ${method==='pin'?'selected':''}>PIN</option><option value="pattern" ${method==='pattern'?'selected':''}>نقش</option><option value="password" ${method==='password'?'selected':''}>باسوورد</option><option value="biometric" ${method==='biometric'?'selected':''}>بصمة / وجه</option></select></div></div><div class="settings-mini-card"><h3>بيانات القفل</h3><div class="compact-lock-fields"><div class="field"><label id="appLockSecretLabel">رمز القفل</label><input id="appLockSecret" type="password" inputmode="numeric" placeholder="مثال: 2580"></div><div class="field"><label>تأكيد الرمز</label><input id="appLockSecret2" type="password" inputmode="numeric" placeholder="أعد الإدخال"></div></div><p class="lock-small-note" id="appLockHint">للنقش استخدم أرقام 1-9 مثل ترتيب نقاط القفل، وللبصمة/الوجه أدخل رمز احتياط أيضًا.</p></div></div><div class="settings-compact-actions"><button class="btn ok" id="saveAppLockSettingsBtn">حفظ قفل التطبيق</button><button class="btn secondary" id="testAppLockBtn">اختبار القفل الآن</button><button class="btn light" id="disableAppLockBtn">إلغاء القفل</button></div><p class="muted">ملاحظة: البصمة/الوجه تعتمد على دعم المتصفح أو WebView. إذا لم تعمل داخل تطبيق Android استخدم PIN أو الباسوورد، أو نضيفها لاحقًا من كود Android الأصلي.</p></div>`;
+}
+function bindSecurityLockSettingsControls(){
+  const updateLockLabels=()=>{const m=$('appLockMethod')?.value||'pin'; const label={pin:'PIN',pattern:'النقش',password:'الباسوورد',biometric:'رمز احتياط للبصمة/الوجه'}[m]||'رمز القفل'; if($('appLockSecretLabel')) $('appLockSecretLabel').textContent=label; if($('appLockSecret')){$('appLockSecret').inputMode=(m==='password'?'text':'numeric'); $('appLockSecret').placeholder=m==='pattern'?'مثال: 14789':m==='password'?'كلمة مرور قوية':'مثال: 2580';}}
+  if($('appLockMethod')) $('appLockMethod').onchange=updateLockLabels; updateLockLabels();
+  if($('saveAppLockSettingsBtn')) $('saveAppLockSettingsBtn').onclick=async()=>{
+    const enabled=$('appLockEnabled')?.value==='yes'; const method=$('appLockMethod')?.value||'pin'; const v1=($('appLockSecret')?.value||'').trim(); const v2=($('appLockSecret2')?.value||'').trim();
+    if(!enabled){saveAppLockSettings({enabled:false,method}); appUnlockedSession=true; msg('تم إلغاء قفل التطبيق','success'); return}
+    if((method!=='biometric' || v1 || !getAppLockSettings().fallbackHash) && (!v1 || v1!==v2)){msg('أدخل الرمز وتأكيده بشكل صحيح','error'); return}
+    if(method==='pin' && !/^\d{4,8}$/.test(v1)){msg('PIN يجب أن يكون من 4 إلى 8 أرقام','error'); return}
+    let cfg={...getAppLockSettings(),enabled:true,method};
+    if(method==='biometric'){
+      try{msg('سيطلب الجهاز تأكيد البصمة/الوجه الآن...','notice'); const bio=await registerAppBiometricCredential(); cfg.biometricCredentialId=bio.credentialId; if(v1) cfg.fallbackHash=simpleHash(v1);}catch(e){msg('تعذر تفعيل البصمة/الوجه: '+(e.message||e),'error'); return}
+    }else{cfg.secretHash=simpleHash(v1)}
+    saveAppLockSettings(cfg); appUnlockedSession=true; msg('تم حفظ قفل الدخول للتطبيق','success');
+  };
+  if($('testAppLockBtn')) $('testAppLockBtn').onclick=()=>{const cfg=getAppLockSettings(); if(!cfg.enabled){msg('قفل التطبيق غير مفعل','error'); return} appUnlockedSession=false; render();};
+  if($('disableAppLockBtn')) $('disableAppLockBtn').onclick=()=>{saveAppLockSettings({enabled:false,method:$('appLockMethod')?.value||'pin'}); appUnlockedSession=true; msg('تم إلغاء قفل التطبيق','success'); renderSettings();};
+}
+
+function renderPhoneChangeSettingsBlock(){
+  const current=verifiedPhoneDisplay() || phoneKeyToInternational(state.authPhoneKey||'');
+  return `<div class="card"><h2>تغيير رقم الهاتف</h2><div class="notice">يمكنك تغيير رقم الحساب بعد التحقق بكود SMS. ستبقى بياناتك، محلك، عملاؤك، ومتاجرك كما هي، ويتم نقل الربط إلى الرقم الجديد.</div><div class="settings-mini-card"><div class="muted">الرقم الحالي</div><b>${esc(current||'-')}</b></div><div class="form compact-form"><div class="field"><label>الرقم الجديد بصيغة دولية</label><input id="newAccountPhone" inputmode="tel" placeholder="+9677XXXXXXXX"></div><button class="btn secondary compact-main-btn" id="sendChangePhoneCode">إرسال كود للرقم الجديد</button><div id="changePhoneStatus" class="notice hidden"></div><div class="field"><label>كود التحقق 6 أرقام</label><input id="changePhoneCode" inputmode="numeric" maxlength="6" placeholder="123456"></div><button class="btn ok compact-main-btn" id="confirmChangePhoneCode">تأكيد تغيير الرقم</button></div></div>`;
+}
+function renderNotificationSoundSettingsBlock(){
+  const v=state.notifySound || 'classic';
+  return `<div class="card"><h2>صوت الإشعارات والرسائل</h2><div class="form compact-form"><div class="field"><label>اختر الصوت</label><select id="notifySoundSelect"><option value="classic" ${v==='classic'?'selected':''}>الصوت الافتراضي</option><option value="soft" ${v==='soft'?'selected':''}>ناعم</option><option value="bell" ${v==='bell'?'selected':''}>جرس</option><option value="message" ${v==='message'?'selected':''}>رسالة</option><option value="alert" ${v==='alert'?'selected':''}>تنبيه قوي</option><option value="silent" ${v==='silent'?'selected':''}>بدون صوت</option></select></div><div class="settings-compact-actions"><button class="btn secondary" id="previewNotifySound">تجربة الصوت</button><button class="btn ok" id="saveNotifySound">حفظ الصوت</button></div><p class="muted">هذا الاختيار خاص بهذا المستخدم على هذا الجهاز فقط ولا يؤثر على أي مستخدم آخر.</p></div></div>`;
+}
+function bindPhoneAndSoundSettingsControls(){
+  if($('sendChangePhoneCode')) $('sendChangePhoneCode').onclick=sendChangePhoneCode;
+  if($('confirmChangePhoneCode')) $('confirmChangePhoneCode').onclick=confirmChangePhoneCode;
+  if($('previewNotifySound')) $('previewNotifySound').onclick=()=>{state.soundEnabled=true; state.notifySound=$('notifySoundSelect')?.value||'classic'; save(); beep('preview');};
+  if($('saveNotifySound')) $('saveNotifySound').onclick=()=>{state.notifySound=$('notifySoundSelect')?.value||'classic'; state.soundEnabled=state.notifySound!=='silent'; save(); msg('تم حفظ صوت الإشعارات والرسائل','success');};
+}
+function setChangePhoneStatus(text,type='notice'){
+  const el=$('changePhoneStatus');
+  if(!el) return;
+  el.className=`notice ${type}`;
+  el.textContent=text;
+  el.classList.remove('hidden');
+}
+async function sendChangePhoneCode(){
+  if(!auth || !auth.currentUser){msg('يجب تسجيل الدخول أولًا','error');return}
+  const raw=($('newAccountPhone')?.value||'').trim();
+  const intl=toInternationalPhone(raw);
+  const newKey=normalizePhone(intl);
+  const oldKey=verifiedCurrentPhoneKey() || normalizePhone(state.authPhoneKey||'');
+  if(!newKey || newKey.length<7){msg('أدخل رقمًا جديدًا صحيحًا','error');return}
+  if(newKey===oldKey){msg('الرقم الجديد هو نفس الرقم الحالي','error');return}
+  const btn=$('sendChangePhoneCode');
+  try{
+    if(btn){btn.disabled=true;btn.textContent='جاري إرسال الكود...';}
+    const verifier=ensureRecaptcha();
+    const provider=new PhoneAuthProvider(auth);
+    const verificationId=await provider.verifyPhoneNumber(intl, verifier);
+    state.pendingChangePhone={newPhone:intl,newPhoneKey:newKey,oldPhoneKey:oldKey,verificationId,ts:Date.now()};
+    save();
+    setChangePhoneStatus('تم إرسال كود التحقق للرقم الجديد. أدخل الكود ثم اضغط تأكيد تغيير الرقم.','success');
+  }catch(e){
+    setChangePhoneStatus('تعذر إرسال كود تغيير الرقم: '+friendlyAuthError(e),'error');
+    try{await recaptchaVerifier?.clear?.()}catch{}
+    recaptchaVerifier=null;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='إرسال كود للرقم الجديد';}
+  }
+}
+async function confirmChangePhoneCode(){
+  if(!auth || !auth.currentUser){msg('يجب تسجيل الدخول أولًا','error');return}
+  const pending=state.pendingChangePhone||{};
+  const code=($('changePhoneCode')?.value||'').trim();
+  if(!pending.verificationId || !pending.newPhoneKey){msg('أرسل كود التحقق أولًا','error');return}
+  if(!/^\d{6}$/.test(code)){msg('أدخل كود تحقق مكون من 6 أرقام','error');return}
+  const btn=$('confirmChangePhoneCode');
+  try{
+    if(btn){btn.disabled=true;btn.textContent='جاري تغيير الرقم...';}
+    const credential=PhoneAuthProvider.credential(pending.verificationId, code);
+    await updatePhoneNumber(auth.currentUser, credential);
+    await updatePhoneReferencesAfterChange(pending.oldPhoneKey, pending.newPhoneKey, pending.newPhone);
+    state.authPhoneNumber=pending.newPhone;
+    state.authPhoneKey=pending.newPhoneKey;
+    state.authProvider='phone';
+    if(state.role==='trader'){}
+    if(state.role==='customer') state.customerPhone=pending.newPhone;
+    delete state.pendingChangePhone;
+    save();
+    await saveUserAccountProfile({phoneChangedAt:serverTimestamp()});
+    setChangePhoneStatus('تم تغيير رقم الهاتف بنجاح مع الحفاظ على بياناتك وحساباتك.','success');
+    msg('تم تغيير رقم الهاتف بنجاح','success');
+    renderSettings();
+  }catch(e){
+    setChangePhoneStatus('تعذر تغيير الرقم: '+friendlyAuthError(e),'error');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='تأكيد تغيير الرقم';}
+  }
+}
+async function updatePhoneReferencesAfterChange(oldKey,newKey,newIntl){
+  if(!db || !uid()) return;
+  oldKey=normalizePhone(oldKey||''); newKey=normalizePhone(newKey||'');
+  const phoneValue=newIntl || phoneKeyToInternational(newKey);
+  if(!newKey) throw new Error('رقم الهاتف الجديد غير صحيح');
+  if(state.role==='trader' && state.shopId){
+    const shopId=state.shopId;
+    await runTransaction(db, async(tx)=>{
+      const shopRef=doc(db,'shops',shopId);
+      const shopSnap=await tx.get(shopRef);
+      if(!shopSnap.exists()) throw new Error('لم يتم العثور على المحل لتحديث الرقم');
+      const shop=shopSnap.data();
+      const oldPhoneKey=normalizePhone(shop.phoneKey||oldKey);
+      const newPhoneRef=doc(db,'shopPhones',newKey);
+      const newPhoneSnap=await tx.get(newPhoneRef);
+      if(newPhoneSnap.exists() && newPhoneSnap.data().shopId!==shopId) throw new Error('الرقم الجديد مستخدم لمحل آخر');
+      tx.update(shopRef,{phone:phoneValue,phoneKey:newKey,ownerPhoneKey:newKey,phoneChangedAt:serverTimestamp()});
+      tx.set(newPhoneRef,{shopId,name:shop.name||state.shopName||shopId,phone:phoneValue,phoneKey:newKey,ownerUid:uid(),updatedAt:serverTimestamp()},{merge:true});
+      if(oldPhoneKey && oldPhoneKey!==newKey) tx.delete(doc(db,'shopPhones',oldPhoneKey));
+    });
+    state.shopName=state.shopName||cache.shop?.name||state.shopId;
+  }
+  if(state.role==='customer' && Array.isArray(state.customerLinks)){
+    for(const link of state.customerLinks){
+      const sid=link.shopId, customerId=link.customerId;
+      if(!sid || !customerId) continue;
+      const linkOldKey=normalizePhone(link.phoneKey||oldKey);
+      await runTransaction(db, async(tx)=>{
+        const custRef=doc(db,'shops',sid,'customers',customerId);
+        const custSnap=await tx.get(custRef);
+        if(!custSnap.exists()) return;
+        const newPhoneRef=doc(db,'shops',sid,'customerPhones',newKey);
+        const newPhoneSnap=await tx.get(newPhoneRef);
+        if(newPhoneSnap.exists() && newPhoneSnap.data().customerId!==customerId) throw new Error('الرقم الجديد مستخدم عند أحد التجار لعميل آخر');
+        tx.update(custRef,{phone:phoneValue,phoneKey:newKey,phoneChangedAt:serverTimestamp()});
+        tx.set(newPhoneRef,{customerId,shopId:sid,name:link.customerName||state.customerName||'عميل',phone:phoneValue,phoneKey:newKey,customerUid:uid(),updatedAt:serverTimestamp()},{merge:true});
+        if(linkOldKey && linkOldKey!==newKey) tx.delete(doc(db,'shops',sid,'customerPhones',linkOldKey));
+        tx.set(doc(db,'shops',sid,'customerUidLinks',uid()),{customerId,shopId:sid,phoneKey:newKey,linkedAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});
+      });
+      try{ await setDoc(doc(db,'customerPhoneLinks',newKey,'shops',sid),{customerId,shopId:sid,shopName:link.shopName||sid,name:link.customerName||state.customerName||'عميل',phone:phoneValue,phoneKey:newKey,updatedAt:serverTimestamp()},{merge:true}); }catch(e){}
+      try{ if(linkOldKey && linkOldKey!==newKey) await deleteDoc(doc(db,'customerPhoneLinks',linkOldKey,'shops',sid)); }catch(e){}
+      link.customerPhone=phoneValue; link.phoneKey=newKey;
+    }
+    state.customerPhone=phoneValue;
+  }
+  try{ if(oldKey && oldKey!==newKey) await deleteDoc(doc(db,'phoneUidLinks',oldKey)); }catch(e){}
+  await setDoc(doc(db,'phoneUidLinks',newKey),{phoneKey:newKey,uid:uid(),provider:'phone',updatedAt:serverTimestamp()},{merge:true});
+}
+
+function settingsTabKey(){return 'hesabi_settings_tab_'+(uid() || state.authPhoneKey || 'guest')}
+function getSettingsTab(){try{return sessionStorage.getItem(settingsTabKey()) || 'security'}catch{return 'security'}}
+function setSettingsTab(tab){try{sessionStorage.setItem(settingsTabKey(), tab)}catch{}}
+function applySettingsTabs(activeTab=null){
+  const tab=activeTab || getSettingsTab();
+  document.querySelectorAll('.settings-top-tab').forEach(b=>b.classList.toggle('active', b.dataset.settingsTab===tab));
+  document.querySelectorAll('.settings-tab-pane').forEach(p=>p.classList.toggle('hidden', p.dataset.settingsPane!==tab));
+  setSettingsTab(tab);
+}
+function bindSettingsTabs(){
+  document.querySelectorAll('.settings-top-tab').forEach(b=>b.onclick=()=>applySettingsTabs(b.dataset.settingsTab));
+  applySettingsTabs(getSettingsTab());
+}
+
 function renderSettings(){
   const defaultLink = state.appPublicLink || (location.protocol.startsWith('http') ? location.href.split('#')[0] : '');
-  $('page_settings').innerHTML=`<div class="card"><h2>الإعدادات</h2><div class="settings-compact-grid"><div class="settings-mini-card"><h3>بيانات المستخدم</h3><p class="muted">الدور: ${state.role==='trader'?'تاجر':'عميل'}<br>كود المحل: ${esc(state.shopId)}<br>إصدار التطبيق: ${APP_VERSION}</p></div><div class="settings-mini-card"><h3>تحديث التطبيق</h3><p class="muted">يحمل آخر نسخة بدون حذف حسابك.</p><button class="btn ok" id="forceAppUpdateBtn">تحديث الآن</button></div></div><div class="settings-compact-actions"><button class="btn secondary" id="copyShop">نسخ كود المحل</button><button class="btn secondary" id="enableNotify">تفعيل الإشعارات</button><button class="btn light" id="exportData">تصدير الإعدادات</button><label class="btn light" style="text-align:center">استيراد<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار الدور</button><button class="btn danger" id="wipeAll">مسح هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج</button></div></div>
-  ${renderAppearanceSettingsBlock()}
-  <div class="card"><h2>مشاركة التطبيق</h2><div class="form"><div class="field"><label>رابط التطبيق للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="https://hesabi-app-edc7e.web.app"></div><div class="settings-compact-actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إشعار تحديث للعملاء</button>':''}</div><p class="muted">الأفضل مشاركة الرابط الرسمي حتى يحصل العملاء على آخر تحديث.</p></div></div>`;
-  setTimeout(()=>{bindAppearanceSettingsControls(); if($('forceAppUpdateBtn')) $('forceAppUpdateBtn').onclick=forceAppUpdate; if($('copyShop')) $('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId); if($('enableNotify')) $('enableNotify').onclick=enableNotifications; if($('exportData')) $('exportData').onclick=exportData; if($('importFile')) $('importFile').onchange=importData; if($('saveAppLink')) $('saveAppLink').onclick=saveAppPublicLink; if($('shareAppLink')) $('shareAppLink').onclick=shareAppLink; if($('shareAppFile')) $('shareAppFile').onclick=shareCurrentHtmlFile; if($('notifyCustomersUpdate')) $('notifyCustomersUpdate').onclick=broadcastAppUpdate; if($('resetRole')) $('resetRole').onclick=()=>{if(confirm('سيتم إعادة التهيئة على هذا الجهاز فقط. هل تريد المتابعة؟')){state.role=null;state.profileDone=false;state.customerId=null;state.customerName=null;state.customerLinks=[];state.activeShopId=null;save();location.reload()}}; if($('wipeAll')) $('wipeAll').onclick=()=>{if(confirm('مسح كل إعدادات هذا الجهاز؟')){localStorage.removeItem(LS);localStorage.removeItem(OLD_LS);location.reload()}}; if($('logoutBtn')) $('logoutBtn').onclick=async()=>{await signOut(auth); localStorage.removeItem(LS); location.reload()};});
+  const userRoleText = state.role==='trader'?'تاجر':'عميل';
+  const shopCodeShortcut = state.role==='trader'
+    ? `<button class="btn secondary settings-shortcut-btn" id="openShopCodeFromSettings">🔳 كود التاجر</button>`
+    : `<button class="btn secondary settings-shortcut-btn" id="openShopCodeFromSettings">📷 مسح كود التاجر</button>`;
+  $('page_settings').innerHTML=`<div class="card settings-page-head"><h2>الإعدادات</h2><p class="muted">تم تنظيم الإعدادات في تبويبات حتى تصل لكل وظيفة بسرعة.</p><div class="settings-tabs-bar"><button class="settings-top-tab" data-settings-tab="security">🔐 الأمان والحساب</button><button class="settings-top-tab" data-settings-tab="appearance">🎨 شكل التطبيق</button><button class="settings-top-tab" data-settings-tab="notifications">🔔 التنبيهات والصوت</button><button class="settings-top-tab" data-settings-tab="system">⚙️ النظام والتحديث</button></div></div>
+  <div class="settings-tab-pane" data-settings-pane="security">
+    <div class="settings-section-title">الأمان والحساب</div>
+    ${renderPhoneChangeSettingsBlock()}
+    ${renderSecurityLockSettingsBlock()}
+  </div>
+  <div class="settings-tab-pane" data-settings-pane="appearance">
+    <div class="settings-section-title">شكل التطبيق</div>
+    ${renderAppearanceSettingsBlock()}
+  </div>
+  <div class="settings-tab-pane" data-settings-pane="notifications">
+    <div class="settings-section-title">التنبيهات والصوت</div>
+    <div class="card"><h2>صلاحيات التنبيهات</h2><p class="muted">فعّل إشعارات الهاتف والصوت حتى تسمع الطلبات والرسائل والسداد.</p><div class="settings-compact-actions"><button class="btn secondary" id="enableNotify">تفعيل الإشعارات</button></div></div>
+    ${renderNotificationSoundSettingsBlock()}
+  </div>
+  <div class="settings-tab-pane" data-settings-pane="system">
+    <div class="settings-section-title">النظام والتحديث والأكواد</div>
+    <div class="card"><h2>بيانات المستخدم</h2><div class="settings-compact-grid"><div class="settings-mini-card"><h3>الحساب الحالي</h3><p class="muted">الدور: ${userRoleText}<br>كود المحل: ${esc(state.shopId||'-')}<br>رقم الحساب: ${esc(state.authPhoneIntl||state.phoneNumber||state.authPhoneKey||'-')}<br>إصدار التطبيق: ${APP_VERSION}</p></div><div class="settings-mini-card"><h3>تحديث التطبيق</h3><p class="muted">تحميل آخر نسخة بدون حذف حسابك أو بياناتك المحلية.</p><button class="btn ok compact-main-btn" id="forceAppUpdateBtn">تحديث الآن</button></div></div></div>
+    <div class="card"><h2>الأكواد والروابط</h2><p class="muted">اختصارات لكود التاجر، مسح الكود، ومشاركة رابط التطبيق.</p><div class="settings-compact-actions">${shopCodeShortcut}<button class="btn secondary" id="copyShop">نسخ كود المحل</button></div><div class="form"><div class="field"><label>رابط التطبيق للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="https://hesabi-app-edc7e.web.app"></div><div class="settings-compact-actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إشعار تحديث للعملاء</button>':''}</div></div></div>
+    <div class="card"><h2>النسخ والعمليات</h2><p class="muted">أدوات الجهاز الحالي فقط. استخدمها بحذر.</p><div class="settings-compact-actions"><button class="btn light" id="exportData">تصدير الإعدادات</button><label class="btn light settings-file-label">استيراد<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار الدور</button><button class="btn danger" id="wipeAll">مسح هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج</button></div></div>
+  </div>`;
+  setTimeout(()=>{
+    bindSettingsTabs();
+    bindAppearanceSettingsControls();
+    bindPhoneAndSoundSettingsControls();
+    bindSecurityLockSettingsControls();
+    if($('forceAppUpdateBtn')) $('forceAppUpdateBtn').onclick=forceAppUpdate;
+    if($('copyShop')) $('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId||'');
+    if($('enableNotify')) $('enableNotify').onclick=enableNotifications;
+    if($('exportData')) $('exportData').onclick=exportData;
+    if($('importFile')) $('importFile').onchange=importData;
+    if($('saveAppLink')) $('saveAppLink').onclick=saveAppPublicLink;
+    if($('shareAppLink')) $('shareAppLink').onclick=shareAppLink;
+    if($('shareAppFile')) $('shareAppFile').onclick=shareCurrentHtmlFile;
+    if($('notifyCustomersUpdate')) $('notifyCustomersUpdate').onclick=broadcastAppUpdate;
+    if($('openShopCodeFromSettings')) $('openShopCodeFromSettings').onclick=()=>show('shopcode');
+    if($('resetRole')) $('resetRole').onclick=()=>{if(confirm('سيتم إعادة التهيئة على هذا الجهاز فقط. هل تريد المتابعة؟')){state.role=null;state.profileDone=false;state.customerId=null;state.customerName=null;state.customerLinks=[];state.activeShopId=null;save();location.reload()}};
+    if($('wipeAll')) $('wipeAll').onclick=()=>{if(confirm('مسح كل إعدادات هذا الجهاز؟')){localStorage.removeItem(LS);localStorage.removeItem(OLD_LS);location.reload()}};
+    if($('logoutBtn')) $('logoutBtn').onclick=async()=>{await signOut(auth); localStorage.removeItem(LS); location.reload()};
+  });
 }
 
 
