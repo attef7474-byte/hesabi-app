@@ -260,7 +260,7 @@
   <style id="hesabi-barcode-scanner-safe-style">
     .barcode-scan-box{border:1px solid #99f6e4;background:#f0fdfa;border-radius:18px;padding:10px;margin:8px 0}
     .barcode-video{width:100%;max-height:260px;object-fit:cover;background:#0f172a;border-radius:16px;display:none;margin-top:8px}
-    .barcode-video.active{display:block}
+    .barcode-video.active{display:block;min-height:220px;border:3px solid #0f766e;box-shadow:inset 0 0 0 9999px rgba(0,0,0,.02)}
     .barcode-scan-line{font-size:12px;color:#115e59;line-height:1.6;margin-top:6px}
     .barcode-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
     .barcode-actions .btn{width:auto!important;min-height:34px!important;padding:7px 10px!important;font-size:12px!important;border-radius:12px!important}
@@ -403,7 +403,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-03-إصلاح-مسح-كود-الصنف';
+const APP_VERSION='2026-06-03-تحسين-دقة-مسح-كود-الصنف';
 
 function getJoinShopParam(){
   try{
@@ -1911,51 +1911,125 @@ function bindItemButtons(){
 
 
 
+
 let itemBarcodeScannerStream=null;
 let itemBarcodeScannerTimer=null;
+let itemBarcodeDetector=null;
+
+async function itemBarcodeDetectorInstance(){
+  if(itemBarcodeDetector) return itemBarcodeDetector;
+  if(!('BarcodeDetector' in window)) return null;
+  const formats=['qr_code','ean_13','ean_8','code_128','code_39','code_93','upc_a','upc_e','itf','codabar','data_matrix','pdf417'];
+  try{ itemBarcodeDetector=new BarcodeDetector({formats}); }
+  catch(e){ itemBarcodeDetector=new BarcodeDetector(); }
+  return itemBarcodeDetector;
+}
+
+async function detectItemBarcodeFromSource(source){
+  const detector=await itemBarcodeDetectorInstance();
+  if(!detector) return '';
+  const codes=await detector.detect(source);
+  if(codes && codes.length) return String(codes[0].rawValue||'').trim();
+  return '';
+}
+
+async function scanItemBarcodeStillFrame(){
+  const video=$('itemBarcodeVideo');
+  const input=$('itemBarcode');
+  const status=$('itemBarcodeScanStatus');
+  try{
+    if(!video || video.readyState<2){msg('الكاميرا غير جاهزة بعد','error');return}
+    const canvas=document.createElement('canvas');
+    const w=video.videoWidth||1280, h=video.videoHeight||720;
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video,0,0,w,h);
+    const code=await detectItemBarcodeFromSource(canvas);
+    if(code){
+      input.value=code;
+      if(status) status.textContent='تم قراءة كود الصنف من لقطة عالية الدقة: '+code;
+      if(navigator.vibrate) navigator.vibrate(100);
+      await stopItemBarcodeScanner(false);
+      msg('تم قراءة كود الصنف: '+code,'success');
+    }else{
+      if(status) status.textContent='لم يتم التعرف. قرّب الكود، ثبّت يدك، ثم اضغط قراءة لقطة.';
+      msg('لم يتم التعرف على الكود. جرّب تقريب الكاميرا أو إضاءة أقوى.','error');
+    }
+  }catch(e){msg('تعذر قراءة اللقطة: '+(e.message||e),'error')}
+}
 
 async function startItemBarcodeScanner(){
   try{
-    if(!('BarcodeDetector' in window)){
-      msg('هذا المتصفح لا يدعم المسح بالكاميرا. أدخل كود الصنف يدويًا أو جرّب من Chrome/Android APK أحدث.','error');
-      return;
-    }
     const video=$('itemBarcodeVideo');
     const input=$('itemBarcode');
     const status=$('itemBarcodeScanStatus');
     if(!video || !input){msg('واجهة مسح كود الصنف غير جاهزة','error');return}
+    if(!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia){
+      msg('الكاميرا غير مدعومة في هذه البيئة. استخدم تطبيق أندرويد أو Chrome.','error');
+      return;
+    }
+    if(!('BarcodeDetector' in window)){
+      msg('قارئ الباركود غير مدعوم في هذه النسخة. أدخل الكود يدويًا أو جرّب من Chrome/Android أحدث.','error');
+      return;
+    }
     if(window.HesabiAndroid && typeof window.HesabiAndroid.requestMediaPermissions==='function'){
       try{window.HesabiAndroid.requestMediaPermissions()}catch(e){}
     }
     await stopItemBarcodeScanner(false);
-    itemBarcodeScannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+
+    const constraintsList=[
+      {video:{facingMode:{exact:'environment'},width:{ideal:1920},height:{ideal:1080},focusMode:'continuous',advanced:[{focusMode:'continuous'},{exposureMode:'continuous'}]},audio:false},
+      {video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]},audio:false},
+      {video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false},
+      {video:true,audio:false}
+    ];
+    let lastErr=null;
+    for(const c of constraintsList){
+      try{ itemBarcodeScannerStream=await navigator.mediaDevices.getUserMedia(c); break; }
+      catch(e){ lastErr=e; }
+    }
+    if(!itemBarcodeScannerStream) throw lastErr || new Error('camera failed');
+
     video.srcObject=itemBarcodeScannerStream;
     video.classList.add('active');
+    video.setAttribute('playsinline','');
+    video.muted=true;
     await video.play();
-    if(status) status.textContent='وجّه الكاميرا نحو كود الصنف. عند التعرف عليه سيتم تعبئة الحقل تلقائيًا.';
-    let detector;
+
     try{
-      detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','code_93','upc_a','upc_e','itf','codabar','data_matrix']});
-    }catch(e){
-      detector=new BarcodeDetector();
-    }
+      const track=itemBarcodeScannerStream.getVideoTracks()[0];
+      const caps=track.getCapabilities ? track.getCapabilities() : {};
+      const apply={advanced:[]};
+      if(caps.focusMode && caps.focusMode.includes('continuous')) apply.advanced.push({focusMode:'continuous'});
+      if(caps.exposureMode && caps.exposureMode.includes('continuous')) apply.advanced.push({exposureMode:'continuous'});
+      if(caps.zoom){
+        const z=Math.min(Math.max(caps.zoom.min||1,1.4), caps.zoom.max||1.4);
+        apply.advanced.push({zoom:z});
+      }
+      if(apply.advanced.length) await track.applyConstraints(apply);
+    }catch(e){}
+
+    if(status) status.textContent='قرّب الباركود داخل الإطار. إذا لم يتعرف تلقائيًا، اضغط "قراءة لقطة".';
+    const detector=await itemBarcodeDetectorInstance();
+
     itemBarcodeScannerTimer=setInterval(async()=>{
       try{
+        if(!video || video.readyState<2) return;
         const codes=await detector.detect(video);
         if(codes && codes.length){
           const code=String(codes[0].rawValue||'').trim();
           if(code){
             input.value=code;
             if(status) status.textContent='تم قراءة كود الصنف: '+code;
-            if(navigator.vibrate) navigator.vibrate(90);
+            if(navigator.vibrate) navigator.vibrate(100);
             await stopItemBarcodeScanner(false);
             msg('تم قراءة كود الصنف: '+code,'success');
           }
         }
       }catch(e){}
-    },700);
+    },350);
   }catch(e){
-    msg('تعذر تشغيل الكاميرا لمسح كود الصنف. تأكد من صلاحية الكاميرا أو جرّب من المتصفح.','error');
+    msg('تعذر تشغيل كاميرا كود الصنف بجودة مناسبة: '+(e.message||e),'error');
   }
 }
 
@@ -3468,8 +3542,8 @@ function renderItems(){
     setTimeout(bindCatalogButtons); return;
   }
   const rows=(cache.items||[]).map(i=>{const stock=Number(i.stock||0), min=Number(i.minStock||0); const st=i.isActive===false?'معطل':(stock<=0?'نافد':(min>0&&stock<=min?'منخفض':'نشط')); const cash=Number(i.cashPrice||i.price||0), credit=Number(i.creditPrice||i.price||cash); return `<tr><td class="name">${esc(i.name)}<div class="subcell">${i.barcode?`كود: ${esc(i.barcode)} · `:''}${i.notes?esc(i.notes):''}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'-')}</td><td><span class="inline-badge ok">كاش ${money(cash)}</span><br><span class="inline-badge warn">آجل ${money(credit)}</span></td><td>${stock}<div class="subcell">تنبيه: ${min}</div></td><td><span class="status ${i.isActive===false?'rejected':(stock<=0?'rejected':(min>0&&stock<=min?'pending':'approved'))}">${st}</span></td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-stock-item="${i.id}">كمية</button><button class="btn ${i.isActive===false?'ok':'warn'} mini" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button>`)}</td></tr>`});
-  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">اضغط تشغيل الكاميرا، ثم وجّهها نحو باركود الصنف أو QR.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn secondary" type="button" id="scanItemBarcodeBtn">📷 تشغيل الكاميرا</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
-  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
+  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">لأفضل نتيجة: قرّب الباركود، اجعله واضحًا أفقيًا داخل الإطار، واستخدم إضاءة قوية. إذا لم يتعرف تلقائيًا اضغط قراءة لقطة.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn secondary" type="button" id="scanItemBarcodeBtn">📷 تشغيل الكاميرا HD</button><button class="btn ok" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">ملاحظة: بعض الأجهزة لا تدعم قراءة كل أنواع الباركود عبر المتصفح. في هذه الحالة أدخل الرقم يدويًا بعد تصويره بتطبيق الكاميرا.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
+  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
 }
 function renderCustomers(){
   if(state.role!=='trader'){show('home');return}
