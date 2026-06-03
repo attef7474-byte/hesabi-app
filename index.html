@@ -226,6 +226,16 @@
     @media(max-width:520px){.dual-role-actions{grid-template-columns:1fr}}
   </style>
 
+
+  <style id="hesabi-daily-tasks-safe-style">
+    .tasks-grid{display:grid;gap:8px;margin-top:10px}
+    .task-card{border:1px solid #dbe7ee;border-radius:18px;background:#fff;padding:10px;box-shadow:0 4px 12px rgba(15,23,42,.05)}
+    .task-card.urgent{border-color:#fecaca;background:#fff7f7}.task-card.good{border-color:#bbf7d0;background:#f0fdf4}
+    .task-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.task-title{font-weight:900}.task-count{min-width:34px;height:34px;border-radius:999px;background:#0f766e;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
+    .task-card.urgent .task-count{background:#dc2626}.task-card.good .task-count{background:#059669}.task-body{font-size:12px;color:#64748b;line-height:1.55;margin-top:5px}.task-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.task-actions .btn{min-height:32px!important;padding:6px 9px!important;border-radius:11px!important;font-size:12px!important;width:auto!important}
+    @media(max-width:520px){.task-actions .btn{flex:1 1 calc(50% - 6px)}}
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -291,6 +301,7 @@
   <main id="main" class="hidden">
     <section id="page_home"></section>
     <section id="page_search" class="hidden"></section>
+    <section id="page_tasks" class="hidden"></section>
     <section id="page_items" class="hidden"></section>
     <section id="page_orders" class="hidden"></section>
     <section id="page_customers" class="hidden"></section>
@@ -362,7 +373,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-02-dual-role-safe';
+const APP_VERSION='2026-06-03-dual-role-tasks-safe';
 
 function getJoinShopParam(){
   try{
@@ -1447,9 +1458,9 @@ function show(p){
   if(state.role!=='trader' && (p==='customers'||p==='audit'||p==='stock'||p==='collections'||p==='policies')) p='home'; if(state.role==='trader' && p==='shops') p='home';
   if(p!==active){ previousPage=active || 'home'; }
   active=p;
-  ['home','search','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
+  ['home','search','tasks','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
   renderNav();
-  const renderer={home:renderHome,search:renderSearch,items:renderItems,orders:renderOrders,customers:renderCustomers,shops:renderShops,messages:renderMessages,payments:renderPayments,invoices:renderInvoices,statement:renderStatement,audit:renderAudit,stock:renderStock,returns:renderReturns,schedules:renderSchedules,collections:renderCollections,reports:renderReports,policies:renderPolicies,notifications:renderNotifications,shopcode:renderShopCode,settings:renderSettings}[p] || renderHome;
+  const renderer={home:renderHome,search:renderSearch,tasks:renderTasks,items:renderItems,orders:renderOrders,customers:renderCustomers,shops:renderShops,messages:renderMessages,payments:renderPayments,invoices:renderInvoices,statement:renderStatement,audit:renderAudit,stock:renderStock,returns:renderReturns,schedules:renderSchedules,collections:renderCollections,reports:renderReports,policies:renderPolicies,notifications:renderNotifications,shopcode:renderShopCode,settings:renderSettings}[p] || renderHome;
   renderer();
   if(['orders','messages','payments','returns','schedules'].includes(p) && markPageNotificationsRead(p)){
     renderNav();
@@ -1576,16 +1587,53 @@ function renderSearch(){
 }
 
 
+
+function buildDailyTasks(){
+  const c=unreadCounters();
+  const orders=cache.orders||[];
+  const payments=cache.payments||[];
+  const returnsRows=cache.returns||[];
+  const schedules=cache.schedules||[];
+  const items=cache.items||[];
+  const customers=cache.customers||[];
+  const tasks=[];
+  const add=(icon,title,count,body,page,cls='')=>tasks.push({icon,title,count:Number(count||0),body,page,cls});
+  if(state.role==='trader'){
+    add('🧾','طلبات تحتاج موافقة', orders.filter(o=>o.status==='pending'||o.status==='pending_trader').length, 'راجع الطلبات الجديدة واعتمدها أو ارفضها مع ملاحظة واضحة.', 'orders', 'urgent');
+    add('💵','مدفوعات معلقة', payments.filter(p=>p.status==='pending').length, 'اعتمد السدادات المرسلة من العملاء أو ارفضها عند وجود خطأ.', 'payments', 'urgent');
+    add('💬','رسائل غير مقروءة', c.messages, 'رد على رسائل العملاء الجديدة بسرعة.', 'messages', c.messages?'urgent':'');
+    add('↩️','مرتجعات معلقة', returnsRows.filter(r=>r.status==='pending').length, 'راجع طلبات المرتجع واعتمد الحركة المناسبة.', 'returns');
+    add('⏰','استحقاقات اليوم/متأخرة', schedules.filter(x=>String(x.status||'pending')==='pending' && String(x.dueDate||'')<=todayIso()).length, 'تابع التحصيلات والمواعيد المستحقة.', 'schedules');
+    add('🏬','أصناف منخفضة المخزون', items.filter(i=>Number(i.stock||0)<=Number(i.minStock||0) && Number(i.minStock||0)>0).length, 'راجع الأصناف التي وصلت حد التنبيه.', 'stock');
+    add('👥','عملاء عليهم رصيد', customers.filter(cu=>Number(cu.balance||0)>0).length, 'راجع أرصدة العملاء وأرسل كشف الحساب عند الحاجة.', 'statement');
+  }else{
+    add('🛒','طلبات بانتظار التاجر', orders.filter(o=>o.status==='pending'||o.status==='pending_trader').length, 'طلباتك المرسلة وما زالت بانتظار موافقة التاجر.', 'orders');
+    add('✅','طلبات تحتاج موافقتك', orders.filter(o=>o.status==='pending_customer').length, 'راجع الطلبات التي أنشأها التاجر وتحتاج موافقتك.', 'orders', 'urgent');
+    add('💵','سدادات بانتظار الاعتماد', payments.filter(p=>p.status==='pending').length, 'سدادات أرسلتها ولم يعتمدها التاجر بعد.', 'payments');
+    add('💬','رسائل جديدة', c.messages, 'رسائل غير مقروءة من التاجر.', 'messages', c.messages?'urgent':'');
+    add('⏰','استحقاقات مستحقة', schedules.filter(x=>String(x.status||'pending')==='pending' && String(x.dueDate||'')<=todayIso()).length, 'مواعيد أو أقساط مستحقة عليك.', 'schedules', 'urgent');
+    add('🏪','المتاجر المرتبطة', (state.customerLinks||[]).length, 'المتاجر التي تم ربطك بها كعميل.', 'shops', (state.customerLinks||[]).length?'good':'');
+  }
+  return tasks;
+}
+function renderTasks(){
+  const tasks=buildDailyTasks();
+  const openTasks=tasks.filter(t=>t.count>0).length;
+  $('page_tasks').innerHTML=`<div class="card"><div class="row"><h2>المهام اليومية</h2><span class="status ${openTasks?'pending':'approved'}">${openTasks?openTasks+' مفتوحة':'لا توجد مهام عاجلة'}</span></div><p class="muted">هذه الصفحة تجمع أهم الواجبات اليومية حسب وضعك الحالي: ${state.role==='trader'?'تاجر':'عميل'}.</p></div><div class="tasks-grid">${tasks.map(t=>`<div class="task-card ${t.cls||''}"><div class="task-head"><div><span>${t.icon}</span> <span class="task-title">${esc(t.title)}</span></div><span class="task-count">${Number(t.count||0).toLocaleString('ar-YE')}</span></div><div class="task-body">${esc(t.body)}</div><div class="task-actions"><button class="btn secondary" data-task-page="${esc(t.page)}">فتح</button></div></div>`).join('')}</div>`;
+  document.querySelectorAll('[data-task-page]').forEach(b=>b.onclick=()=>show(b.getAttribute('data-task-page')||'home'));
+}
+function dailyTaskCount(){return buildDailyTasks().filter(t=>t.count>0).length}
+
 function homeQuickItems(){
   const c=unreadCounters();
   const trader=[
-    ['search','🔎','بحث',0],['shopcode','🔳','كود التاجر',0],['items','📦','الأصناف',0],['customers','👥','العملاء',0],['orders','🧾','الطلبات',c.orders],
+    ['tasks','✅','المهام',dailyTaskCount()],['search','🔎','بحث',0],['shopcode','🔳','كود التاجر',0],['items','📦','الأصناف',0],['customers','👥','العملاء',0],['orders','🧾','الطلبات',c.orders],
     ['messages','💬','الرسائل',c.messages],['payments','💵','السداد',c.payments],['invoices','📄','الفواتير',0],['statement','📊','كشف الحساب',0],
     ['stock','🏬','المخزون',0],['returns','↩️','المرتجعات',c.returns],['schedules','⏰','الاستحقاقات',c.schedules],['collections','🧮','التحصيل',0],
     ['reports','📈','التقارير',0],['audit','🗂️','السجل',0],['policies','⚙️','السياسات',0],[ 'notifications','🔔','الإشعارات',c.notifications],['settings','🛠️','الإعدادات',0]
   ];
   const customer=[
-    ['search','🔎','بحث',0],['shopcode','📷','مسح كود',0],['shops','🏪','متاجري',0],['items','🛒','شراء',0],['orders','🧾','طلباتي',c.orders],
+    ['tasks','✅','المهام',dailyTaskCount()],['search','🔎','بحث',0],['shopcode','📷','مسح كود',0],['shops','🏪','متاجري',0],['items','🛒','شراء',0],['orders','🧾','طلباتي',c.orders],
     ['messages','💬','الرسائل',c.messages],['payments','💵','السداد',c.payments],['invoices','📄','الفواتير',0],['statement','📊','كشف الحساب',0],
     ['returns','↩️','المرتجعات',c.returns],['schedules','⏰','الاستحقاقات',c.schedules],['reports','📈','التقارير',0],[ 'notifications','🔔','الإشعارات',c.notifications],['settings','🛠️','الإعدادات',0]
   ];
