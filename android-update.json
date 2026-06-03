@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 12,
-  "latestVersionName": "1.0.12",
+  "latestVersionCode": 13,
+  "latestVersionName": "1.0.13",
   "required": false,
-  "title": "استيراد وتصدير الأصناف من Excel",
-  "message": "تمت إضافة ملف Excel يحتوي 1000 صنف، وأزرار استيراد وتصدير الأصناف من وإلى Excel داخل صفحة الأصناف.",
+  "title": "إصلاح استيراد Excel",
+  "message": "تم إصلاح اختيار ملفات Excel داخل Android WebView، وتحسين تحميل مكتبة Excel من عدة مصادر.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }

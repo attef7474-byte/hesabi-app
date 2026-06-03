@@ -174,22 +174,55 @@ public class MainActivity extends FragmentActivity {
             if (filePathCallback != null) filePathCallback.onReceiveValue(null);
             filePathCallback = callback;
 
-            Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT);
-            galleryIntent.addCategory(Intent.CATEGORY_OPENABLE);
-            galleryIntent.setType("*/*");
-            galleryIntent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "audio/*"});
-
-            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            try {
-                File photoFile = createCameraImageFile();
-                cameraImageUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fileprovider", photoFile);
-                cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri);
-                cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            } catch (Exception e) {
-                cameraIntent = null;
+            String[] acceptTypes = params != null ? params.getAcceptTypes() : new String[0];
+            boolean wantsImage = false;
+            boolean wantsAudio = false;
+            boolean wantsExcel = false;
+            if (acceptTypes != null) {
+                for (String a : acceptTypes) {
+                    if (a == null) continue;
+                    String t = a.toLowerCase(Locale.US);
+                    if (t.contains("image") || t.contains(".jpg") || t.contains(".png")) wantsImage = true;
+                    if (t.contains("audio") || t.contains(".mp3") || t.contains(".m4a")) wantsAudio = true;
+                    if (t.contains("sheet") || t.contains("excel") || t.contains(".xlsx") || t.contains(".xls") || t.contains("csv")) wantsExcel = true;
+                }
             }
 
-            Intent chooser = Intent.createChooser(galleryIntent, "اختر صورة أو ملف صوت");
+            Intent fileIntent = new Intent(Intent.ACTION_GET_CONTENT);
+            fileIntent.addCategory(Intent.CATEGORY_OPENABLE);
+            fileIntent.setType("*/*");
+
+            if (wantsExcel) {
+                fileIntent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.ms-excel",
+                        "text/csv",
+                        "application/octet-stream",
+                        "*/*"
+                });
+            } else if (wantsImage && !wantsAudio) {
+                fileIntent.setType("image/*");
+            } else if (wantsAudio && !wantsImage) {
+                fileIntent.setType("audio/*");
+            } else {
+                fileIntent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "audio/*", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv"});
+            }
+
+            Intent cameraIntent = null;
+            if (wantsImage || (!wantsExcel && !wantsAudio)) {
+                cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                try {
+                    File photoFile = createCameraImageFile();
+                    cameraImageUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fileprovider", photoFile);
+                    cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri);
+                    cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                } catch (Exception e) {
+                    cameraIntent = null;
+                }
+            }
+
+            String title = wantsExcel ? "اختر ملف Excel للأصناف" : "اختر ملف";
+            Intent chooser = Intent.createChooser(fileIntent, title);
             if (cameraIntent != null) chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cameraIntent});
             startActivityForResult(chooser, REQ_FILE_CHOOSER);
             return true;
