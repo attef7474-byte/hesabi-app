@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 8,
-  "latestVersionName": "1.0.8",
+  "latestVersionCode": 10,
+  "latestVersionName": "1.0.10",
   "required": false,
-  "title": "تحديث نظام APK والإصدار",
-  "message": "تم فصل تحديث الواجهات عن تحديث APK، وإظهار رقم إصدار APK المثبت داخل الإعدادات.",
+  "title": "تعلم اسم الصنف من الكود",
+  "message": "تمت إضافة تعبئة اسم الصنف تلقائيًا عند قراءة كود محفوظ سابقًا، وتعلم الاسم عند حفظ صنف جديد.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }

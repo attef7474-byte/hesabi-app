@@ -197,9 +197,8 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void startNativeItemBarcodeScanner() {
-        // Use the external scanner first because it often has better autofocus/decoding.
-        // If no compatible scanner is installed, fall back to the embedded ZXing scanner.
-        if (startExternalItemBarcodeScanner()) return;
+        // Use the embedded scanner inside this APK by default.
+        // External scanner apps are optional and only work if they support the ZXing scan intent.
         startEmbeddedItemBarcodeScanner();
     }
 
@@ -241,16 +240,14 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void openExternalScannerOrStore() {
+        // Android does not have one standard barcode-scan intent supported by all scanner apps.
+        // Only ZXing-compatible scanner apps respond to com.google.zxing.client.android.SCAN.
+        // If no compatible app is found, fall back immediately to the embedded scanner inside this APK.
         try {
             if (startExternalItemBarcodeScanner()) return;
-            Toast.makeText(this, "لم يتم العثور على تطبيق ماسح متوافق. ثبّت Barcode Scanner أو استخدم الماسح الداخلي.", Toast.LENGTH_LONG).show();
-            Intent market = new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=barcode%20scanner"));
-            startActivity(market);
-        } catch (Exception e) {
-            try {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/search?q=barcode%20scanner&c=apps")));
-            } catch (Exception ignored) {}
-        }
+        } catch (Exception ignored) {}
+        Toast.makeText(this, "لا يوجد تطبيق ماسح خارجي متوافق مع ZXing. سيتم فتح الماسح الداخلي.", Toast.LENGTH_LONG).show();
+        startEmbeddedItemBarcodeScanner();
     }
 
     private static String jsQuote(String value) {
