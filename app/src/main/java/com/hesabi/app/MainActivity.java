@@ -36,6 +36,10 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.common.InputImage;
 
 import java.io.File;
 import java.util.Objects;
@@ -50,11 +54,13 @@ public class MainActivity extends FragmentActivity {
     private static final int REQ_MEDIA_PERMISSIONS = 7001;
     private static final int REQ_FILE_CHOOSER = 7002;
     private static final int REQ_EXTERNAL_BARCODE = 7003;
+    private static final int REQ_ITEM_OCR = 7004;
 
     private WebView webView;
     private PermissionRequest pendingPermissionRequest;
     private ValueCallback<Uri[]> filePathCallback;
     private Uri cameraImageUri;
+    private Uri itemOcrImageUri;
     private String lastSessionJson = "{}";
     private long latestApkDownloadId = -1L;
     private File latestApkFile;
@@ -250,6 +256,48 @@ public class MainActivity extends FragmentActivity {
         startEmbeddedItemBarcodeScanner();
     }
 
+
+    private void startItemOcrCamera() {
+        try {
+            if (!hasCameraPermission()) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQ_MEDIA_PERMISSIONS);
+                Toast.makeText(this, "اسمح بصلاحية الكاميرا ثم حاول قراءة اسم الصنف مرة أخرى.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            File photoFile = createCameraImageFile();
+            itemOcrImageUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", photoFile);
+            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, itemOcrImageUri);
+            cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivityForResult(cameraIntent, REQ_ITEM_OCR);
+        } catch (Exception e) {
+            sendItemOcrResult("", "تعذر فتح كاميرا OCR: " + e.getMessage());
+        }
+    }
+
+    private void processItemOcrImage(Uri uri) {
+        try {
+            if (uri == null) {
+                sendItemOcrResult("", "لم يتم التقاط صورة للقراءة.");
+                return;
+            }
+            InputImage image = InputImage.fromFilePath(this, uri);
+            TextRecognizer recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            recognizer.process(image)
+                    .addOnSuccessListener(text -> sendItemOcrResult(text == null ? "" : text.getText(), "تمت قراءة النص من الصورة"))
+                    .addOnFailureListener(e -> sendItemOcrResult("", "فشل OCR: " + e.getMessage()));
+        } catch (Exception e) {
+            sendItemOcrResult("", "تعذر معالجة صورة OCR: " + e.getMessage());
+        }
+    }
+
+    private void sendItemOcrResult(String text, String message) {
+        if (webView == null) return;
+        String js = "window.hesabiReceiveItemOcr && window.hesabiReceiveItemOcr(" + jsQuote(text) + "," + jsQuote(message) + ")";
+        runOnUiThread(() -> webView.evaluateJavascript(js, null));
+    }
+
+
     private static String jsQuote(String value) {
         if (value == null) return "''";
         String s = value
@@ -268,6 +316,15 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_ITEM_OCR) {
+            if (resultCode == Activity.RESULT_OK) {
+                processItemOcrImage(itemOcrImageUri);
+            } else {
+                sendItemOcrResult("", "تم إلغاء قراءة اسم الصنف.");
+            }
+            return;
+        }
+
         if (requestCode == REQ_EXTERNAL_BARCODE) {
             if (resultCode == Activity.RESULT_OK && data != null) {
                 String code = data.getStringExtra("SCAN_RESULT");
@@ -345,6 +402,11 @@ public class MainActivity extends FragmentActivity {
         @JavascriptInterface
         public void scanItemBarcodeEmbedded() {
             runOnUiThread(MainActivity.this::startEmbeddedItemBarcodeScanner);
+        }
+
+        @JavascriptInterface
+        public void scanItemOcrNative() {
+            runOnUiThread(MainActivity.this::startItemOcrCamera);
         }
 
         @JavascriptInterface

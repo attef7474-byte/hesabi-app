@@ -403,7 +403,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-03-تعلم-اسم-الصنف-من-الكود';
+const APP_VERSION='2026-06-03-OCR-اسم-الصنف';
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -2051,6 +2051,62 @@ async function scanItemBarcodeStillFrame(){
   }catch(e){msg('تعذر قراءة اللقطة: '+(e.message||e),'error')}
 }
 
+
+
+
+function extractItemNameFromOcrText(text){
+  const raw=String(text||'').replace(/\r/g,'\n');
+  const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const joined=lines.join(' ');
+  const model=(joined.match(/(?:Model|MODEL|الموديل)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9._-]{2,})/i)||[])[1]||'';
+  const brand=(joined.match(/\b(HUAWEI|SAMSUNG|APPLE|XIAOMI|OPPO|VIVO|TECNO|INFINIX|NOKIA|LENOVO|HP|DELL|LG|SONY)\b/i)||[])[1]||'';
+  if(model && brand) return `${brand.toUpperCase()} ${model}`;
+  if(model) return model;
+  const useful=lines.find(l=>{
+    const s=l.toUpperCase();
+    if(/IMEI|S\/N|SN:|SERIAL|MAC|WIFI|WI-FI|IP:|INPUT|PASSWORD|PASS|HUAWEI DEVICE|DONGGUAN/.test(s)) return false;
+    return /[A-Za-z\u0600-\u06FF]/.test(l) && l.length>=3 && l.length<=60;
+  });
+  return useful||'';
+}
+function startItemOcrNative(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemOcrNative==='function'){
+      window.HesabiAndroid.scanItemOcrNative();
+      const st=$('itemBarcodeScanStatus');
+      if(st) st.textContent='صوّر ملصق الصنف بوضوح، وسيحاول التطبيق استخراج اسم أو موديل الصنف.';
+      return true;
+    }
+    msg('OCR غير متاح إلا داخل APK الإصدار 1.0.11 أو أحدث.','error');
+    return false;
+  }catch(e){msg('تعذر فتح OCR: '+(e.message||e),'error');return false}
+}
+window.hesabiReceiveItemOcr=function(text,message){
+  try{
+    const st=$('itemBarcodeScanStatus');
+    const raw=String(text||'').trim();
+    if(!raw){
+      if(st) st.textContent=message||'لم يتم العثور على نص واضح.';
+      msg(message||'لم يتم العثور على نص واضح','error');
+      return;
+    }
+    const name=extractItemNameFromOcrText(raw);
+    if(name && $('itemName') && !$('itemName').value.trim()){
+      $('itemName').value=name;
+      msg('تم استخراج اسم الصنف: '+name,'success');
+    }else if(name){
+      msg('تم قراءة نص، والاسم المقترح: '+name,'notice');
+    }else{
+      msg('تمت قراءة النص، لكن لم يتم تحديد اسم صنف واضح. راجع الملاحظات.','notice');
+    }
+    const note=$('itemNotes');
+    if(note){
+      const shortText=raw.replace(/\s+/g,' ').slice(0,220);
+      if(!String(note.value||'').includes(shortText)) note.value=(note.value?note.value+' | ':'')+'OCR: '+shortText;
+    }
+    if(st) st.textContent=name?'تم اقتراح اسم الصنف من OCR: '+name:'تمت قراءة النص وإضافته للملاحظات.';
+  }catch(e){}
+};
 
 
 function normalizeItemCodeForLookup(code){
@@ -3768,8 +3824,8 @@ function renderItems(){
     setTimeout(bindCatalogButtons); return;
   }
   const rows=(cache.items||[]).map(i=>{const stock=Number(i.stock||0), min=Number(i.minStock||0); const st=i.isActive===false?'معطل':(stock<=0?'نافد':(min>0&&stock<=min?'منخفض':'نشط')); const cash=Number(i.cashPrice||i.price||0), credit=Number(i.creditPrice||i.price||cash); return `<tr><td class="name">${esc(i.name)}<div class="subcell">${i.barcode?`كود: ${esc(i.barcode)} · `:''}${i.notes?esc(i.notes):''}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'-')}</td><td><span class="inline-badge ok">كاش ${money(cash)}</span><br><span class="inline-badge warn">آجل ${money(credit)}</span></td><td>${stock}<div class="subcell">تنبيه: ${min}</div></td><td><span class="status ${i.isActive===false?'rejected':(stock<=0?'rejected':(min>0&&stock<=min?'pending':'approved'))}">${st}</span></td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-stock-item="${i.id}">كمية</button><button class="btn ${i.isActive===false?'ok':'warn'} mini" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button>`)}</td></tr>`});
-  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">استخدم أولًا "الماسح الداخلي الدقيق". زر التطبيق الخارجي يعمل فقط مع تطبيقات تدعم بروتوكول ZXing، وليس كل تطبيقات QR.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn ok" type="button" id="nativeItemBarcodeBtn">📷 الماسح الداخلي الدقيق</button><button class="btn secondary" type="button" id="externalItemBarcodeBtn">تطبيق خارجي متوافق</button><button class="btn light" type="button" id="scanItemBarcodeBtn">كاميرا WebView</button><button class="btn light" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="usePendingBarcodeBtn">اعتماد الرقم المقروء</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">إذا فتح زر الخارجي شاشة "Open with" أو متجر Play فهذا يعني أن تطبيقات المسح المثبتة لا تدعم Intent المطلوب. بعد قراءة الكود: إذا كان محفوظًا سابقًا سيتم تعبئة اسم الصنف تلقائيًا، وإذا كان جديدًا أدخل الاسم مرة واحدة ثم احفظه.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
-  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('externalItemBarcodeBtn')) $('externalItemBarcodeBtn').onclick=startExternalItemBarcodeScanner; if($('nativeItemBarcodeBtn')) $('nativeItemBarcodeBtn').onclick=startEmbeddedItemBarcodeScanner; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('usePendingBarcodeBtn')) $('usePendingBarcodeBtn').onclick=usePendingItemBarcodeCandidate; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
+  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">استخدم أولًا "الماسح الداخلي الدقيق". زر التطبيق الخارجي يعمل فقط مع تطبيقات تدعم بروتوكول ZXing، وليس كل تطبيقات QR.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn ok" type="button" id="nativeItemBarcodeBtn">📷 الماسح الداخلي الدقيق</button><button class="btn secondary" type="button" id="externalItemBarcodeBtn">تطبيق خارجي متوافق</button><button class="btn light" type="button" id="itemOcrBtn">قراءة اسم الصنف OCR</button><button class="btn light" type="button" id="scanItemBarcodeBtn">كاميرا WebView</button><button class="btn light" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="usePendingBarcodeBtn">اعتماد الرقم المقروء</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">إذا فتح زر الخارجي شاشة "Open with" أو متجر Play فهذا يعني أن تطبيقات المسح المثبتة لا تدعم Intent المطلوب. بعد قراءة الكود: إذا كان محفوظًا سابقًا سيتم تعبئة اسم الصنف تلقائيًا. وإذا كان جديدًا يمكنك استخدام زر OCR لقراءة اسم/موديل الصنف من الملصق.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
+  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('externalItemBarcodeBtn')) $('externalItemBarcodeBtn').onclick=startExternalItemBarcodeScanner; if($('nativeItemBarcodeBtn')) $('nativeItemBarcodeBtn').onclick=startEmbeddedItemBarcodeScanner; if($('itemOcrBtn')) $('itemOcrBtn').onclick=startItemOcrNative; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('usePendingBarcodeBtn')) $('usePendingBarcodeBtn').onclick=usePendingItemBarcodeCandidate; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
 }
 function renderCustomers(){
   if(state.role!=='trader'){show('home');return}

@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 10,
-  "latestVersionName": "1.0.10",
+  "latestVersionCode": 11,
+  "latestVersionName": "1.0.11",
   "required": false,
-  "title": "تعلم اسم الصنف من الكود",
-  "message": "تمت إضافة تعبئة اسم الصنف تلقائيًا عند قراءة كود محفوظ سابقًا، وتعلم الاسم عند حفظ صنف جديد.",
+  "title": "إضافة OCR لاسم الصنف",
+  "message": "تمت إضافة قراءة اسم أو موديل الصنف من صورة الملصق باستخدام OCR داخل تطبيق Android.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
