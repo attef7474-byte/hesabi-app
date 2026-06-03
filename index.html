@@ -372,7 +372,7 @@
 
 
 <style id="hesabi-settings-top-side-fix-1-0-31">
-  /* 1.0.31: إعدادات مريحة: الأيقونات أول الصفحة، صغيرة، وإذا كثرت تتحول لشريط جانبي في الشاشات الواسعة */
+  /* 1.0.32: إعدادات مريحة: الأيقونات أول الصفحة، صغيرة، وإذا كثرت تتحول لشريط جانبي في الشاشات الواسعة */
   .settings-page-head{padding:10px!important;margin-bottom:8px!important}
   .settings-page-head h2{margin:0 0 4px!important;font-size:20px!important}
   .settings-page-head .muted{font-size:12px!important;line-height:1.45!important;margin:0 0 8px!important}
@@ -413,6 +413,44 @@
       position:sticky;top:76px;z-index:8;display:flex!important;flex-direction:column!important;overflow:visible!important;gap:6px!important;background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:18px;padding:8px!important;backdrop-filter:blur(10px);
     }
     .settings-desktop-shell .settings-tabs-bar.icon-mode .settings-top-tab{width:64px!important;min-width:64px!important;flex:0 0 auto!important}
+  }
+</style>
+
+<style id="hesabi-settings-icons-fit-clean-1-0-32">
+  .settings-page-head{padding:8px 10px!important;margin-bottom:6px!important}
+  .settings-page-head h2{font-size:18px!important;margin:0!important}
+  .settings-tabs-bar.icon-mode{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fit,minmax(36px,1fr))!important;
+    gap:3px!important;
+    overflow:visible!important;
+    padding:4px 0 3px!important;
+    margin:0!important;
+  }
+  .settings-tabs-bar.icon-mode .settings-top-tab{
+    min-width:0!important;
+    width:auto!important;
+    min-height:38px!important;
+    padding:3px 1px!important;
+    border-radius:10px!important;
+    gap:1px!important;
+    box-shadow:0 2px 6px rgba(15,23,42,.04)!important;
+  }
+  .settings-tabs-bar.icon-mode .settings-top-tab .settings-tab-icon{font-size:13px!important;line-height:1!important}
+  .settings-tabs-bar.icon-mode .settings-top-tab .settings-tab-text{font-size:7px!important;line-height:1.05!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}
+  .settings-body-after-tabs{margin-top:4px!important}
+  .settings-tab-pane.hidden{display:none!important}
+  .settings-summary-grid,.settings-tab-pane .settings-summary-grid{margin-top:0!important}
+  @media(min-width:760px){
+    .settings-desktop-shell{display:grid!important;grid-template-columns:68px minmax(0,1fr)!important;gap:8px!important;align-items:start!important}
+    .settings-desktop-shell .settings-tabs-bar.icon-mode{grid-template-columns:1fr!important;position:sticky;top:72px!important}
+    .settings-desktop-shell .settings-tabs-bar.icon-mode .settings-top-tab{min-height:42px!important}
+  }
+  @media(max-width:360px){
+    .settings-tabs-bar.icon-mode{grid-template-columns:repeat(auto-fit,minmax(34px,1fr))!important;gap:2px!important}
+    .settings-tabs-bar.icon-mode .settings-top-tab{min-height:36px!important;border-radius:9px!important}
+    .settings-tabs-bar.icon-mode .settings-top-tab .settings-tab-icon{font-size:12px!important}
+    .settings-tabs-bar.icon-mode .settings-top-tab .settings-tab-text{font-size:6.5px!important}
   }
 </style>
 </head>
@@ -596,7 +634,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.31-إصلاح-تشغيل-الصفحة-والتحديث';
+const APP_VERSION='1.0.32';
 const APP_BUILD_CODE=29;
 
 function nativeAndroidAvailable(){
@@ -4561,12 +4599,12 @@ function renderSettings(){
   const shopCodeShortcut = state.role==='trader'
     ? `<button class="btn secondary settings-shortcut-btn" id="openShopCodeFromSettings">🔳 كود التاجر</button>`
     : `<button class="btn secondary settings-shortcut-btn" id="openShopCodeFromSettings">📷 مسح كود التاجر</button>`;
-  $('page_settings').innerHTML=`<div class="card settings-page-head"><h2>الإعدادات</h2><p class="muted">الأيقونات أصبحت في أعلى صفحة الإعدادات وبحجم صغير ومريح. اسحب يمين/يسار للوصول لباقي الأقسام، وفي الشاشات الواسعة تتحول تلقائيًا إلى جانب الصفحة.</p></div><div class="settings-desktop-shell"><div class="settings-tabs-bar icon-mode"><button class="settings-top-tab" data-settings-tab="security"><span class="settings-tab-icon">🔐</span><span class="settings-tab-text">الأمان</span></button><button class="settings-top-tab" data-settings-tab="appearance"><span class="settings-tab-icon">🎨</span><span class="settings-tab-text">الشكل</span></button><button class="settings-top-tab" data-settings-tab="store"><span class="settings-tab-icon">🏬</span><span class="settings-tab-text">المتجر</span></button><button class="settings-top-tab" data-settings-tab="permissions"><span class="settings-tab-icon">📱</span><span class="settings-tab-text">الصلاحيات</span></button><button class="settings-top-tab" data-settings-tab="updates"><span class="settings-tab-icon">⬇️</span><span class="settings-tab-text">التحديث</span></button><button class="settings-top-tab" data-settings-tab="backup"><span class="settings-tab-icon">💾</span><span class="settings-tab-text">النسخ</span></button><button class="settings-top-tab" data-settings-tab="account"><span class="settings-tab-icon">👤</span><span class="settings-tab-text">الحساب</span></button><button class="settings-top-tab" data-settings-tab="notifications"><span class="settings-tab-icon">🔔</span><span class="settings-tab-text">التنبيهات</span></button>${isAppOwner()?'<button class="settings-top-tab" id="openOwnerConsoleFromSettings" type="button"><span class="settings-tab-icon">👑</span><span class="settings-tab-text">المالك</span></button>':''}</div><div class="settings-body-after-tabs">${renderSettingsSummaryBlock()}${renderPermissionsMatrixBlock()}
+  $('page_settings').innerHTML=`<div class="card settings-page-head"><h2>الإعدادات</h2></div><div class="settings-desktop-shell"><div class="settings-tabs-bar icon-mode"><button class="settings-top-tab" data-settings-tab="security"><span class="settings-tab-icon">🔐</span><span class="settings-tab-text">الأمان</span></button><button class="settings-top-tab" data-settings-tab="appearance"><span class="settings-tab-icon">🎨</span><span class="settings-tab-text">الشكل</span></button><button class="settings-top-tab" data-settings-tab="store"><span class="settings-tab-icon">🏬</span><span class="settings-tab-text">المتجر</span></button><button class="settings-top-tab" data-settings-tab="permissions"><span class="settings-tab-icon">📱</span><span class="settings-tab-text">الصلاحيات</span></button><button class="settings-top-tab" data-settings-tab="updates"><span class="settings-tab-icon">⬇️</span><span class="settings-tab-text">التحديث</span></button><button class="settings-top-tab" data-settings-tab="backup"><span class="settings-tab-icon">💾</span><span class="settings-tab-text">النسخ</span></button><button class="settings-top-tab" data-settings-tab="account"><span class="settings-tab-icon">👤</span><span class="settings-tab-text">الحساب</span></button><button class="settings-top-tab" data-settings-tab="notifications"><span class="settings-tab-icon">🔔</span><span class="settings-tab-text">التنبيهات</span></button>${isAppOwner()?'<button class="settings-top-tab" id="openOwnerConsoleFromSettings" type="button"><span class="settings-tab-icon">👑</span><span class="settings-tab-text">المالك</span></button>':''}</div><div class="settings-body-after-tabs">
   <div class="settings-tab-pane" data-settings-pane="security"><div class="settings-section-title">الأمان والحساب</div>${renderPhoneChangeSettingsBlock()}${renderSecurityLockSettingsBlock()}</div>
   <div class="settings-tab-pane" data-settings-pane="appearance"><div class="settings-section-title">شكل التطبيق وفتح الصفحة</div>${renderAppearanceSettingsBlock()}${renderStartupSettingsBlock()}</div>
   <div class="settings-tab-pane" data-settings-pane="store"><div class="settings-section-title">المتجر والمسارات السريعة</div>${renderStoreQuickSettingsBlock()}<div class="card"><h2>الأكواد والروابط</h2><p class="muted">اختصارات لكود التاجر، مسح الكود، ومشاركة رابط التطبيق.</p><div class="settings-compact-actions">${shopCodeShortcut}<button class="btn secondary" id="copyShop">نسخ كود المحل</button></div><div class="form"><div class="field"><label>رابط التطبيق للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="https://hesabi-app-edc7e.web.app"></div><div class="settings-compact-actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إشعار تحديث للعملاء</button>':''}</div></div></div></div>
-  <div class="settings-tab-pane" data-settings-pane="permissions"><div class="settings-section-title">صلاحيات الجهاز والتطبيق</div>${renderAndroidPermissionsSettingsBlock()}</div>
-  <div class="settings-tab-pane" data-settings-pane="updates"><div class="settings-section-title">النظام والتحديث</div>${renderUpdateAndCacheSettingsBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="permissions"><div class="settings-section-title">صلاحيات الجهاز والتطبيق</div>${renderAndroidPermissionsSettingsBlock()}${renderPermissionsMatrixBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="updates"><div class="settings-section-title">النظام والتحديث</div>${renderSettingsSummaryBlock()}${renderUpdateAndCacheSettingsBlock()}</div>
   <div class="settings-tab-pane" data-settings-pane="backup"><div class="settings-section-title">النسخ والاستيراد والتصدير</div>${renderBackupAndDataSettingsBlock()}</div>
   <div class="settings-tab-pane" data-settings-pane="account"><div class="settings-section-title">الحساب والجهاز</div>${renderDualRoleSettingsBlock()}${renderAccountDangerSettingsBlock(userRoleText)}</div>
   <div class="settings-tab-pane" data-settings-pane="notifications"><div class="settings-section-title">التنبيهات والصوت</div><div class="card"><h2>صلاحيات التنبيهات</h2><p class="muted">فعّل إشعارات الهاتف والصوت حتى تسمع الطلبات والرسائل والسداد.</p><div class="settings-compact-actions"><button class="btn secondary" id="enableNotify">تفعيل الإشعارات</button></div></div>${renderNotificationSoundSettingsBlock()}</div></div></div>`;
