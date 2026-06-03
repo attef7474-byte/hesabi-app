@@ -471,7 +471,7 @@
     if(!anyVisible){
       setBadge(navigator.onLine?'متصل - جاري تحميل Firebase':'غير متصل', navigator.onLine?'online':'offline');
       var m=document.getElementById('msg');
-      if(m && !m.innerHTML){m.innerHTML='<div class="notice error">إذا بقيت الصفحة فارغة، اعمل تحديث للصفحة أو امسح كاش التطبيق. تم إيقاف تعديل المرحلة الثانية مؤقتًا في هذه النسخة المستقرة.</div>'}
+      if(m && !m.innerHTML){m.innerHTML='<div class="notice error">إذا بقيت الصفحة فارغة، اعمل تحديث للصفحة أو امسح كاش التطبيق. جاري تحميل النسخة المستقرة. إذا استمرت الرسالة أكثر من ثوانٍ اضغط تحديث الواجهات من الإعدادات أو امسح كاش التطبيق.</div>'}
     }
   },7000);
 })();
@@ -551,7 +551,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.29-إصلاح-التحديث-لكل-الأجهزة';
+const APP_VERSION='1.0.30-إصلاح-تشغيل-الصفحة-والتحديث';
 const APP_BUILD_CODE=29;
 
 function nativeAndroidAvailable(){
@@ -5200,7 +5200,7 @@ renderReports=function(){
   }else{ content='<div class="safe-placeholder">اختر تبويب المبيعات أو الديون أو المخزون لرؤية الجداول التفصيلية. لا يتم تحميل الجداول حتى تطلبها.</div>'; }
   $('page_reports').innerHTML=pageHead('التقارير','التقارير أصبحت مقسمة إلى ملخصات وجداول وتصدير.')+pageTabsBar('reports',tab,tabs)+pageStats([['المبيعات',money(salesTotal)],['التحصيل',money(payTotal)],['ديون العملاء',money(debts)],['منخفض المخزون',low.length]])+content;
   setTimeout(()=>{bindPageTabs('reports',renderReports); if($('shareBusinessReport')) $('shareBusinessReport').onclick=shareBusinessReport; if($('exportInvoicesCsv')) $('exportInvoicesCsv').onclick=exportInvoicesCsv; if($('exportPaymentsCsv')) $('exportPaymentsCsv').onclick=exportPaymentsCsv; if($('exportCustomersCsv')) $('exportCustomersCsv').onclick=exportCustomersCsv;});
-}
+};
 
 (async function boot(){
   try{

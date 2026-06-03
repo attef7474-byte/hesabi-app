@@ -1,13 +1,13 @@
 {
-  "latestVersionCode": 29,
-  "latestVersionName": "1.0.29",
+  "latestVersionCode": 30,
+  "latestVersionName": "1.0.30",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.29",
-  "message": "إصلاح آلية التحديث للأجهزة التي عليها نسخ قديمة: يتم تنزيل آخر APK متاح دائمًا، تنظيف كاش الواجهات قبل وبعد التثبيت، ودعم تنزيل الرابط من android-update.json.",
+  "title": "تحديث حسابي التجاري 1.0.30",
+  "message": "إصلاح مشكلة الصفحة الفارغة وخطأ تشغيل التطبيق على بعض الأجهزة، مع تحسين التحديث لأحدث نسخة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
   "releaseNotes": "تحسين تحديث APK للهواتف القديمة، توحيد رقم الإصدار، منع بقاء الواجهات القديمة بعد التثبيت، وإضافة تنبيه إذا كان التحديث يتطلب تثبيت النسخة الموقعة الثابتة.",
   "notes": "إصدار تثبيت نهائي بعد مراجعة 1.0.28 مع إصلاح مشاكل التحديث من النسخ القديمة.",
-  "versionName": "1.0.29",
-  "versionCode": 29,
+  "versionName": "1.0.30",
+  "versionCode": 30,
   "minimumSupportedVersionCode": 1
 }
