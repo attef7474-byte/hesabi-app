@@ -372,7 +372,7 @@
 
 
 <style id="hesabi-settings-top-side-fix-1-0-31">
-  /* 1.0.33: إعدادات مريحة: الأيقونات أول الصفحة، صغيرة، وإذا كثرت تتحول لشريط جانبي في الشاشات الواسعة */
+  /* 1.0.34: إعدادات مريحة: الأيقونات أول الصفحة، صغيرة، وإذا كثرت تتحول لشريط جانبي في الشاشات الواسعة */
   .settings-page-head{padding:10px!important;margin-bottom:8px!important}
   .settings-page-head h2{margin:0 0 4px!important;font-size:20px!important}
   .settings-page-head .muted{font-size:12px!important;line-height:1.45!important;margin:0 0 8px!important}
@@ -634,8 +634,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.33';
-const APP_BUILD_CODE=29;
+const APP_VERSION='1.0.35';
+const APP_BUILD_CODE=35;
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -1896,6 +1896,24 @@ async function recoverShopLinkInMyStores(){
 }
 
 function customerUidById(customerId){ const c=(cache.customers||[]).find(x=>x.customerId===customerId); return c?.customerUid||'' }
+function customerUidForRecord(customerId){
+  if(state.role==='customer' && customerId===state.customerId) return uid();
+  return customerUidById(customerId)||'';
+}
+function customerOwnedFields(customerId, customerName=''){
+  return {customerId:customerId||state.customerId||'', customerUid:customerUidForRecord(customerId||state.customerId), customerName:customerName||state.customerName||''};
+}
+function listenQuerySafe(target, ok, label='البيانات'){
+  const fail=(e)=>{
+    console.warn('Firestore listener failed:', label, e);
+    if(e && (e.code==='permission-denied' || String(e.message||'').includes('permission'))){
+      msg('تم منع قراءة '+label+' بسبب الصلاحيات. حدّث التطبيق وانشر قواعد Firestore الجديدة، أو أعد تسجيل الدخول.', 'error');
+    }
+  };
+  try{ const u=onSnapshot(target, ok, fail); unsub.push(u); return u; }
+  catch(e){ fail(e); return null; }
+}
+
 function renderNav(){
   const c=unreadCounters();
   const navItems=[
@@ -1932,28 +1950,90 @@ function show(p){
   }
 }
 
+
+async function ensureCustomerPurchaseAccess(){
+  // ضمان رابط العميل قبل تحميل الأصناف وإنشاء الطلبات.
+  // هذا يمنع خطأ الصلاحيات عند الأجهزة التي لديها حالة محلية قديمة أو رابط ناقص.
+  try{
+    if(!db || !uid() || state.role!=='customer' || !state.shopId || !state.customerId) return;
+    const phoneKey=normalizePhone(state.customerPhone||state.authPhoneKey||verifiedCurrentPhoneKey()||'');
+    await setDoc(doc(db,'shops',state.shopId,'customerUidLinks',uid()),{
+      customerId:state.customerId,
+      shopId:state.shopId,
+      phoneKey,
+      linkedAt:serverTimestamp(),
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    await setDoc(doc(db,'shops',state.shopId,'customers',state.customerId),{
+      customerId:state.customerId,
+      shopId:state.shopId,
+      name:state.customerName||'عميل',
+      phone:state.customerPhone||'',
+      phoneKey,
+      customerUid:uid(),
+      updatedAt:serverTimestamp()
+    },{merge:true});
+  }catch(e){
+    console.warn('ensure customer purchase access failed', e);
+  }
+}
+
 function startListeners(){
-  unsub.forEach(f=>f());unsub=[]; normalizeCustomerLinks(); if(!db||!state.shopId) return; listenersStartedKey=liveDataKey();
+  unsub.forEach(f=>{try{f()}catch(e){}});unsub=[];
+  normalizeCustomerLinks();
+  cache.customers = [];
+  if(!db||!state.shopId) return;
+  listenersStartedKey=liveDataKey();
   const base=(name)=>collection(db,'shops',state.shopId,name);
-  unsub.push(onSnapshot(doc(db,'shops',state.shopId),s=>{cache.shop=s.exists()?s.data():null; if(state.role==='customer'){const link=currentCustomerLink(); if(link&&cache.shop?.name&&link.shopName!==cache.shop.name){link.shopName=cache.shop.name; state.shopName=cache.shop.name; save();}} if(state.profileDone) show(active)}));
-  unsub.push(onSnapshot(base('items'),s=>{cache.items=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}));
-  unsub.push(onSnapshot(base('customers'),s=>{cache.customers=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}));
-  let oq=state.role==='customer'?query(base('purchaseRequests'),where('customerId','==',state.customerId)):base('purchaseRequests');
-  let pq=state.role==='customer'?query(base('paymentRequests'),where('customerId','==',state.customerId)):base('paymentRequests');
-  let mq=state.role==='customer'?query(base('messages'),where('customerId','==',state.customerId)):base('messages');
-  let iq=state.role==='customer'?query(base('invoices'),where('customerId','==',state.customerId)):base('invoices');
-  let lq=state.role==='customer'?query(base('customerLedger'),where('customerId','==',state.customerId)):base('customerLedger');
-  unsub.push(onSnapshot(oq,s=>{cache.orders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
-  unsub.push(onSnapshot(pq,s=>{cache.payments=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
-  unsub.push(onSnapshot(mq,s=>{cache.messages=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.createdMs||0)-(b.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
-  unsub.push(onSnapshot(iq,s=>{cache.invoices=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(state.profileDone) show(active)}));
-  unsub.push(onSnapshot(lq,s=>{cache.customerLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(state.profileDone) show(active)}));
-  const rq=state.role==='customer'?query(base('returnRequests'),where('customerId','==',state.customerId)):base('returnRequests');
-  unsub.push(onSnapshot(rq,s=>{cache.returns=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}));
-  const sq=state.role==='customer'?query(base('paymentSchedules'),where('customerId','==',state.customerId)):base('paymentSchedules');
-  unsub.push(onSnapshot(sq,s=>{cache.schedules=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||''))); checkNotifications(); if(state.profileDone) show(active)}));
-  if(state.role==='trader') unsub.push(onSnapshot(base('auditLogs'),s=>{cache.auditLogs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,100); if(state.profileDone) show(active)}));
-  if(state.role==='trader') unsub.push(onSnapshot(base('stockLedger'),s=>{cache.stockLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,300); if(state.profileDone) show(active)}));
+  listenQuerySafe(doc(db,'shops',state.shopId),s=>{
+    cache.shop=s.exists()?s.data():null;
+    if(state.role==='customer'){
+      const link=currentCustomerLink();
+      if(link&&cache.shop?.name&&link.shopName!==cache.shop.name){link.shopName=cache.shop.name; state.shopName=cache.shop.name; save();}
+    }
+    if(state.profileDone) show(active)
+  }, 'بيانات المتجر');
+  if(state.role==='customer') ensureCustomerPurchaseAccess();
+  const itemsQuery = base('items');
+  listenQuerySafe(itemsQuery,s=>{cache.items=s.docs.map(d=>({id:d.id,...d.data()})).filter(i=>state.role!=='customer'||customerCanSeeItem(i)).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}, 'الأصناف');
+
+  if(state.role==='trader'){
+    listenQuerySafe(base('customers'),s=>{cache.customers=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'')); if(state.profileDone) show(active)}, 'العملاء');
+  }else if(state.role==='customer' && state.customerId){
+    listenQuerySafe(doc(db,'shops',state.shopId,'customers',state.customerId),s=>{
+      cache.customers=s.exists()?[{id:s.id,...s.data()}]:[];
+      const c=cache.customers[0];
+      if(c){
+        state.customerName=c.name||state.customerName||'';
+        state.customerPhone=c.phone||state.customerPhone||'';
+        const link=currentCustomerLink();
+        if(link){link.customerName=state.customerName; link.customerPhone=state.customerPhone;}
+        save();
+      }
+      if(state.profileDone) show(active)
+    }, 'بيانات العميل');
+  }
+
+  // Query by customerId so old records that do not yet have customerUid remain visible to the linked customer.
+  // Firestore Rules still verify that this customerId belongs to the current signed-in user.
+  const customerQuery = (name)=> state.role==='customer' ? query(base(name), where('customerId','==',state.customerId)) : base(name);
+
+  let oq=customerQuery('purchaseRequests');
+  let pq=customerQuery('paymentRequests');
+  let mq=customerQuery('messages');
+  let iq=customerQuery('invoices');
+  let lq=customerQuery('customerLedger');
+  listenQuerySafe(oq,s=>{cache.orders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}, 'الطلبات');
+  listenQuerySafe(pq,s=>{cache.payments=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}, 'السداد');
+  listenQuerySafe(mq,s=>{cache.messages=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.createdMs||0)-(b.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}, 'الرسائل');
+  listenQuerySafe(iq,s=>{cache.invoices=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(state.profileDone) show(active)}, 'الفواتير');
+  listenQuerySafe(lq,s=>{cache.customerLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(state.profileDone) show(active)}, 'كشف الحساب');
+  const rq=customerQuery('returnRequests');
+  listenQuerySafe(rq,s=>{cache.returns=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); checkNotifications(); if(state.profileDone) show(active)}, 'المرتجعات');
+  const sq=customerQuery('paymentSchedules');
+  listenQuerySafe(sq,s=>{cache.schedules=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||''))); checkNotifications(); if(state.profileDone) show(active)}, 'الأقساط');
+  if(state.role==='trader') listenQuerySafe(base('auditLogs'),s=>{cache.auditLogs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,100); if(state.profileDone) show(active)}, 'سجل العمليات');
+  if(state.role==='trader') listenQuerySafe(base('stockLedger'),s=>{cache.stockLedger=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)).slice(0,300); if(state.profileDone) show(active)}, 'حركات المخزون');
 }
 
 function customerStatusText(s){return ({active:'نشط',cash_only:'كاش فقط',blocked:'موقوف'}[s]||s||'نشط')}
@@ -3186,8 +3266,10 @@ async function addManualCustomer(){
     const status=$('newCustomerStatus')?.value||'active';
     const notes=($('newCustomerNote')?.value||'').trim();
     if(creditLimit<0||balance<0){msg('الرصيد والسقف يجب أن يكونا صفر أو أكثر','error');return}
-    const ref=await addDoc(collection(db,'shops',state.shopId,'customers'),{
+    const ref=doc(collection(db,'shops',state.shopId,'customers'));
+    await setDoc(ref,{
       shopId:state.shopId,
+      customerId:ref.id,
       name,
       phone:phoneKey,
       phoneIntl:phoneKeyToInternational(phoneKey),
@@ -3204,6 +3286,7 @@ async function addManualCustomer(){
       await addDoc(collection(db,'shops',state.shopId,'customerLedger'),{
         shopId:state.shopId,
         customerId:ref.id,
+        customerUid:'',
         customerName:name,
         type:'adjustment',
         amount:balance,
@@ -3252,10 +3335,10 @@ function renderOrderCard(o){
   const canTrader=state.role==='trader'&&(o.status==='pending'||o.status==='pending_trader');
   const canCustomer=state.role==='customer'&&o.status==='pending_customer';
   const canCustomerEdit=editableCustomerOrder(o);
-  return `<div class="item"><div class="row"><h3>${esc(o.customerName||'عميل')} - ${money(o.total)}</h3><span class="status ${o.status}">${statusText(o.status)}</span></div><div class="muted">${source} | ${payTypeText(o.paymentType)} | ${esc(o.note||'')}</div><ul>${(o.items||[]).map(l=>`<li>${esc(l.name)} × ${Number(l.qty)} = ${money(l.total)}</li>`).join('')}</ul>${o.traderNote?`<div class="notice ${o.status==='rejected'?'error':'success'}">ملاحظة: ${esc(o.traderNote)}</div>`:''}${canTrader?`<div class="actions"><button class="btn ok" data-approve-order="${o.id}">موافقة وتسليم</button><button class="btn danger" data-reject-order="${o.id}">رفض</button></div>`:''}${canCustomer?`<div class="actions"><button class="btn ok" data-customer-approve="${o.id}">موافقة العميل</button><button class="btn danger" data-customer-reject="${o.id}">رفض العميل</button></div>`:''}${canCustomerEdit?`<div class="actions"><button class="btn secondary" data-edit-customer-order="${o.id}">تعديل الطلب</button><button class="btn danger" data-cancel-customer-order="${o.id}">إلغاء الطلب</button></div><div class="muted">يمكن التعديل أو الإلغاء فقط قبل موافقة التاجر.</div>`:''}</div>`;
+  return `<div class="item"><div class="row"><h3>${esc(o.customerName||'عميل')} - ${money(o.total)}</h3><span class="status ${o.status}">${statusText(o.status)}</span></div><div class="muted">${source} | ${payTypeText(o.paymentType)} | ${esc(o.note||'')}</div><ul>${(o.items||[]).map(l=>`<li>${esc(l.name)} × ${Number(l.qty)} = ${money(l.total)}</li>`).join('')}</ul>${o.traderNote?`<div class="notice ${o.status==='rejected'?'error':'success'}">ملاحظة التاجر: ${esc(o.traderNote)}</div>`:''}${o.customerNote?`<div class="notice error">ملاحظة العميل: ${esc(o.customerNote)}</div>`:''}${canTrader?`<div class="actions"><button class="btn ok" data-approve-order="${o.id}">موافقة وتسليم</button><button class="btn danger" data-reject-order="${o.id}">رفض</button></div>`:''}${canCustomer?`<div class="actions"><button class="btn ok" data-customer-approve="${o.id}">موافقة العميل</button><button class="btn danger" data-customer-reject="${o.id}">رفض العميل</button></div>`:''}${canCustomerEdit?`<div class="actions"><button class="btn secondary" data-edit-customer-order="${o.id}">تعديل الطلب</button><button class="btn danger" data-cancel-customer-order="${o.id}">إلغاء الطلب</button></div><div class="muted">يمكن التعديل أو الإلغاء فقط قبل موافقة التاجر.</div>`:''}</div>`;
 }
 async function finalizeOrder(orderId, actor){
-  if(!requireTraderAction('إنهاء الطلب وإصدار الفاتورة')) return;
+  if(actor==='trader' && !requireTraderAction('إنهاء الطلب وإصدار الفاتورة')) return;
   const orderRef=doc(db,'shops',state.shopId,'purchaseRequests',orderId);
   await runTransaction(db, async (tx)=>{
     const os=await tx.get(orderRef); if(!os.exists()) throw new Error('الطلب غير موجود');
@@ -3286,9 +3369,9 @@ async function finalizeOrder(orderId, actor){
     if(o.paymentType==='credit') tx.update(customerRef,{balance:increment(Number(o.total||0)),updatedAt:serverTimestamp()});
     const invRef=doc(collection(db,'shops',state.shopId,'invoices'));
     const invNo=invoiceNumber();
-    tx.set(invRef,{shopId:state.shopId,orderId,invoiceNo:invNo,customerId:o.customerId,customerName:o.customerName||c.name||'',items:o.items||[],total:Number(o.total||0),paymentType:o.paymentType||'cash',source:o.source||'',status:'posted',createdAt:serverTimestamp(),createdMs:Date.now(),approvedBy:actor});
+    tx.set(invRef,{shopId:state.shopId,orderId,invoiceNo:invNo,customerId:o.customerId,customerUid:o.customerUid||c.customerUid||'',customerName:o.customerName||c.name||'',items:o.items||[],total:Number(o.total||0),paymentType:o.paymentType||'cash',source:o.source||'',status:'posted',createdAt:serverTimestamp(),createdMs:Date.now(),approvedBy:actor});
     const ledgerRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
-    tx.set(ledgerRef,{shopId:state.shopId,customerId:o.customerId,customerName:o.customerName||c.name||'',type:o.paymentType==='credit'?'debit_invoice':'cash_invoice',amount:Number(o.total||0),sourceId:invRef.id,sourceType:'invoice',note:'فاتورة '+invNo,createdAt:serverTimestamp(),createdMs:Date.now()});
+    tx.set(ledgerRef,{shopId:state.shopId,customerId:o.customerId,customerUid:o.customerUid||c.customerUid||'',customerName:o.customerName||c.name||'',type:o.paymentType==='credit'?'debit_invoice':'cash_invoice',amount:Number(o.total||0),sourceId:invRef.id,sourceType:'invoice',note:'فاتورة '+invNo,createdAt:serverTimestamp(),createdMs:Date.now()});
     for(const line of (o.items||[])){
       const stockRef=doc(collection(db,'shops',state.shopId,'stockLedger'));
       tx.set(stockRef,{shopId:state.shopId,itemId:line.itemId,itemName:line.name,qty:-Number(line.qty||0),type:'sale',sourceId:invRef.id,sourceType:'invoice',createdAt:serverTimestamp(),createdMs:Date.now()});
@@ -3300,10 +3383,21 @@ async function finalizeOrder(orderId, actor){
 }
 async function approveOrder(orderId){
   if(!requireTraderAction('قبول الطلب')) return;try{if(!confirm('تأكيد الموافقة على الطلب وتسليم الأصناف؟'))return; await finalizeOrder(orderId,'trader'); msg('تم قبول الطلب وتحديث المخزون والحساب','success')}catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}}
-async function customerApproveOrder(orderId){try{if(!confirm('تأكيد موافقتك على الطلب؟'))return; await finalizeOrder(orderId,'customer'); msg('تمت موافقتك وتحديث حسابك','success')}catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}}
+async function customerApproveOrder(orderId){
+  try{
+    if(!confirm('تأكيد موافقتك على الطلب؟'))return;
+    const ref=doc(db,'shops',state.shopId,'purchaseRequests',orderId);
+    await updateDoc(ref,{status:'pending_trader',customerApprovedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    msg('تمت موافقتك. سيقوم التاجر بالمراجعة النهائية وإصدار الفاتورة','success')
+  }catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}
+}
 async function rejectOrder(orderId){
   if(!requireTraderAction('رفض الطلب')) return;const reason=prompt('اكتب سبب الرفض:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),rejectedBy:'trader'}); await addAudit('reject_order',{orderId,reason}); msg('تم رفض الطلب','success')}
-async function customerRejectOrder(orderId){const reason=prompt('اكتب سبب رفضك للطلب:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:'رفض العميل: '+reason,reviewedAt:serverTimestamp(),rejectedBy:'customer'}); await addAudit('customer_reject_order',{orderId,reason}); msg('تم رفض الطلب','success')}
+async function customerRejectOrder(orderId){
+  const reason=prompt('اكتب سبب رفضك للطلب:'); if(!reason)return;
+  await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',customerNote:reason,customerRejectedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+  msg('تم رفض الطلب','success')
+}
 
 
 function renderShops(){
@@ -3583,7 +3677,7 @@ async function approveReturn(returnId){
       if(rd.paymentType==='credit') tx.update(customerRef,{balance:increment(-Number(rd.amount||0)),updatedAt:serverTimestamp()});
       tx.update(rr,{status:'approved',traderNote:'تم قبول المرتجع',reviewedAt:serverTimestamp(),reviewedMs:Date.now()});
       const ledgerRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
-      tx.set(ledgerRef,{shopId:state.shopId,customerId:rd.customerId,customerName:rd.customerName||'',type:rd.paymentType==='credit'?'return_credit':'return_cash',amount:-Number(rd.amount||0),sourceId:returnId,sourceType:'returnRequest',note:'مرتجع فاتورة '+(rd.invoiceNo||rd.invoiceId||''),createdAt:serverTimestamp(),createdMs:Date.now()});
+      tx.set(ledgerRef,{shopId:state.shopId,customerId:rd.customerId,customerUid:rd.customerUid||customerUidById(rd.customerId)||'',customerName:rd.customerName||'',type:rd.paymentType==='credit'?'return_credit':'return_cash',amount:-Number(rd.amount||0),sourceId:returnId,sourceType:'returnRequest',note:'مرتجع فاتورة '+(rd.invoiceNo||rd.invoiceId||''),createdAt:serverTimestamp(),createdMs:Date.now()});
       const stockRef=doc(collection(db,'shops',state.shopId,'stockLedger'));
       tx.set(stockRef,{shopId:state.shopId,itemId:rd.itemId,itemName:rd.itemName,qty:Number(rd.qty||0),type:'return',sourceId:returnId,sourceType:'returnRequest',note:'مرتجع من العميل '+(rd.customerName||''),createdAt:serverTimestamp(),createdMs:Date.now()});
       const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
@@ -3640,7 +3734,7 @@ async function approvePayment(payId){
         if(ss.exists()) tx.update(schedRef,{status:'paid',paymentId:payId,paidAt:serverTimestamp(),paidMs:Date.now(),updatedAt:serverTimestamp()});
       }
       const ledgerRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
-      tx.set(ledgerRef,{shopId:state.shopId,customerId:p.customerId,customerName:p.customerName||'',type:'payment',amount:-amount,sourceId:payId,sourceType:'paymentRequest',method:pd.method||'',referenceNo:pd.referenceNo||'',note:'سداد مقبول - '+(pd.method||''),createdAt:serverTimestamp(),createdMs:Date.now()});
+      tx.set(ledgerRef,{shopId:state.shopId,customerId:p.customerId,customerUid:p.customerUid||customerUidById(p.customerId)||'',customerName:p.customerName||'',type:'payment',amount:-amount,sourceId:payId,sourceType:'paymentRequest',method:pd.method||'',referenceNo:pd.referenceNo||'',note:'سداد مقبول - '+(pd.method||''),createdAt:serverTimestamp(),createdMs:Date.now()});
       const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
       tx.set(auditRef,{shopId:state.shopId,action:'approve_payment',actorRole:'trader',actorName:cache.shop?.name||'التاجر',details:{paymentId:payId,customerId:p.customerId,amount,method:pd.method||'',referenceNo:pd.referenceNo||''},createdAt:serverTimestamp(),createdMs:Date.now()});
     });
@@ -3881,10 +3975,20 @@ service cloud.firestore {
     function isAppOwner(){ return signed() && request.auth.token.email == 'attef7474@gmail.com'; }
     function isOwner(shopId){ return signed() && exists(shopPath(shopId)) && get(shopPath(shopId)).data.ownerUid == request.auth.uid; }
     function shopActive(shopId){ return !exists(shopPath(shopId)) || get(shopPath(shopId)).data.subscriptionStatus != 'suspended'; }
-    function isCustomer(shopId){ return signed() && exists(/databases/$(database)/documents/shops/$(shopId)/customerUidLinks/$(request.auth.uid)); }
+    function customerLinkPath(shopId){ return /databases/$(database)/documents/shops/$(shopId)/customerUidLinks/$(request.auth.uid); }
+    function hasCustomerLink(shopId){ return signed() && exists(customerLinkPath(shopId)); }
+    function linkedCustomerId(shopId){ return get(customerLinkPath(shopId)).data.customerId; }
+    function isCustomer(shopId){ return hasCustomerLink(shopId); }
     function isOwnerOrCustomer(shopId){ return isOwner(shopId) || isCustomer(shopId); }
     function isSelfCustomer(){ return signed() && resource.data.customerUid == request.auth.uid; }
+    function isLinkedCustomerDoc(shopId){ return hasCustomerLink(shopId) && resource.data.customerId == linkedCustomerId(shopId); }
+    function isCustomerOwned(shopId){ return isSelfCustomer() || isLinkedCustomerDoc(shopId); }
     function isNewSelfCustomer(){ return signed() && request.resource.data.customerUid == request.auth.uid; }
+    function isNewLinkedCustomerDoc(shopId){ return hasCustomerLink(shopId) && request.resource.data.customerId == linkedCustomerId(shopId); }
+    function isNewCustomerOwned(shopId){ return isNewSelfCustomer() || isNewLinkedCustomerDoc(shopId); }
+    function isAuthPhone(phoneKey){ return signed() && request.auth.token.email == ('u' + phoneKey + '@hesabi.local'); }
+    function canClaimCustomerByPhone(){ return signed() && resource.data.phoneKey is string && isAuthPhone(resource.data.phoneKey); }
+    function onlyChanged(keys){ return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
 
     match /shopPhones/{phoneKey} {
       allow read: if signed();
@@ -3894,8 +3998,18 @@ service cloud.firestore {
     }
     match /customerPhoneLinks/{phoneKey}/shops/{shopId} {
       allow read: if signed();
-      allow create: if signed();
-      allow update, delete: if false;
+      allow create, update: if signed();
+      allow delete: if false;
+    }
+    match /phoneUidLinks/{phoneKey} {
+      allow read: if signed();
+      allow create, update: if signed() && request.resource.data.uid == request.auth.uid;
+      allow delete: if signed() && resource.data.uid == request.auth.uid;
+    }
+    match /deviceTokens/{token} {
+      allow read: if isAppOwner() || (signed() && resource.data.uid == request.auth.uid);
+      allow create, update: if signed() && request.resource.data.uid == request.auth.uid;
+      allow delete: if signed() && resource.data.uid == request.auth.uid;
     }
     match /users/{userId} {
       allow read: if isAppOwner() || (signed() && request.auth.uid == userId);
@@ -3903,67 +4017,67 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /shops/{shopId} {
-      allow read: if isAppOwner() || isOwnerOrCustomer(shopId);
+      allow read: if signed();
       allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isAppOwner() || isOwner(shopId);
       allow delete: if false;
 
       match /customerUidLinks/{userId} {
         allow read: if isAppOwner() || isOwner(shopId) || (signed() && request.auth.uid == userId);
-        allow create: if signed() && request.auth.uid == userId;
-        allow update, delete: if false;
+        allow create, update: if signed() && request.auth.uid == userId;
+        allow delete: if false;
       }
       match /customerPhones/{phoneKey} {
         allow read: if signed();
-        allow create: if signed();
-        allow update, delete: if false;
+        allow create, update: if signed();
+        allow delete: if false;
       }
       match /items/{id} {
-        allow read: if isOwnerOrCustomer(shopId);
+        allow read: if isOwner(shopId) || (signed() && shopActive(shopId));
         allow create, update, delete: if isOwner(shopId);
       }
       match /customers/{customerId} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
-        allow create: if isAppOwner() || isOwner(shopId) || isNewSelfCustomer();
-        allow update: if isAppOwner() || isOwner(shopId) || (isSelfCustomer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','phoneKey','customerUid','securityUpgradedAt']));
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId) || canClaimCustomerByPhone();
+        allow create: if isAppOwner() || isOwner(shopId) || isNewCustomerOwned(shopId);
+        allow update: if isAppOwner() || isOwner(shopId) || ((isCustomerOwned(shopId) || canClaimCustomerByPhone()) && onlyChanged(['name','phone','phoneKey','customerUid','previousCustomerUid','securityUpgradedAt','updatedAt']));
         allow delete: if false;
       }
       match /purchaseRequests/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
-        allow create: if isAppOwner() || isOwner(shopId) || (isNewSelfCustomer() && shopActive(shopId));
-        allow update: if isAppOwner() || isOwner(shopId) || (isSelfCustomer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','traderNote','reviewedAt','rejectedBy','customerApprovedAt','updatedAt']));
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
+        allow create: if isAppOwner() || isOwner(shopId) || (signed() && request.resource.data.customerUid == request.auth.uid && request.resource.data.customerId is string && shopActive(shopId));
+        allow update: if isAppOwner() || isOwner(shopId) || (isCustomerOwned(shopId) && request.resource.data.customerUid == request.auth.uid && onlyChanged(['items','total','paymentType','note','status','editedBy','editedAt','updatedAt','updatedMs','editCount']));
         allow delete: if false;
       }
       match /paymentRequests/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
-        allow create: if isNewSelfCustomer();
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
+        allow create: if isNewCustomerOwned(shopId);
         allow update: if isAppOwner() || isOwner(shopId);
         allow delete: if false;
       }
       match /returnRequests/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
-        allow create: if isNewSelfCustomer();
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
+        allow create: if isNewCustomerOwned(shopId);
         allow update: if isAppOwner() || isOwner(shopId);
         allow delete: if false;
       }
       match /messages/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
-        allow create: if isAppOwner() || isOwner(shopId) || isNewSelfCustomer();
-        allow update: if isOwner(shopId) || isSelfCustomer();
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId) || resource.data.customerId == '__app_owner__';
+        allow create: if isAppOwner() || isOwner(shopId) || isNewCustomerOwned(shopId);
+        allow update: if isAppOwner() || isOwner(shopId) || (isCustomerOwned(shopId) && onlyChanged(['readByCustomer','readAt','updatedAt']));
         allow delete: if false;
       }
       match /paymentSchedules/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
-        allow create, update: if isAppOwner() || isOwner(shopId) || isNewSelfCustomer();
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
+        allow create, update: if isAppOwner() || isOwner(shopId);
         allow delete: if false;
       }
       match /invoices/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
         allow create, update: if isAppOwner() || isOwner(shopId);
         allow delete: if false;
       }
       match /customerLedger/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
         allow create, update: if isAppOwner() || isOwner(shopId);
         allow delete: if false;
       }
@@ -3983,7 +4097,8 @@ service cloud.firestore {
       }
     }
   }
-}`;
+}
+`;
 
 
 function renderAppearanceSettingsBlock(){

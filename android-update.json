@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 33,
-  "latestVersionName": "1.0.32",
+  "latestVersionCode": 35,
+  "latestVersionName": "1.0.35",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.32",
-  "message": "تحسين صفحة الإعدادات: حذف النص الزائد، تصغير الأيقونات، وجعل كل تبويب يعرض محتواه فقط.",
+  "title": "تحديث حسابي التجاري 1.0.35",
+  "message": "إصلاح نهائي لطلب الشراء عند العميل: تحميل الأصناف، تحديد الأصناف، وإنشاء طلب الشراء مع قواعد Firestore محدثة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إصلاح دائم لصلاحيات ربط العميل بالمتجر والبحث عن المتاجر ومنع ظهور Missing or insufficient permissions عند التهيئة.",
-  "notes": "إصلاح واجهة الإعدادات فوق نسخة 1.0.31.",
-  "versionName": "1.0.33",
-  "versionCode": 33,
+  "releaseNotes": "تم إصلاح صلاحيات قراءة الأصناف وإنشاء طلب الشراء للعميل، وضمان رابط العميل قبل تحميل الكتالوج.",
+  "notes": "Customer purchase order and catalog selection fix.",
+  "versionName": "1.0.35",
+  "versionCode": 35,
   "minimumSupportedVersionCode": 1,
   "forceRefresh": true
 }
