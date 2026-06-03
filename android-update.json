@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 7,
-  "latestVersionName": "1.0.7",
+  "latestVersionCode": 8,
+  "latestVersionName": "1.0.8",
   "required": false,
-  "title": "تحسين ماسح كود الصنف",
-  "message": "تم إصلاح بناء Android وتحسين التعامل مع الأكواد المتعددة مثل IMEI و S/N عند مسح كود الصنف.",
+  "title": "تحديث نظام APK والإصدار",
+  "message": "تم فصل تحديث الواجهات عن تحديث APK، وإظهار رقم إصدار APK المثبت داخل الإعدادات.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
