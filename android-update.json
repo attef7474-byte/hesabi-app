@@ -1,8 +1,9 @@
 {
-  "latestVersionCode": 18,
-  "latestVersionName": "1.0.18",
+  "latestVersionCode": 19,
+  "latestVersionName": "1.0.19",
   "required": false,
   "title": "تحديث APK كامل مع تحديث الواجهات",
   "message": "تم إصلاح مشكلة بقاء الواجهات القديمة بعد تثبيت APK. عند تثبيت التحديث الجديد يتم تنظيف كاش WebView وService Worker وفتح آخر واجهة تلقائيًا، مع الحفاظ على نظام الجداول حسب الطلب من 1.0.17.",
-  "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
+  "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
+  "releaseNotes": "تصحيح عرض حقول إضافة/تعديل الأصناف، إضافة بحث مستقل في تعديل صنف، تنقل سابق/التالي في جداول البيانات، وعرض الأصناف حسب التصنيف مع الحفاظ على تحديث APK الكامل."
 }
