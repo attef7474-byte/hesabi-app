@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 4,
-  "latestVersionName": "1.0.4",
+  "latestVersionCode": 5,
+  "latestVersionName": "1.0.5",
   "required": false,
-  "title": "تحديث جديد لتطبيق حسابي التجاري",
-  "message": "تم تثبيت توقيع واحد دائم للتطبيق حتى تعمل التحديثات القادمة بدون تعارض.",
+  "title": "تحديث ماسح كود الصنف",
+  "message": "تمت إضافة ماسح Android أصلي لكود الصنف بدقة وتركيز أفضل من كاميرا WebView.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }

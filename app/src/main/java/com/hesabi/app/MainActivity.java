@@ -33,6 +33,9 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentActivity;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
 import java.io.File;
 import java.util.Objects;
 import java.text.SimpleDateFormat;
@@ -127,6 +130,10 @@ public class MainActivity extends FragmentActivity {
         return camera && mic;
     }
 
+    private boolean hasCameraPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+    }
+
     private void grantPendingWebPermissionIfReady() {
         if (pendingPermissionRequest == null) return;
         if (!hasCameraMicPermissions()) {
@@ -187,8 +194,53 @@ public class MainActivity extends FragmentActivity {
         return File.createTempFile("HESABI_" + stamp + "_", ".jpg", dir);
     }
 
+    private void startNativeItemBarcodeScanner() {
+        try {
+            if (!hasCameraPermission()) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQ_MEDIA_PERMISSIONS);
+                Toast.makeText(this, "اسمح بصلاحية الكاميرا ثم حاول مسح الكود مرة أخرى.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            IntentIntegrator integrator = new IntentIntegrator(this);
+            integrator.setPrompt("وجّه الكاميرا نحو باركود الصنف");
+            integrator.setBeepEnabled(true);
+            integrator.setBarcodeImageEnabled(false);
+            integrator.setOrientationLocked(false);
+            integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES);
+            integrator.initiateScan();
+        } catch (Exception e) {
+            sendItemBarcodeResult("", "تعذر فتح ماسح الباركود الأصلي: " + e.getMessage());
+        }
+    }
+
+    private static String jsQuote(String value) {
+        if (value == null) return "''";
+        String s = value
+                .replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+        return "'" + s + "'";
+    }
+
+    private void sendItemBarcodeResult(String code, String message) {
+        if (webView == null) return;
+        String js = "window.hesabiReceiveItemBarcode && window.hesabiReceiveItemBarcode(" + jsQuote(code) + "," + jsQuote(message) + ")";
+        runOnUiThread(() -> webView.evaluateJavascript(js, null));
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (scanResult != null) {
+            if (scanResult.getContents() != null) {
+                sendItemBarcodeResult(scanResult.getContents(), "تم قراءة كود الصنف");
+            } else {
+                sendItemBarcodeResult("", "تم إلغاء مسح الكود");
+            }
+            return;
+        }
+
         if (requestCode == REQ_FILE_CHOOSER) {
             Uri[] results = null;
             if (resultCode == Activity.RESULT_OK) {
@@ -225,6 +277,11 @@ public class MainActivity extends FragmentActivity {
         @JavascriptInterface
         public void authenticateBiometric(String reason, String token) {
             runOnUiThread(() -> startBiometric(reason, token));
+        }
+
+        @JavascriptInterface
+        public void scanItemBarcodeNative() {
+            runOnUiThread(MainActivity.this::startNativeItemBarcodeScanner);
         }
 
         @JavascriptInterface
