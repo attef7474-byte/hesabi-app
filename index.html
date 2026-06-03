@@ -203,6 +203,8 @@
 
   <style id="hesabi-settings-tabs-style">
     .settings-page-head{padding-bottom:10px}.settings-tabs-bar{display:flex;gap:7px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none}.settings-tabs-bar::-webkit-scrollbar{display:none}.settings-top-tab{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:#334155;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;box-shadow:0 4px 12px rgba(15,23,42,.04)}.settings-top-tab.active{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border-color:transparent}.settings-tab-pane{animation:settingsFade .12s ease}.settings-section-title{margin:8px 2px 4px;color:#0f766e;font-weight:900;font-size:13px}.settings-shortcut-btn{min-width:120px}.settings-file-label{display:inline-flex;align-items:center;justify-content:center}.settings-tab-pane .card{margin:8px 0}.settings-tab-pane .field input,.settings-tab-pane .field select{min-height:38px;padding:8px 10px}.settings-tab-pane .btn{min-height:36px;padding:8px 11px;font-size:12px;border-radius:13px}@keyframes settingsFade{from{opacity:.6;transform:translateY(2px)}to{opacity:1;transform:none}}
+    .settings-tabs-bar.icon-mode{display:grid;grid-template-columns:repeat(4,minmax(78px,1fr));gap:8px;overflow:visible;padding:8px 0 0}.settings-tabs-bar.icon-mode .settings-top-tab{border-radius:18px;padding:10px 6px;min-height:66px;white-space:normal;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;line-height:1.15}.settings-tabs-bar.icon-mode .settings-top-tab .settings-tab-icon{display:block;font-size:23px;line-height:1}.settings-tabs-bar.icon-mode .settings-top-tab .settings-tab-text{display:block;font-size:11px;font-weight:900}.settings-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.settings-summary-card{border:1px solid var(--line);border-radius:16px;background:#fbfdff;padding:10px;display:flex;gap:8px;align-items:flex-start}.settings-summary-card .big{font-size:22px}.settings-summary-card b{font-size:12px}.settings-summary-card .muted{font-size:11px}.settings-health-ok{color:#047857;font-weight:900}.settings-health-warn{color:#b45309;font-weight:900}.settings-danger-zone{border-color:#fecaca!important;background:#fff7f7!important}.settings-perm-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:14px;background:#fff;padding:9px;margin:7px 0}.settings-perm-row b{font-size:12px}.settings-perm-row .muted{font-size:11px}.settings-quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.settings-quick-grid .btn{width:100%}@media(max-width:460px){.settings-tabs-bar.icon-mode{grid-template-columns:repeat(3,minmax(75px,1fr))}.settings-summary-grid{grid-template-columns:1fr}.settings-quick-grid{grid-template-columns:1fr 1fr}}body[data-theme="dark"] .settings-summary-card,body[data-theme="dark"] .settings-perm-row{background:#1e293b;border-color:#334155}body[data-theme="dark"] .settings-danger-zone{background:#2a1820!important;border-color:#7f1d1d!important}
+
   
     /* رسائل الصور والصوت */
     .wa-composer{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:end}
@@ -452,7 +454,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.21-السياسات-وتعديل-الأسعار-وإظهار-الأصناف';
+const APP_VERSION='1.0.22-تنظيم-الإعدادات-والصلاحيات-والنسخ';
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -1152,7 +1154,7 @@ function render(){
   if(hasCfg && !signed){bindAuthButtons(); return}
   if(state.role && !state.profileDone){renderProfileSetup(); return}
   if(locked){renderAppLockScreen(); return}
-  if(state.profileDone){rememberCurrentDualRoleProfile(); ensureLiveDataListeners(); notifyAndroidSession(); renderNav(); show(active); setTimeout(notifyAndroidSession,600)}
+  if(state.profileDone){try{if(state.startPage && !sessionStorage.getItem('hesabi_start_page_applied')){active=state.startPage;sessionStorage.setItem('hesabi_start_page_applied','1')}}catch(e){} rememberCurrentDualRoleProfile(); ensureLiveDataListeners(); notifyAndroidSession(); renderNav(); show(active); setTimeout(notifyAndroidSession,600)}
 }
 
 function fillCfg(){['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{$('cfg_'+k).value=state.firebaseConfig?.[k]||''})}
@@ -4089,42 +4091,99 @@ function bindSettingsTabs(){
   applySettingsTabs(getSettingsTab());
 }
 
+
+function renderSettingsSummaryBlock(){
+  const isNative=!!(window.HesabiAndroid);
+  const notifyText=state.notifyEnabled?'مفعلة':'تحتاج تفعيل';
+  const lock=(typeof getAppLockSettings==='function') ? getAppLockSettings() : {enabled:false};
+  const cacheHint=localStorage.getItem('hesabi_last_cache_clear')||'';
+  return `<div class="settings-summary-grid">
+    <div class="settings-summary-card"><span class="big">📱</span><div><b>بيئة التشغيل</b><div class="muted">${isNative?'تطبيق أندرويد APK':'متصفح / WebView'}<br>APK: ${nativeVersionLabel()}</div></div></div>
+    <div class="settings-summary-card"><span class="big">🔐</span><div><b>الأمان</b><div class="muted">قفل التطبيق: <span class="${lock.enabled?'settings-health-ok':'settings-health-warn'}">${lock.enabled?'مفعل':'ملغي'}</span></div></div></div>
+    <div class="settings-summary-card"><span class="big">🔔</span><div><b>التنبيهات</b><div class="muted">${notifyText} | الصوت: ${esc(state.notifySound||'classic')}</div></div></div>
+    <div class="settings-summary-card"><span class="big">🧹</span><div><b>التحديث والكاش</b><div class="muted">آخر تنظيف: ${cacheHint?new Date(Number(cacheHint)).toLocaleString('ar-YE'):'لم يتم'}</div></div></div>
+  </div>`;
+}
+function renderAndroidPermissionsSettingsBlock(){
+  const native=!!window.HesabiAndroid;
+  return `<div class="card"><h2>صلاحيات أندرويد والجهاز</h2><p class="muted">اختبر الصلاحيات المهمة قبل استخدام المسح، الصور، الصوت، أو التحديث من داخل التطبيق.</p>
+    <div class="settings-perm-row"><div><b>الكاميرا والباركود</b><div class="muted">مطلوبة لمسح كود الصنف وكود التاجر.</div></div><button class="btn secondary" id="testCameraPermission">اختبار</button></div>
+    <div class="settings-perm-row"><div><b>الميكروفون والصوت</b><div class="muted">مطلوب لتسجيل الرسائل الصوتية والتنبيهات.</div></div><button class="btn secondary" id="testMicrophonePermission">اختبار</button></div>
+    <div class="settings-perm-row"><div><b>الملفات والتنزيلات</b><div class="muted">مطلوبة لاستيراد Excel، حفظ النسخ، وتنزيل APK.</div></div><button class="btn secondary" id="testFilePermission">اختبار</button></div>
+    <div class="settings-perm-row"><div><b>نوع التشغيل</b><div class="muted">${native?'يعمل داخل تطبيق أندرويد، لذلك تحديث APK متاح.':'يعمل من المتصفح، لذلك تحديث APK قد لا يكون متاحًا من هنا.'}</div></div><span class="status ${native?'approved':'pending'}">${native?'APK':'Web'}</span></div>
+  </div>`;
+}
+function renderStoreQuickSettingsBlock(){
+  if(state.role==='trader'){
+    return `<div class="card"><h2>إعدادات المتجر السريعة</h2><p class="muted">كل تاجر له إعداداته الخاصة. هذه اختصارات للمسارات التي تتحكم بما يظهر للعملاء المرتبطين بمتجرك فقط.</p><div class="settings-quick-grid"><button class="btn secondary" id="settingsOpenPolicies">⚙️ سياسات المتجر</button><button class="btn secondary" id="settingsOpenItems">📦 الأصناف</button><button class="btn secondary" id="settingsOpenPriceEditor">💰 تعديل الأسعار</button><button class="btn secondary" id="settingsOpenShopCode">🔳 كود التاجر</button><button class="btn light" id="settingsOpenCustomers">👥 العملاء</button><button class="btn light" id="settingsOpenReports">📈 التقارير</button></div><div class="notice">لضبط إظهار الأسعار والكميات، طلب غير المتوفر، المراسلة، أوقات الدوام، وإخفاء صنف عن العملاء: افتح صفحة السياسات.</div></div>`;
+  }
+  return `<div class="card"><h2>إعدادات العميل السريعة</h2><p class="muted">هذه اختصارات لربط المتاجر ورؤية بياناتك كعميل.</p><div class="settings-quick-grid"><button class="btn secondary" id="settingsOpenShops">🏬 متاجري</button><button class="btn secondary" id="settingsOpenShopCode">📷 مسح كود تاجر</button><button class="btn light" id="settingsOpenStatement">📄 كشف الحساب</button><button class="btn light" id="settingsOpenMessages">💬 الرسائل</button></div></div>`;
+}
+function renderStartupSettingsBlock(){
+  const v=state.startPage||'home';
+  const opts=state.role==='trader' ? [['home','الرئيسية'],['items','الأصناف'],['orders','الطلبات'],['customers','العملاء'],['payments','السداد'],['reports','التقارير']] : [['home','الرئيسية'],['search','البحث'],['shops','المتاجر'],['orders','طلباتي'],['statement','كشف الحساب'],['messages','الرسائل']];
+  return `<div class="card"><h2>فتح التطبيق والتنقل</h2><p class="muted">حدد الصفحة التي تريد فتحها بسرعة بعد الدخول لهذا الجهاز فقط.</p><div class="field"><label>الصفحة الافتراضية بعد الدخول</label><select id="startupPageSelect">${opts.map(([k,t])=>`<option value="${k}" ${v===k?'selected':''}>${t}</option>`).join('')}</select></div><div class="settings-compact-actions"><button class="btn ok" id="saveStartupPage">حفظ صفحة البداية</button><button class="btn light" id="openStartupPageNow">فتحها الآن</button></div></div>`;
+}
+function renderUpdateAndCacheSettingsBlock(){
+  return `<div class="card"><h2>التحديث والكاش</h2><p class="muted">استخدم تحديث APK للتحديث الكامل. تنظيف الكاش يحل بقاء واجهات قديمة بعد التثبيت.</p><div class="settings-compact-grid"><div class="settings-mini-card"><h3>الإصدار الحالي</h3><p class="muted">إصدار الواجهات:<br><b>${APP_VERSION}</b><br>إصدار APK المثبت:<br><b>${nativeVersionLabel()}</b></p></div><div class="settings-mini-card"><h3>تحديث التطبيق</h3><div class="settings-compact-actions"><button class="btn secondary" id="checkApkUpdateBtn">فحص APK</button><button class="btn ok" id="forceApkUpdateBtn">تحديث APK</button><button class="btn light" id="forceWebUpdateBtn">تحديث الواجهات</button><button class="btn warn" id="clearWebCacheBtn">تنظيف الكاش</button></div></div></div></div>`;
+}
+function renderBackupAndDataSettingsBlock(){
+  return `<div class="card"><h2>النسخ الاحتياطي والاستيراد</h2><p class="muted">تصدير الإعدادات يحفظ إعدادات هذا الجهاز فقط. بيانات المتجر الحقيقية تبقى في Firebase.</p><div class="settings-compact-actions"><button class="btn light" id="exportData">تصدير إعدادات الجهاز</button><label class="btn light settings-file-label">استيراد إعدادات<input id="importFile" type="file" accept="application/json" style="display:none"></label>${state.role==='trader'?'<button class="btn secondary" id="settingsExportItems">تصدير الأصناف Excel</button><button class="btn secondary" id="settingsImportItems">استيراد الأصناف Excel</button>':''}</div><div class="notice">قبل عمليات الحذف أو الاستيراد الكبير، صدّر نسخة من الأصناف من صفحة الأصناف أو من هذا الاختصار.</div></div>`;
+}
+function renderAccountDangerSettingsBlock(userRoleText){
+  return `<div class="card"><h2>بيانات الحساب والجهاز</h2><div class="settings-compact-grid"><div class="settings-mini-card"><h3>الحساب الحالي</h3><p class="muted">الدور: ${userRoleText}<br>كود المحل: ${esc(state.shopId||'-')}<br>رقم الحساب: ${esc(state.authPhoneIntl||state.phoneNumber||state.authPhoneKey||'-')}</p></div><div class="settings-mini-card"><h3>الربط</h3><p class="muted">هذه البيانات خاصة بهذا الجهاز، أما بيانات المتجر والعملاء فهي محفوظة في Firebase حسب صلاحيات الحساب.</p></div></div></div><div class="card settings-danger-zone"><h2>عمليات حساسة</h2><p class="muted">استخدمها فقط عند الحاجة. مسح هذا الجهاز لا يحذف بيانات Firebase لكنه يزيل تسجيل الدخول والإعدادات المحلية.</p><div class="settings-compact-actions"><button class="btn warn" id="resetRole">إعادة اختيار الدور</button><button class="btn danger" id="wipeAll">مسح هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج</button></div></div>`;
+}
+async function clearWebCacheOnly(){
+  try{
+    if('serviceWorker' in navigator){try{const regs=await navigator.serviceWorker.getRegistrations(); for(const r of regs){try{await r.unregister()}catch(e){}}}catch(e){}}
+    if('caches' in window){try{const keys=await caches.keys(); await Promise.all(keys.map(k=>caches.delete(k)));}catch(e){}}
+    try{localStorage.setItem('hesabi_last_cache_clear', String(Date.now()));}catch(e){}
+    msg('تم تنظيف كاش الواجهات. أغلق التطبيق وافتحه إذا لزم الأمر.','success');
+  }catch(e){msg('تعذر تنظيف الكاش: '+(e.message||e),'error')}
+}
+async function testCameraPermission(){try{const stream=await navigator.mediaDevices.getUserMedia({video:true}); stream.getTracks().forEach(t=>t.stop()); msg('الكاميرا تعمل بنجاح','success')}catch(e){msg('الكاميرا غير متاحة أو الصلاحية مرفوضة','error')}}
+async function testMicrophonePermission(){try{const stream=await navigator.mediaDevices.getUserMedia({audio:true}); stream.getTracks().forEach(t=>t.stop()); beep(); msg('الميكروفون والصوت يعملان','success')}catch(e){msg('الميكروفون غير متاح أو الصلاحية مرفوضة','error')}}
+function testFilePermission(){try{const input=document.createElement('input'); input.type='file'; input.accept='.json,.xlsx,.xls,.csv,image/*'; input.onchange=()=>msg(input.files&&input.files[0]?'اختيار الملفات يعمل: '+input.files[0].name:'لم يتم اختيار ملف','notice'); input.click();}catch(e){msg('تعذر فتح منتقي الملفات','error')}}
+function bindEnhancedSettingsControls(){
+  const go=p=>()=>show(p);
+  if($('settingsOpenPolicies')) $('settingsOpenPolicies').onclick=go('policies');
+  if($('settingsOpenItems')) $('settingsOpenItems').onclick=go('items');
+  if($('settingsOpenPriceEditor')) $('settingsOpenPriceEditor').onclick=()=>{show('items'); setTimeout(()=>{try{setItemsTab('prices'); renderItems();}catch(e){}},80)};
+  if($('settingsOpenShopCode')) $('settingsOpenShopCode').onclick=go('shopcode');
+  if($('settingsOpenCustomers')) $('settingsOpenCustomers').onclick=go('customers');
+  if($('settingsOpenReports')) $('settingsOpenReports').onclick=go('reports');
+  if($('settingsOpenShops')) $('settingsOpenShops').onclick=go('shops');
+  if($('settingsOpenStatement')) $('settingsOpenStatement').onclick=go('statement');
+  if($('settingsOpenMessages')) $('settingsOpenMessages').onclick=go('messages');
+  if($('saveStartupPage')) $('saveStartupPage').onclick=()=>{state.startPage=$('startupPageSelect')?.value||'home'; save(); msg('تم حفظ صفحة البداية','success')};
+  if($('openStartupPageNow')) $('openStartupPageNow').onclick=()=>show($('startupPageSelect')?.value||'home');
+  if($('clearWebCacheBtn')) $('clearWebCacheBtn').onclick=clearWebCacheOnly;
+  if($('testCameraPermission')) $('testCameraPermission').onclick=testCameraPermission;
+  if($('testMicrophonePermission')) $('testMicrophonePermission').onclick=testMicrophonePermission;
+  if($('testFilePermission')) $('testFilePermission').onclick=testFilePermission;
+  if($('settingsExportItems')) $('settingsExportItems').onclick=()=>{show('items'); setTimeout(()=>{try{exportItemsExcel()}catch(e){msg('افتح صفحة الأصناف ثم صدّر Excel','notice')}},100)};
+  if($('settingsImportItems')) $('settingsImportItems').onclick=()=>{show('items'); setTimeout(()=>{try{document.getElementById('itemsExcelImportFile')?.click()}catch(e){msg('افتح صفحة الأصناف ثم استورد Excel','notice')}},100)};
+}
+
 function renderSettings(){
   const defaultLink = state.appPublicLink || (location.protocol.startsWith('http') ? location.href.split('#')[0] : '');
   const userRoleText = state.role==='trader'?'تاجر':'عميل';
   const shopCodeShortcut = state.role==='trader'
     ? `<button class="btn secondary settings-shortcut-btn" id="openShopCodeFromSettings">🔳 كود التاجر</button>`
     : `<button class="btn secondary settings-shortcut-btn" id="openShopCodeFromSettings">📷 مسح كود التاجر</button>`;
-  $('page_settings').innerHTML=`<div class="card settings-page-head"><h2>الإعدادات</h2><p class="muted">تم تنظيم الإعدادات في تبويبات حتى تصل لكل وظيفة بسرعة.</p><div class="settings-tabs-bar"><button class="settings-top-tab" data-settings-tab="security">🔐 الأمان والحساب</button><button class="settings-top-tab" data-settings-tab="appearance">🎨 شكل التطبيق</button><button class="settings-top-tab" data-settings-tab="notifications">🔔 التنبيهات والصوت</button><button class="settings-top-tab" data-settings-tab="system">⚙️ النظام والتحديث</button></div></div>
-  <div class="settings-tab-pane" data-settings-pane="security">
-    <div class="settings-section-title">الأمان والحساب</div>
-    ${renderPhoneChangeSettingsBlock()}
-    ${renderSecurityLockSettingsBlock()}
-  </div>
-  <div class="settings-tab-pane" data-settings-pane="appearance">
-    <div class="settings-section-title">شكل التطبيق</div>
-    ${renderAppearanceSettingsBlock()}
-  </div>
-  <div class="settings-tab-pane" data-settings-pane="notifications">
-    <div class="settings-section-title">التنبيهات والصوت</div>
-    <div class="card"><h2>صلاحيات التنبيهات</h2><p class="muted">فعّل إشعارات الهاتف والصوت حتى تسمع الطلبات والرسائل والسداد.</p><div class="settings-compact-actions"><button class="btn secondary" id="enableNotify">تفعيل الإشعارات</button></div></div>
-    ${renderNotificationSoundSettingsBlock()}
-  </div>
-  <div class="settings-tab-pane" data-settings-pane="system">
-    <div class="settings-section-title">النظام والتحديث والأكواد</div>
-    ${renderDualRoleSettingsBlock()}
-    <div class="card"><h2>بيانات المستخدم والإصدار</h2><div class="settings-compact-grid"><div class="settings-mini-card"><h3>الحساب الحالي</h3><p class="muted">الدور: ${userRoleText}<br>كود المحل: ${esc(state.shopId||'-')}<br>رقم الحساب: ${esc(state.authPhoneIntl||state.phoneNumber||state.authPhoneKey||'-')}<br>إصدار الواجهات: ${APP_VERSION}<br>إصدار APK المثبت: ${nativeVersionLabel()}</p></div><div class="settings-mini-card"><h3>تحديث التطبيق</h3><p class="muted">تحديث APK ينزّل آخر نسخة أندرويد ويجبر الواجهات على التحديث الكامل تلقائيًا بعد التثبيت. زر تحديث الواجهات يبقى خيارًا يدويًا احتياطيًا فقط.</p><div class="settings-compact-actions"><button class="btn secondary" id="checkApkUpdateBtn">فحص APK</button><button class="btn ok" id="forceApkUpdateBtn">تحديث APK</button><button class="btn light" id="forceWebUpdateBtn">تحديث الواجهات</button></div></div></div></div>
-    <div class="card"><h2>الأكواد والروابط</h2><p class="muted">اختصارات لكود التاجر، مسح الكود، ومشاركة رابط التطبيق.</p><div class="settings-compact-actions">${shopCodeShortcut}<button class="btn secondary" id="copyShop">نسخ كود المحل</button></div><div class="form"><div class="field"><label>رابط التطبيق للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="https://hesabi-app-edc7e.web.app"></div><div class="settings-compact-actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إشعار تحديث للعملاء</button>':''}</div></div></div>
-    <div class="card"><h2>النسخ والعمليات</h2><p class="muted">أدوات الجهاز الحالي فقط. استخدمها بحذر.</p><div class="settings-compact-actions"><button class="btn light" id="exportData">تصدير الإعدادات</button><label class="btn light settings-file-label">استيراد<input id="importFile" type="file" accept="application/json" style="display:none"></label><button class="btn warn" id="resetRole">إعادة اختيار الدور</button><button class="btn danger" id="wipeAll">مسح هذا الجهاز</button><button class="btn light" id="logoutBtn">تسجيل الخروج</button></div></div>
-  </div>`;
+  $('page_settings').innerHTML=`<div class="card settings-page-head"><h2>الإعدادات</h2><p class="muted">تم إعادة تنظيم الإعدادات في أيقونات واضحة. كل مجموعة تحتوي وظائف من نفس النوع، مع إضافة الصلاحيات، النسخ، الكاش، اختصارات المتجر، وصفحة البداية.</p>${renderSettingsSummaryBlock()}<div class="settings-tabs-bar icon-mode"><button class="settings-top-tab" data-settings-tab="security"><span class="settings-tab-icon">🔐</span><span class="settings-tab-text">الأمان</span></button><button class="settings-top-tab" data-settings-tab="appearance"><span class="settings-tab-icon">🎨</span><span class="settings-tab-text">الشكل</span></button><button class="settings-top-tab" data-settings-tab="store"><span class="settings-tab-icon">🏬</span><span class="settings-tab-text">المتجر</span></button><button class="settings-top-tab" data-settings-tab="permissions"><span class="settings-tab-icon">📱</span><span class="settings-tab-text">الصلاحيات</span></button><button class="settings-top-tab" data-settings-tab="updates"><span class="settings-tab-icon">⬇️</span><span class="settings-tab-text">التحديث</span></button><button class="settings-top-tab" data-settings-tab="backup"><span class="settings-tab-icon">💾</span><span class="settings-tab-text">النسخ</span></button><button class="settings-top-tab" data-settings-tab="account"><span class="settings-tab-icon">👤</span><span class="settings-tab-text">الحساب</span></button><button class="settings-top-tab" data-settings-tab="notifications"><span class="settings-tab-icon">🔔</span><span class="settings-tab-text">التنبيهات</span></button></div></div>
+  <div class="settings-tab-pane" data-settings-pane="security"><div class="settings-section-title">الأمان والحساب</div>${renderPhoneChangeSettingsBlock()}${renderSecurityLockSettingsBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="appearance"><div class="settings-section-title">شكل التطبيق وفتح الصفحة</div>${renderAppearanceSettingsBlock()}${renderStartupSettingsBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="store"><div class="settings-section-title">المتجر والمسارات السريعة</div>${renderStoreQuickSettingsBlock()}<div class="card"><h2>الأكواد والروابط</h2><p class="muted">اختصارات لكود التاجر، مسح الكود، ومشاركة رابط التطبيق.</p><div class="settings-compact-actions">${shopCodeShortcut}<button class="btn secondary" id="copyShop">نسخ كود المحل</button></div><div class="form"><div class="field"><label>رابط التطبيق للعملاء</label><input id="appPublicLink" value="${esc(defaultLink)}" placeholder="https://hesabi-app-edc7e.web.app"></div><div class="settings-compact-actions"><button class="btn secondary" id="saveAppLink">حفظ الرابط</button><button class="btn light" id="shareAppLink">مشاركة الرابط</button><button class="btn light" id="shareAppFile">مشاركة ملف HTML</button>${state.role==='trader'?'<button class="btn ok" id="notifyCustomersUpdate">إشعار تحديث للعملاء</button>':''}</div></div></div></div>
+  <div class="settings-tab-pane" data-settings-pane="permissions"><div class="settings-section-title">صلاحيات الجهاز والتطبيق</div>${renderAndroidPermissionsSettingsBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="updates"><div class="settings-section-title">النظام والتحديث</div>${renderUpdateAndCacheSettingsBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="backup"><div class="settings-section-title">النسخ والاستيراد والتصدير</div>${renderBackupAndDataSettingsBlock()}</div>
+  <div class="settings-tab-pane" data-settings-pane="account"><div class="settings-section-title">الحساب والجهاز</div>${renderDualRoleSettingsBlock()}${renderAccountDangerSettingsBlock(userRoleText)}</div>
+  <div class="settings-tab-pane" data-settings-pane="notifications"><div class="settings-section-title">التنبيهات والصوت</div><div class="card"><h2>صلاحيات التنبيهات</h2><p class="muted">فعّل إشعارات الهاتف والصوت حتى تسمع الطلبات والرسائل والسداد.</p><div class="settings-compact-actions"><button class="btn secondary" id="enableNotify">تفعيل الإشعارات</button></div></div>${renderNotificationSoundSettingsBlock()}</div>`;
   setTimeout(()=>{
-    bindSettingsTabs();
-    bindAppearanceSettingsControls();
-    bindPhoneAndSoundSettingsControls();
-    bindSecurityLockSettingsControls();
-    bindDualRoleSettingsControls();
+    bindSettingsTabs(); bindAppearanceSettingsControls(); bindPhoneAndSoundSettingsControls(); bindSecurityLockSettingsControls(); bindDualRoleSettingsControls(); bindEnhancedSettingsControls();
     if($('forceWebUpdateBtn')) $('forceWebUpdateBtn').onclick=refreshWebOnly; if($('forceApkUpdateBtn')) $('forceApkUpdateBtn').onclick=forceApkUpdate; if($('checkApkUpdateBtn')) $('checkApkUpdateBtn').onclick=()=>checkApkUpdateOnly(true);
-    if($('copyShop')) $('copyShop').onclick=()=>navigator.clipboard?.writeText(state.shopId||'');
+    if($('copyShop')) $('copyShop').onclick=async()=>{await navigator.clipboard?.writeText(state.shopId||''); msg('تم نسخ كود المحل','success')};
     if($('enableNotify')) $('enableNotify').onclick=enableNotifications;
     if($('exportData')) $('exportData').onclick=exportData;
     if($('importFile')) $('importFile').onchange=importData;
