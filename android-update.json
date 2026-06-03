@@ -1,6 +1,6 @@
 {
   "latestVersionCode": 19,
-  "latestVersionName": "1.0.19",
+  "latestVersionName": "1.0.20",
   "required": false,
   "title": "تحديث APK كامل مع تحديث الواجهات",
   "message": "تم إصلاح مشكلة بقاء الواجهات القديمة بعد تثبيت APK. عند تثبيت التحديث الجديد يتم تنظيف كاش WebView وService Worker وفتح آخر واجهة تلقائيًا، مع الحفاظ على نظام الجداول حسب الطلب من 1.0.17.",

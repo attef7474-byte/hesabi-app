@@ -309,6 +309,10 @@
     .items-pane.active{display:block}
     .items-edit-empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:20px;padding:18px;text-align:center;color:#64748b}
     @media (max-width:430px){.items-tabs-card{top:68px;padding:8px}.items-tabs-bar{gap:6px}.items-tab-btn{min-height:62px;padding:8px 4px}.items-tab-btn .txt{font-size:11px}.items-tab-btn .ico{font-size:21px}}
+    .row-select-cell{text-align:center;width:44px}.row-select-cell input{width:20px;height:20px;accent-color:var(--primary)}
+    .bulk-select-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:8px}
+    .duplicate-warning{border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:14px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7}
+
   </style>
 
 </head>
@@ -448,7 +452,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.19-تصحيح-نماذج-الأصناف-والتنقل-والتصنيف';
+const APP_VERSION='1.0.20-تصحيح-نماذج-الأصناف-والتنقل-والتصنيف';
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -2635,14 +2639,18 @@ async function importItemsFromExcelFile(file){
       const isActive=status!=='موقوف' && status.toLowerCase()!=='inactive' && status.toLowerCase()!=='disabled';
       const payload={name,barcode,imei,serial,model,brand,category,unit,cashPrice,creditPrice,price,stock,minStock,status,notes,source,isActive,updatedAt:serverTimestamp()};
       const matchKey=[barcode,imei,serial].map(normalizeItemCodeForLookup).find(k=>k && existingByCode.has(k));
-      if(matchKey){
-        const old=existingByCode.get(matchKey);
+      const nameKey=normalizeItemNameForDuplicate(name);
+      const old=matchKey?existingByCode.get(matchKey):(nameKey?existingByName.get(nameKey):null);
+      if(old){
         await updateDoc(doc(db,'shops',state.shopId,'items',old.id),payload);
+        [barcode,imei,serial].forEach(c=>{const k=normalizeItemCodeForLookup(c); if(k) existingByCode.set(k,{id:old.id})});
+        if(nameKey) existingByName.set(nameKey,{id:old.id});
         updated++;
       }else{
         const ref=await addDoc(collection(db,'shops',state.shopId,'items'),{...payload,createdAt:serverTimestamp(),createdMs:Date.now()});
         if(stock>0) await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'excel_import',note:'رصيد افتتاحي من استيراد Excel',createdAt:serverTimestamp(),createdMs:Date.now()});
         [barcode,imei,serial].forEach(c=>{const k=normalizeItemCodeForLookup(c); if(k) existingByCode.set(k,{id:ref.id})});
+        if(nameKey) existingByName.set(nameKey,{id:ref.id});
         added++;
       }
       if(barcode) rememberItemCodeName(barcode,{name,category,unit,cashPrice,creditPrice,price,notes});
@@ -2653,6 +2661,38 @@ async function importItemsFromExcelFile(file){
     msg(`انتهى الاستيراد: جديد ${added}، تحديث ${updated}، متجاهل ${skipped}`,'success');
   }catch(e){msg('تعذر استيراد Excel: '+(e.message||e),'error')}
   finally{ if($('itemsExcelImportFile')) $('itemsExcelImportFile').value=''; }
+}
+
+
+function normalizeItemNameForDuplicate(v){
+  return String(v||'')
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g,'')
+    .replace(/[إأآا]/g,'ا')
+    .replace(/ى/g,'ي')
+    .replace(/ة/g,'ه')
+    .replace(/\s+/g,' ');
+}
+function findDuplicateItemForSave({name='',barcode=''}, excludeId=''){
+  const nameKey=normalizeItemNameForDuplicate(name);
+  const barcodeKey=normalizeItemCodeForLookup(barcode);
+  return (cache.items||[]).find(i=>{
+    if(excludeId && String(i.id)===String(excludeId)) return false;
+    const itemNameKey=normalizeItemNameForDuplicate(i.name||'');
+    const itemCodes=[i.barcode,i.code,i.sku,i.serial,i.imei,i.sn].map(normalizeItemCodeForLookup).filter(Boolean);
+    if(barcodeKey && itemCodes.includes(barcodeKey)) return true;
+    if(nameKey && itemNameKey && itemNameKey===nameKey) return true;
+    return false;
+  }) || null;
+}
+function duplicateItemMessage(dup, name, barcode){
+  if(!dup) return '';
+  const sameCode=normalizeItemCodeForLookup(barcode) && [dup.barcode,dup.code,dup.sku,dup.serial,dup.imei,dup.sn].map(normalizeItemCodeForLookup).includes(normalizeItemCodeForLookup(barcode));
+  const sameName=normalizeItemNameForDuplicate(dup.name)===normalizeItemNameForDuplicate(name);
+  if(sameCode && sameName) return `لا يمكن الحفظ: يوجد صنف محفوظ سابقًا بنفس الاسم ونفس الباركود: ${dup.name} / ${dup.barcode||'-'}`;
+  if(sameCode) return `لا يمكن الحفظ: الباركود موجود سابقًا في الصنف: ${dup.name}`;
+  return `لا يمكن الحفظ: يوجد صنف محفوظ سابقًا بنفس الاسم: ${dup.name}`;
 }
 
 async function addItem(){
@@ -2667,6 +2707,13 @@ async function addItem(){
   const barcode=($('itemBarcode')?.value||'').trim();
   const notes=($('itemNotes')?.value||'').trim();
   if(!name||price<=0||stock<0){msg('أدخل اسم الصنف والسعر والكمية بشكل صحيح','error');return}
+  const duplicate=findDuplicateItemForSave({name,barcode});
+  if(duplicate){
+    msg(duplicateItemMessage(duplicate,name,barcode),'error');
+    state.itemsTab='edit'; state.editItemId=duplicate.id; save();
+    setTimeout(()=>renderItems(),300);
+    return;
+  }
   const payload={name,category,price,cashPrice,creditPrice,unit,stock,minStock,barcode,notes,isActive:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
   const ref=await addDoc(collection(db,'shops',state.shopId,'items'),payload);
   if(stock>0) await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'item',note:'رصيد افتتاحي عند إضافة الصنف',createdAt:serverTimestamp(),createdMs:Date.now()});
@@ -4231,7 +4278,7 @@ function renderEditItemPane(editRows, editMeta, editCategory){
   const id=state.editItemId;
   const item=(cache.items||[]).find(x=>x.id===id);
   if(!item){
-    return `<div class="card"><div class="row"><h2>تعديل صنف</h2><span class="status pending">اختر صنف</span></div><p class="muted">ابحث عن الصنف أو اختر التصنيف ثم اضغط تعديل. لا يتم تحميل كل الأصناف تلقائيًا.</p>${demandTableCard('itemsEditList','البحث عن صنف للتعديل',['الصنف','التصنيف','الوحدة','كاش/آجل','المخزون','الحالة','إجراء'],editRows,editMeta,'لا توجد أصناف مطابقة',itemsCategoryFilterHtml('itemsEditList',editCategory))}</div>`;
+    return `<div class="card"><div class="row"><h2>تعديل صنف</h2><span class="status pending">اختر صنف</span></div><p class="muted">ابحث عن الصنف أو اختر التصنيف ثم اضغط تعديل. لا يتم تحميل كل الأصناف تلقائيًا.</p>${demandTableCard('itemsEditList','البحث عن صنف للتعديل',['تحديد','الصنف','التصنيف','الوحدة','كاش/آجل','المخزون','الحالة','إجراء'],editRows,editMeta,'لا توجد أصناف مطابقة',itemsCategoryFilterHtml('itemsEditList',editCategory))}</div>`;
   }
   return `<div class="card"><div class="row"><h2>تعديل صنف</h2><span class="status approved">${esc(item.name||'')}</span></div><p class="muted">عدّل البيانات ثم اضغط حفظ التعديل.</p>
     <div class="hesabi-form-grid">
@@ -4264,6 +4311,8 @@ async function saveSelectedItemEdit(){
     const stock=Number($('editItemStock')?.value||0);
     const minStock=Number($('editItemMinStock')?.value||0);
     const notes=$('editItemNotes')?.value.trim()||'';
+    const duplicate=findDuplicateItemForSave({name,barcode}, itemId);
+    if(duplicate){msg(duplicateItemMessage(duplicate,name,barcode),'error');return}
     await updateDoc(doc(db,'shops',state.shopId,'items',itemId),{name,category,unit,barcode,model,brand,cashPrice,creditPrice,price:creditPrice||cashPrice,stock,minStock,notes,updatedAt:serverTimestamp()});
     if(barcode) rememberItemCodeName(barcode,{name,category,unit,cashPrice,creditPrice,price:creditPrice||cashPrice,notes});
     await addAudit('update_item_from_tab',{itemId,name,barcode});
@@ -4274,8 +4323,48 @@ async function saveSelectedItemEdit(){
   }catch(e){msg('تعذر حفظ التعديل: '+(e.message||e),'error')}
 }
 
+
+let selectedItemIdsForDelete=new Set();
+function selectedItemsArray(){return Array.from(selectedItemIdsForDelete).filter(id=>(cache.items||[]).some(i=>i.id===id));}
+function clearSelectedItems(){selectedItemIdsForDelete.clear()}
+function itemHasHistory(itemId){
+  const inInvoices=(cache.invoices||[]).some(inv=>(inv.lines||inv.items||[]).some(l=>String(l.itemId)===String(itemId)));
+  const inOrders=(cache.orders||[]).some(o=>(o.items||[]).some(l=>String(l.itemId)===String(itemId)));
+  const inReturns=(cache.returns||[]).some(r=>String(r.itemId)===String(itemId));
+  return inInvoices||inOrders||inReturns;
+}
+async function deleteItemsByIds(ids){
+  try{
+    if(state.role!=='trader'){msg('حذف الأصناف متاح للتاجر فقط','error');return}
+    ids=[...new Set((ids||[]).filter(Boolean))];
+    if(!ids.length){msg('حدد صنفًا واحدًا على الأقل للحذف','error');return}
+    const names=ids.map(id=>itemById(id)?.name||id).join('، ');
+    const hasHistory=ids.some(itemHasHistory);
+    const warning=hasHistory?'\nتنبيه: بعض الأصناف لها فواتير أو طلبات سابقة. سيتم حذفها من قائمة الأصناف فقط وتبقى الفواتير القديمة محفوظة بأسمائها.':'';
+    if(!confirm(`تأكيد حذف ${ids.length} صنف؟\n${names}${warning}`)) return;
+    showBulkProgress('حذف الأصناف المحددة','جاري حذف الأصناف وحركات المخزون المرتبطة بها...', ids.length);
+    const ops=[];
+    for(const itemId of ids){
+      ops.push({type:'delete',ref:doc(db,'shops',state.shopId,'items',itemId)});
+      try{
+        const stockSnap=await getDocs(collection(db,'shops',state.shopId,'stockLedger'));
+        stockSnap.docs.filter(d=>String(d.data().itemId)===String(itemId)).forEach(d=>ops.push({type:'delete',ref:doc(db,'shops',state.shopId,'stockLedger',d.id)}));
+      }catch(e){}
+    }
+    await commitBatchOperations(ops,(done,total)=>updateBulkProgress(Math.min(done,ids.length),ids.length,'تم تنفيذ جزء من عملية الحذف...'));
+    selectedItemIdsForDelete.clear();
+    await addAudit('delete_selected_items',{count:ids.length,itemIds:ids,names});
+    hideBulkProgress('تم حذف الأصناف المحددة');
+    renderItems();
+  }catch(e){hideBulkProgress(); msg('تعذر حذف الأصناف: '+(e.message||e),'error')}
+}
+async function deleteSingleItem(itemId){await deleteItemsByIds([itemId])}
+function itemsBulkActionsHtml(){
+  return `<div class="bulk-select-bar"><div class="muted">حدد صنفًا أو عدة أصناف ثم اضغط حذف المحدد.</div><div class="mini-actions"><button class="btn light mini" data-select-visible-items="1">تحديد المعروض</button><button class="btn light mini" data-clear-selected-items="1">إلغاء التحديد</button><button class="btn danger mini" data-delete-selected-items="1">حذف المحدد</button></div></div>`;
+}
+
 function buildItemRows(meta){
-  return meta.visible.map(i=>`<tr class="detail-row"><td class="name"><b>${esc(i.name)}</b><div class="subcell">${esc(i.barcode||i.model||i.brand||'')}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'حبة')}</td><td>${money(effectiveItemPrice(i,'cash'))}<div class="subcell">آجل: ${money(effectiveItemPrice(i,'credit'))}</div></td><td><b>${Number(i.stock||0)}</b><div class="subcell">حد: ${Number(i.minStock||0)}</div></td><td>${i.isActive===false?'<span class="status danger">موقوف</span>':(Number(i.stock||0)<=Number(i.minStock||0)&&Number(i.minStock||0)>0?'<span class="status pending">منخفض</span>':'<span class="status approved">نشط</span>')}</td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-toggle-row="1">تفاصيل</button>`)}</td></tr><tr class="lines-row"><td colspan="7"><div class="demand-details">الكود: ${esc(i.barcode||'-')} | الموديل: ${esc(i.model||'-')} | العلامة: ${esc(i.brand||'-')} | ملاحظات: ${esc(i.notes||'-')}</div></td></tr>`);
+  return meta.visible.map(i=>`<tr class="detail-row"><td class="row-select-cell"><input type="checkbox" data-select-item="${i.id}" ${selectedItemIdsForDelete.has(i.id)?'checked':''}></td><td class="name"><b>${esc(i.name)}</b><div class="subcell">${esc(i.barcode||i.model||i.brand||'')}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'حبة')}</td><td>${money(effectiveItemPrice(i,'cash'))}<div class="subcell">آجل: ${money(effectiveItemPrice(i,'credit'))}</div></td><td><b>${Number(i.stock||0)}</b><div class="subcell">حد: ${Number(i.minStock||0)}</div></td><td>${i.isActive===false?'<span class="status danger">موقوف</span>':(Number(i.stock||0)<=Number(i.minStock||0)&&Number(i.minStock||0)>0?'<span class="status pending">منخفض</span>':'<span class="status approved">نشط</span>')}</td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn danger mini" data-delete-item="${i.id}">حذف</button><button class="btn secondary mini" data-toggle-row="1">تفاصيل</button>`)}</td></tr><tr class="lines-row"><td colspan="8"><div class="demand-details">الكود: ${esc(i.barcode||'-')} | الموديل: ${esc(i.model||'-')} | العلامة: ${esc(i.brand||'-')} | ملاحظات: ${esc(i.notes||'-')}</div></td></tr>`);
 }
 function filteredItemsByCategory(category){
   let data=[...(cache.items||[])];
@@ -4295,7 +4384,7 @@ function renderItems(){
   const editRows=buildItemRows(editMeta);
   $('page_items').innerHTML=`${itemsTabsBar()}
     <section class="items-pane ${active==='list'?'active':''}" id="itemsPaneList">
-      ${demandTableCard('itemsList','الأصناف والمخزون',['الصنف','التصنيف','الوحدة','كاش/آجل','المخزون','الحالة','إجراء'],rows,meta,'لا توجد أصناف مطابقة',itemsCategoryFilterHtml('itemsList',listCategory))}
+      ${demandTableCard('itemsList','الأصناف والمخزون',['تحديد','الصنف','التصنيف','الوحدة','كاش/آجل','المخزون','الحالة','إجراء'],rows,meta,'لا توجد أصناف مطابقة',itemsCategoryFilterHtml('itemsList',listCategory)+itemsBulkActionsHtml())}
     </section>
     <section class="items-pane ${active==='add'?'active':''}" id="itemsPaneAdd">
       <div class="card"><div class="row"><h2>إضافة صنف للبيع</h2><span class="status approved">نموذج جديد</span></div><p class="muted">أدخل بيانات الصنف أو استخدم الماسح/OCR ثم احفظ.</p>
@@ -4335,6 +4424,12 @@ function renderItems(){
     if($('deleteAllItemsBtn')) $('deleteAllItemsBtn').onclick=deleteAllItemsAndStock;
     if($('itemsExcelImportFile')) $('itemsExcelImportFile').onchange=e=>importItemsFromExcelFile(e.target.files&&e.target.files[0]);
     document.querySelectorAll('[data-edit-item]').forEach(b=>b.onclick=()=>selectItemForEdit(b.dataset.editItem));
+
+    document.querySelectorAll('[data-select-item]').forEach(ch=>ch.onchange=()=>{if(ch.checked) selectedItemIdsForDelete.add(ch.dataset.selectItem); else selectedItemIdsForDelete.delete(ch.dataset.selectItem);});
+    document.querySelectorAll('[data-delete-item]').forEach(b=>b.onclick=()=>deleteSingleItem(b.dataset.deleteItem));
+    document.querySelectorAll('[data-select-visible-items]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-select-item]').forEach(ch=>{ch.checked=true; selectedItemIdsForDelete.add(ch.dataset.selectItem);}); msg('تم تحديد الأصناف المعروضة في هذه الصفحة','success');});
+    document.querySelectorAll('[data-clear-selected-items]').forEach(b=>b.onclick=()=>{clearSelectedItems(); renderItems();});
+    document.querySelectorAll('[data-delete-selected-items]').forEach(b=>b.onclick=()=>deleteItemsByIds(selectedItemsArray()));
     if($('saveEditItemBtn')) $('saveEditItemBtn').onclick=saveSelectedItemEdit;
     if($('cancelEditItemBtn')) $('cancelEditItemBtn').onclick=()=>{state.editItemId='';state.itemsTab='list';save();renderItems();};
     if(typeof bindItemButtons==='function') bindItemButtons();
