@@ -266,6 +266,22 @@
     .barcode-actions .btn{width:auto!important;min-height:34px!important;padding:7px 10px!important;font-size:12px!important;border-radius:12px!important}
   </style>
 
+
+  <style id="hesabi-bulk-progress-modal-style">
+    .bulk-progress-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(2px)}
+    .bulk-progress-card{width:min(520px,96vw);background:#202124;color:#f8fafc;border-radius:28px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:22px;text-align:center;border:1px solid rgba(255,255,255,.08)}
+    .bulk-progress-title{font-size:24px;font-weight:900;margin:8px 0 6px;color:#fff}
+    .bulk-progress-sub{font-size:14px;color:#d1d5db;line-height:1.8;margin:0 0 14px}
+    .bulk-progress-icon{width:74px;height:74px;border-radius:22px;margin:4px auto 10px;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 10px 28px rgba(16,185,129,.28)}
+    .bulk-progress-bar{height:12px;background:#111827;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08);margin:12px 0}
+    .bulk-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#06b6d4);border-radius:999px;transition:width .25s ease}
+    .bulk-progress-meta{display:flex;justify-content:space-between;gap:8px;color:#e5e7eb;font-size:13px;direction:rtl;margin-top:6px}
+    .bulk-progress-log{min-height:44px;max-height:90px;overflow:auto;background:rgba(255,255,255,.06);border-radius:16px;padding:10px;color:#e5e7eb;font-size:13px;line-height:1.7;text-align:right;margin-top:12px}
+    .bulk-progress-actions{display:flex;gap:10px;justify-content:center;margin-top:16px}
+    .bulk-progress-actions .btn{min-width:130px!important;border-radius:16px!important}
+    .btn.danger{background:linear-gradient(135deg,#ef4444,#f97316)!important;color:#fff!important;border:none!important}
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -373,7 +389,7 @@
 </script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, writeBatch, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, updatePhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
 const LS='hesabi_firebase_v3';
@@ -403,7 +419,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-03-حذف-كل-الأصناف-واستيراد-Excel';
+const APP_VERSION='2026-06-03-تسريع-عمليات-Excel-مع-نافذة-تقدم';
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -2386,65 +2402,123 @@ function itemExportRows(){
   }));
 }
 
+
+let bulkOperationState={active:false,cancel:false,title:'',total:0,done:0};
+
+function showBulkProgress(title,subtitle,total=0){
+  bulkOperationState={active:true,cancel:false,title,total:Number(total||0),done:0};
+  let el=$('bulkProgressModal');
+  if(!el){
+    el=document.createElement('div');
+    el.id='bulkProgressModal';
+    el.className='bulk-progress-backdrop';
+    document.body.appendChild(el);
+  }
+  el.innerHTML=`<div class="bulk-progress-card" role="dialog" aria-modal="true">
+    <div class="bulk-progress-icon">⏳</div>
+    <div class="bulk-progress-title">${esc(title||'جاري التنفيذ')}</div>
+    <p class="bulk-progress-sub">${esc(subtitle||'يرجى الانتظار حتى انتهاء العملية.')}</p>
+    <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="bulkProgressFill"></div></div>
+    <div class="bulk-progress-meta"><span id="bulkProgressCount">0 / ${Number(total||0).toLocaleString('ar-YE')}</span><span id="bulkProgressPercent">0%</span></div>
+    <div class="bulk-progress-log" id="bulkProgressLog">بدء العملية...</div>
+    <div class="bulk-progress-actions"><button class="btn danger" id="bulkCancelBtn">إلغاء العملية</button></div>
+  </div>`;
+  $('bulkCancelBtn').onclick=()=>{bulkOperationState.cancel=true; updateBulkProgress(null,null,'تم طلب الإلغاء... سيتم التوقف بعد انتهاء الدفعة الحالية.');};
+}
+
+function updateBulkProgress(done,total,log){
+  if(done!==null && done!==undefined) bulkOperationState.done=Number(done||0);
+  if(total!==null && total!==undefined) bulkOperationState.total=Number(total||0);
+  const totalN=Number(bulkOperationState.total||0);
+  const doneN=Number(bulkOperationState.done||0);
+  const pct=totalN?Math.min(100,Math.round(doneN*100/totalN)):0;
+  const fill=$('bulkProgressFill'); if(fill) fill.style.width=pct+'%';
+  const cnt=$('bulkProgressCount'); if(cnt) cnt.textContent=`${doneN.toLocaleString('ar-YE')} / ${totalN.toLocaleString('ar-YE')}`;
+  const per=$('bulkProgressPercent'); if(per) per.textContent=pct+'%';
+  if(log){const l=$('bulkProgressLog'); if(l){l.textContent=log;}}
+}
+
+function hideBulkProgress(finalMessage){
+  const el=$('bulkProgressModal');
+  if(finalMessage){msg(finalMessage,'success')}
+  if(el) el.remove();
+  bulkOperationState={active:false,cancel:false,title:'',total:0,done:0};
+}
+
+async function commitBatchOperations(ops,onProgress){
+  const chunkSize=450;
+  let done=0;
+  for(let i=0;i<ops.length;i+=chunkSize){
+    if(bulkOperationState.cancel) break;
+    const batch=writeBatch(db);
+    const part=ops.slice(i,i+chunkSize);
+    for(const op of part){
+      if(op.type==='set') batch.set(op.ref,op.data,op.options||{});
+      else if(op.type==='update') batch.update(op.ref,op.data);
+      else if(op.type==='delete') batch.delete(op.ref);
+    }
+    await batch.commit();
+    done+=part.length;
+    if(onProgress) onProgress(done,ops.length);
+    await new Promise(r=>setTimeout(r,20));
+  }
+  return done;
+}
+
+
 async function deleteAllItemsAndStock(){
   try{
     if(state.role!=='trader'){msg('حذف الأصناف متاح للتاجر فقط','error');return}
     if(!state.shopId){msg('لا يوجد كود محل نشط','error');return}
     const phrase=prompt('تحذير نهائي: سيتم حذف كل الأصناف وحركات المخزون المرتبطة بها من هذا المحل.\nللتأكيد اكتب: حذف الأصناف');
-    if(String(phrase||'').trim()!=='حذف الأصناف'){
-      msg('تم إلغاء حذف الأصناف','notice');
-      return;
-    }
+    if(String(phrase||'').trim()!=='حذف الأصناف'){msg('تم إلغاء حذف الأصناف','notice');return}
     const phrase2=prompt('تأكيد أخير: اكتب رقم المحل/كود المحل لتأكيد الحذف:\n'+state.shopId);
-    if(String(phrase2||'').trim()!==String(state.shopId||'').trim()){
-      msg('تم إلغاء الحذف لأن كود المحل غير مطابق','error');
-      return;
-    }
+    if(String(phrase2||'').trim()!==String(state.shopId||'').trim()){msg('تم إلغاء الحذف لأن كود المحل غير مطابق','error');return}
 
-    msg('جاري حذف الأصناف السابقة... لا تغلق التطبيق حتى تظهر رسالة الانتهاء.', 'notice');
+    showBulkProgress('جاري حذف الأصناف','يتم حذف الأصناف وحركات المخزون على دفعات سريعة. يمكنك الإلغاء قبل الدفعة التالية.',1);
+    updateBulkProgress(0,1,'قراءة الأصناف وحركات المخزون...');
 
-    const itemsSnap=await getDocs(collection(db,'shops',state.shopId,'items'));
-    let deletedItems=0;
-    for(const d of itemsSnap.docs){
-      await deleteDoc(doc(db,'shops',state.shopId,'items',d.id));
-      deletedItems++;
-      if(deletedItems%50===0) msg('تم حذف '+deletedItems+' صنف...', 'notice');
-    }
+    const itemDocs=(await getDocs(collection(db,'shops',state.shopId,'items'))).docs;
+    let stockDocs=[];
+    try{stockDocs=(await getDocs(collection(db,'shops',state.shopId,'stockLedger'))).docs;}catch(e){}
+    const ops=[];
+    itemDocs.forEach(d=>ops.push({type:'delete',ref:doc(db,'shops',state.shopId,'items',d.id)}));
+    stockDocs.forEach(d=>ops.push({type:'delete',ref:doc(db,'shops',state.shopId,'stockLedger',d.id)}));
+    updateBulkProgress(0,ops.length||1,`تم تجهيز ${itemDocs.length} صنف و ${stockDocs.length} حركة مخزون للحذف.`);
 
-    let deletedStock=0;
-    try{
-      const stockSnap=await getDocs(collection(db,'shops',state.shopId,'stockLedger'));
-      for(const d of stockSnap.docs){
-        await deleteDoc(doc(db,'shops',state.shopId,'stockLedger',d.id));
-        deletedStock++;
-        if(deletedStock%100===0) msg('تم حذف '+deletedStock+' حركة مخزون...', 'notice');
-      }
-    }catch(e){}
-
+    const done=await commitBatchOperations(ops,(d,t)=>updateBulkProgress(d,t,`جاري الحذف... تم تنفيذ ${d} من ${t} عملية.`));
     state.itemCodeNames={};
     save();
     cache.items=[];
     cache.stockLedger=[];
-    await addAudit('delete_all_items',{deletedItems,deletedStock});
-    msg('تم حذف الأصناف السابقة بنجاح. الأصناف: '+deletedItems+'، حركات المخزون: '+deletedStock+'. يمكنك الآن استيراد Excel الجديد.', 'success');
+    await addAudit('delete_all_items',{deletedItems:itemDocs.length,deletedStock:stockDocs.length,done,cancelled:bulkOperationState.cancel});
+    const cancelled=bulkOperationState.cancel;
+    hideBulkProgress(cancelled?'تم إيقاف العملية قبل اكتمال كل الدُفعات.':'تم حذف الأصناف السابقة وحركات المخزون بنجاح.');
     try{renderItems()}catch(e){}
   }catch(e){
+    hideBulkProgress();
     msg('تعذر حذف الأصناف: '+(e.message||e),'error');
   }
 }
 
 async function exportItemsToExcel(){
   try{
-    const XLSX=await loadHesabiExcelLib();
     const rows=itemExportRows();
     if(!rows.length){msg('لا توجد أصناف لتصديرها','error');return}
+    showBulkProgress('جاري تصدير Excel','يتم تجهيز ملف الأصناف للتنزيل.',rows.length);
+    updateBulkProgress(Math.min(rows.length,50),rows.length,'تحميل مكتبة Excel وتجهيز البيانات...');
+    const XLSX=await loadHesabiExcelLib();
+    if(bulkOperationState.cancel){hideBulkProgress('تم إلغاء التصدير');return}
+    updateBulkProgress(Math.round(rows.length*.45),rows.length,'تحويل الأصناف إلى جدول Excel...');
     const ws=XLSX.utils.json_to_sheet(rows,{header:['barcode','imei','serial','item_name','model','brand','category','unit','cash_price','credit_price','stock','min_stock','status','notes','source','last_update']});
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'الأصناف');
+    updateBulkProgress(Math.round(rows.length*.80),rows.length,'جاري إنشاء ملف Excel...');
     const fileName='hesabi-items-export-'+new Date().toISOString().slice(0,10)+'.xlsx';
     XLSX.writeFile(wb,fileName);
-    msg('تم تصدير الأصناف إلى Excel','success');
-  }catch(e){msg('تعذر تصدير Excel: '+(e.message||e),'error')}
+    updateBulkProgress(rows.length,rows.length,'تم إنشاء ملف Excel.');
+    setTimeout(()=>hideBulkProgress('تم تصدير الأصناف إلى Excel'),350);
+  }catch(e){hideBulkProgress(); msg('تعذر تصدير Excel: '+(e.message||e),'error')}
 }
 function openItemsExcelImport(){
   msg('اختر ملف Excel بصيغة xlsx أو xls. إذا لم يظهر الملف من داخل APK، حدّث إلى الإصدار 1.0.13.', 'notice');
@@ -2454,33 +2528,41 @@ async function importItemsFromExcelFile(file){
   try{
     if(!file){return}
     const fileName=String(file.name||'').toLowerCase();
-    if(!(/\.(xlsx|xls|csv)$/.test(fileName))){
-      msg('الملف المختار ليس Excel. اختر ملف بصيغة xlsx أو xls.', 'error');
-      return;
-    }
+    if(!(/\.(xlsx|xls|csv)$/.test(fileName))){msg('الملف المختار ليس Excel. اختر ملف بصيغة xlsx أو xls.', 'error');return}
     if(state.role!=='trader'){msg('استيراد الأصناف متاح للتاجر فقط','error');return}
+
+    showBulkProgress('جاري استيراد Excel','قراءة ملف الأصناف وتحضيره للاستيراد السريع.',1);
+    updateBulkProgress(0,1,'تحميل مكتبة Excel...');
     const XLSX=await loadHesabiExcelLib();
-    msg('جاري قراءة ملف Excel...', 'notice');
+    if(bulkOperationState.cancel){hideBulkProgress('تم إلغاء الاستيراد');return}
     const data=await file.arrayBuffer();
+    updateBulkProgress(0,1,'قراءة ملف Excel...');
     const wb=XLSX.read(data,{type:'array'});
     const sheetName=wb.SheetNames.includes('الأصناف')?'الأصناف':wb.SheetNames[0];
     const ws=wb.Sheets[sheetName];
     const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
-    if(!raw.length){msg('ملف Excel لا يحتوي أصناف','error');return}
-    const rows=raw.map(r=>{
-      const o={};
-      Object.keys(r).forEach(k=>{o[normalizeExcelHeader(k)]=r[k]});
-      return o;
-    });
+    if(!raw.length){hideBulkProgress(); msg('ملف Excel لا يحتوي أصناف','error');return}
+    const rows=raw.map(r=>{const o={}; Object.keys(r).forEach(k=>{o[normalizeExcelHeader(k)]=r[k]}); return o;});
+    updateBulkProgress(0,rows.length,'جلب الأصناف الحالية للمطابقة...');
     const existingByCode=new Map();
     (cache.items||[]).forEach(i=>{
-      [i.barcode,i.imei,i.serial,i.sn,i.code].forEach(c=>{
-        const key=normalizeItemCodeForLookup(c);
-        if(key) existingByCode.set(key,i);
-      });
+      [i.barcode,i.imei,i.serial,i.sn,i.code].forEach(c=>{const key=normalizeItemCodeForLookup(c); if(key) existingByCode.set(key,i);});
     });
-    let added=0, updated=0, skipped=0;
+    if(!existingByCode.size){
+      try{
+        const snap=await getDocs(collection(db,'shops',state.shopId,'items'));
+        snap.docs.forEach(d=>{
+          const i={id:d.id,...d.data()};
+          [i.barcode,i.imei,i.serial,i.sn,i.code].forEach(c=>{const key=normalizeItemCodeForLookup(c); if(key) existingByCode.set(key,i);});
+        });
+      }catch(e){}
+    }
+
+    const ops=[];
+    const learned=[];
+    let added=0, updated=0, skipped=0, prepared=0;
     for(const r of rows){
+      if(bulkOperationState.cancel) break;
       const barcode=String(pickExcelValue(r,['barcode','باركود','كود','code'],'')).trim();
       const imei=String(pickExcelValue(r,['imei','ايمي','آيمي'],'')).trim();
       const serial=String(pickExcelValue(r,['serial','sn','s_n','رقم_تسلسلي','السيريال'],'')).trim();
@@ -2503,21 +2585,32 @@ async function importItemsFromExcelFile(file){
       const matchKey=[barcode,imei,serial].map(normalizeItemCodeForLookup).find(k=>k && existingByCode.has(k));
       if(matchKey){
         const old=existingByCode.get(matchKey);
-        await updateDoc(doc(db,'shops',state.shopId,'items',old.id),payload);
+        ops.push({type:'update',ref:doc(db,'shops',state.shopId,'items',old.id),data:payload});
         updated++;
       }else{
-        const ref=await addDoc(collection(db,'shops',state.shopId,'items'),{...payload,createdAt:serverTimestamp(),createdMs:Date.now()});
-        if(stock>0) await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'excel_import',note:'رصيد افتتاحي من استيراد Excel',createdAt:serverTimestamp(),createdMs:Date.now()});
+        const ref=doc(collection(db,'shops',state.shopId,'items'));
+        ops.push({type:'set',ref,data:{...payload,createdAt:serverTimestamp(),createdMs:Date.now()}});
+        if(stock>0) ops.push({type:'set',ref:doc(collection(db,'shops',state.shopId,'stockLedger')),data:{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'excel_import',note:'رصيد افتتاحي من استيراد Excel',createdAt:serverTimestamp(),createdMs:Date.now()}});
         [barcode,imei,serial].forEach(c=>{const k=normalizeItemCodeForLookup(c); if(k) existingByCode.set(k,{id:ref.id})});
         added++;
       }
-      if(barcode) rememberItemCodeName(barcode,{name,category,unit,cashPrice,creditPrice,price,notes});
-      if(imei) rememberItemCodeName(imei,{name,category,unit,cashPrice,creditPrice,price,notes});
-      if(serial) rememberItemCodeName(serial,{name,category,unit,cashPrice,creditPrice,price,notes});
+      learned.push({barcode,imei,serial,item:{name,category,unit,cashPrice,creditPrice,price,notes}});
+      prepared++;
+      if(prepared%100===0) updateBulkProgress(prepared,rows.length,`تم تجهيز ${prepared} من ${rows.length} صف للاستيراد...`);
     }
-    await addAudit('excel_items_import',{added,updated,skipped,total:rows.length});
-    msg(`انتهى الاستيراد: جديد ${added}، تحديث ${updated}، متجاهل ${skipped}`,'success');
-  }catch(e){msg('تعذر استيراد Excel: '+(e.message||e),'error')}
+
+    updateBulkProgress(0,ops.length||1,`بدء الحفظ السريع: جديد ${added}، تحديث ${updated}، متجاهل ${skipped}.`);
+    const done=await commitBatchOperations(ops,(d,t)=>updateBulkProgress(d,t,`جاري الحفظ إلى قاعدة البيانات... ${d} / ${t}`));
+
+    for(const x of learned){
+      if(x.barcode) rememberItemCodeName(x.barcode,x.item);
+      if(x.imei) rememberItemCodeName(x.imei,x.item);
+      if(x.serial) rememberItemCodeName(x.serial,x.item);
+    }
+    await addAudit('excel_items_import',{added,updated,skipped,total:rows.length,ops:ops.length,done,cancelled:bulkOperationState.cancel});
+    const cancelled=bulkOperationState.cancel;
+    hideBulkProgress(cancelled?`تم إيقاف الاستيراد. تم تنفيذ ${done} عملية من ${ops.length}.`:`انتهى الاستيراد: جديد ${added}، تحديث ${updated}، متجاهل ${skipped}.`);
+  }catch(e){hideBulkProgress(); msg('تعذر استيراد Excel: '+(e.message||e),'error')}
   finally{ if($('itemsExcelImportFile')) $('itemsExcelImportFile').value=''; }
 }
 

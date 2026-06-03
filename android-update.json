@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 14,
-  "latestVersionName": "1.0.14",
+  "latestVersionCode": 15,
+  "latestVersionName": "1.0.15",
   "required": false,
-  "title": "حذف الأصناف السابقة قبل استيراد Excel",
-  "message": "تمت إضافة زر آمن لحذف كل الأصناف السابقة وحركات المخزون المرتبطة بها قبل استيراد ملف Excel جديد.",
+  "title": "تسريع عمليات Excel وإظهار نافذة تقدم",
+  "message": "تم تسريع الاستيراد والحذف باستخدام دفعات Firestore، وإضافة نافذة تقدم كبيرة مع زر إلغاء للعمليات الطويلة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
