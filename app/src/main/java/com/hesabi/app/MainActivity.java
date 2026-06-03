@@ -4,6 +4,10 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import androidx.core.app.NotificationCompat;
 import android.content.BroadcastReceiver;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -11,6 +15,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -55,6 +60,8 @@ public class MainActivity extends FragmentActivity {
     private static final int REQ_FILE_CHOOSER = 7002;
     private static final int REQ_EXTERNAL_BARCODE = 7003;
     private static final int REQ_ITEM_OCR = 7004;
+    private static final String BADGE_CHANNEL_ID = "hesabi_status_badge";
+    private static final int BADGE_NOTIFICATION_ID = 7474;
 
     private WebView webView;
     private PermissionRequest pendingPermissionRequest;
@@ -85,6 +92,7 @@ public class MainActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
 
         requestBasePermissions();
+        createBadgeNotificationChannel();
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -516,9 +524,72 @@ public class MainActivity extends FragmentActivity {
         }
 
         @JavascriptInterface
-        public void openLatestApk() {
-            runOnUiThread(MainActivity.this::downloadLatestApk);
+        public void updateLauncherBadge(int count, String detail) {
+            runOnUiThread(() -> updateLauncherBadgeNative(count, detail));
         }
+
+        @JavascriptInterface
+        public void openLatestApk() {
+            runOnUiThread(() -> downloadApkFromUrl(LATEST_APK_URL));
+        }
+
+        @JavascriptInterface
+        public void openApkUrl(String url) {
+            final String safeUrl = (url == null || url.trim().isEmpty()) ? LATEST_APK_URL : url.trim();
+            runOnUiThread(() -> downloadApkFromUrl(safeUrl));
+        }
+    }
+
+
+    private void createBadgeNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    BADGE_CHANNEL_ID,
+                    "تنبيهات حسابي التجاري",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("عدّاد الرسائل والطلبات والمراجعات على أيقونة التطبيق");
+            channel.setShowBadge(true);
+            channel.enableVibration(false);
+            channel.setSound(null, null);
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) manager.createNotificationChannel(channel);
+        }
+    }
+
+    private void updateLauncherBadgeNative(int count, String detail) {
+        try {
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager == null) return;
+            int safeCount = Math.max(0, Math.min(count, 999));
+            if (safeCount <= 0) {
+                manager.cancel(BADGE_NOTIFICATION_ID);
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+            if (launchIntent == null) launchIntent = new Intent(this, MainActivity.class);
+            launchIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent pi = PendingIntent.getActivity(this, 0, launchIntent, flags);
+            String text = (detail == null || detail.trim().isEmpty()) ? "لديك مراجعات جديدة داخل التطبيق" : detail;
+            NotificationCompat.Builder b = new NotificationCompat.Builder(this, BADGE_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_hesabi_notification)
+                    .setContentTitle("حسابي التجاري")
+                    .setContentText(text)
+                    .setNumber(safeCount)
+                    .setBadgeIconType(NotificationCompat.BADGE_ICON_SMALL)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setCategory(NotificationCompat.CATEGORY_STATUS)
+                    .setOnlyAlertOnce(true)
+                    .setSilent(true)
+                    .setAutoCancel(false)
+                    .setContentIntent(pi);
+            manager.notify(BADGE_NOTIFICATION_ID, b.build());
+        } catch (Exception ignored) {}
     }
 
     private void startBiometric(String reason, String token) {
@@ -564,7 +635,7 @@ public class MainActivity extends FragmentActivity {
         webView.evaluateJavascript(js, null);
     }
 
-    private void downloadLatestApk() {
+    private void downloadApkFromUrl(String apkUrl) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
                 Toast.makeText(this, "اسمح للتطبيق بتثبيت التحديثات من هذا المصدر ثم اضغط تحديث مرة أخرى.", Toast.LENGTH_LONG).show();
@@ -573,27 +644,51 @@ public class MainActivity extends FragmentActivity {
                 return;
             }
 
-            latestApkFile = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "hesabi-app-latest.apk");
+            latestApkFile = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "hesabi-app-latest-" + System.currentTimeMillis() + ".apk");
             if (latestApkFile.exists()) latestApkFile.delete();
 
-            Uri uri = Uri.parse(LATEST_APK_URL);
+            Uri uri = Uri.parse(apkUrl == null || apkUrl.trim().isEmpty() ? LATEST_APK_URL : apkUrl.trim());
             DownloadManager.Request request = new DownloadManager.Request(uri);
             request.setTitle("تحديث حسابي التجاري");
-            request.setDescription("تحميل آخر إصدار من GitHub");
+            request.setDescription("تحميل آخر إصدار متوفر من التطبيق");
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(true);
+            request.setMimeType("application/vnd.android.package-archive");
+            request.addRequestHeader("Cache-Control", "no-cache");
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setDestinationUri(Uri.fromFile(latestApkFile));
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             latestApkDownloadId = dm.enqueue(request);
-            Toast.makeText(this, "بدأ تحميل التحديث. ستظهر شاشة التثبيت تلقائيًا بعد اكتمال التحميل.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "بدأ تحميل آخر تحديث. ستظهر شاشة التثبيت تلقائيًا بعد اكتمال التحميل.", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(LATEST_APK_URL)));
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl == null ? LATEST_APK_URL : apkUrl))); }
+            catch (Exception ignored) { Toast.makeText(this, "تعذر بدء تنزيل التحديث: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
         }
+    }
+
+    private boolean isLatestDownloadSuccessful() {
+        try {
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            DownloadManager.Query q = new DownloadManager.Query();
+            q.setFilterById(latestApkDownloadId);
+            Cursor c = dm.query(q);
+            if (c == null) return latestApkFile != null && latestApkFile.exists();
+            try {
+                if (!c.moveToFirst()) return latestApkFile != null && latestApkFile.exists();
+                int status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                if (status == DownloadManager.STATUS_SUCCESSFUL) return true;
+                if (status == DownloadManager.STATUS_FAILED) {
+                    Toast.makeText(this, "فشل تحميل التحديث. افحص الإنترنت وحاول مرة أخرى.", Toast.LENGTH_LONG).show();
+                    return false;
+                }
+            } finally { c.close(); }
+        } catch (Exception ignored) {}
+        return latestApkFile != null && latestApkFile.exists();
     }
 
     private void openDownloadedApk() {
         try {
+            if (!isLatestDownloadSuccessful()) return;
             if (latestApkFile == null || !latestApkFile.exists()) {
                 Toast.makeText(this, "تم التحميل، لكن لم يتم العثور على ملف التحديث. افتح التنزيلات.", Toast.LENGTH_LONG).show();
                 return;

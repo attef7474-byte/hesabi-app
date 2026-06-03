@@ -1,11 +1,111 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // قاعدة أمان مرحلية للنشر:
-    // تمنع الوصول العام، وتسمح فقط للمستخدمين المسجلين عبر Firebase Authentication.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function signed(){ return request.auth != null; }
+    function shopPath(shopId){ return /databases/$(database)/documents/shops/$(shopId); }
+    function isAppOwner(){ return signed() && request.auth.token.email == 'attef7474@gmail.com'; }
+    function isOwner(shopId){ return signed() && exists(shopPath(shopId)) && get(shopPath(shopId)).data.ownerUid == request.auth.uid; }
+    function shopActive(shopId){ return !exists(shopPath(shopId)) || get(shopPath(shopId)).data.subscriptionStatus != 'suspended'; }
+    function isCustomer(shopId){ return signed() && exists(/databases/$(database)/documents/shops/$(shopId)/customerUidLinks/$(request.auth.uid)); }
+    function isOwnerOrCustomer(shopId){ return isOwner(shopId) || isCustomer(shopId); }
+    function isSelfCustomer(){ return signed() && resource.data.customerUid == request.auth.uid; }
+    function isNewSelfCustomer(){ return signed() && request.resource.data.customerUid == request.auth.uid; }
+
+    match /shopPhones/{phoneKey} {
+      allow read: if signed();
+      allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signed() && resource.data.ownerUid == request.auth.uid && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if false;
+    }
+    match /customerPhoneLinks/{phoneKey}/shops/{shopId} {
+      allow read: if signed();
+      allow create: if signed();
+      allow update, delete: if false;
+    }
+    match /users/{userId} {
+      allow read: if isAppOwner() || (signed() && request.auth.uid == userId);
+      allow create, update: if signed() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+    match /shops/{shopId} {
+      allow read: if isAppOwner() || isOwnerOrCustomer(shopId);
+      allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAppOwner() || isOwner(shopId);
+      allow delete: if false;
+
+      match /customerUidLinks/{userId} {
+        allow read: if isAppOwner() || isOwner(shopId) || (signed() && request.auth.uid == userId);
+        allow create: if signed() && request.auth.uid == userId;
+        allow update, delete: if false;
+      }
+      match /customerPhones/{phoneKey} {
+        allow read: if signed();
+        allow create: if signed();
+        allow update, delete: if false;
+      }
+      match /items/{id} {
+        allow read: if isOwnerOrCustomer(shopId);
+        allow create, update, delete: if isOwner(shopId);
+      }
+      match /customers/{customerId} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create: if isAppOwner() || isOwner(shopId) || isNewSelfCustomer();
+        allow update: if isAppOwner() || isOwner(shopId) || (isSelfCustomer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','phoneKey','customerUid','securityUpgradedAt']));
+        allow delete: if false;
+      }
+      match /purchaseRequests/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create: if isAppOwner() || isOwner(shopId) || (isNewSelfCustomer() && shopActive(shopId));
+        allow update: if isAppOwner() || isOwner(shopId) || (isSelfCustomer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','traderNote','reviewedAt','rejectedBy','customerApprovedAt','updatedAt']));
+        allow delete: if false;
+      }
+      match /paymentRequests/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create: if isNewSelfCustomer();
+        allow update: if isAppOwner() || isOwner(shopId);
+        allow delete: if false;
+      }
+      match /returnRequests/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create: if isNewSelfCustomer();
+        allow update: if isAppOwner() || isOwner(shopId);
+        allow delete: if false;
+      }
+      match /messages/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create: if isAppOwner() || isOwner(shopId) || isNewSelfCustomer();
+        allow update: if isOwner(shopId) || isSelfCustomer();
+        allow delete: if false;
+      }
+      match /paymentSchedules/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create, update: if isAppOwner() || isOwner(shopId) || isNewSelfCustomer();
+        allow delete: if false;
+      }
+      match /invoices/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create, update: if isAppOwner() || isOwner(shopId);
+        allow delete: if false;
+      }
+      match /customerLedger/{id} {
+        allow read: if isAppOwner() || isOwner(shopId) || isSelfCustomer();
+        allow create, update: if isAppOwner() || isOwner(shopId);
+        allow delete: if false;
+      }
+      match /stockLedger/{id} {
+        allow read: if isAppOwner() || isOwner(shopId);
+        allow create: if isAppOwner() || isOwner(shopId);
+        allow update, delete: if false;
+      }
+      match /auditLogs/{id} {
+        allow read: if isAppOwner() || isOwner(shopId);
+        allow create: if isAppOwner() || isOwner(shopId);
+        allow update, delete: if false;
+      }
+      match /ownerLogs/{id} {
+        allow read, create: if isAppOwner();
+        allow update, delete: if false;
+      }
     }
   }
 }
