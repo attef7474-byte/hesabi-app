@@ -403,7 +403,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-03-OCR-اسم-الصنف';
+const APP_VERSION='2026-06-03-استيراد-وتصدير-Excel-للأصناف';
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -2325,6 +2325,134 @@ function stopItemBarcodeScanner(showMsg=true){
 }
 
 
+
+let hesabiExcelLibPromise=null;
+function loadHesabiExcelLib(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(hesabiExcelLibPromise) return hesabiExcelLibPromise;
+  hesabiExcelLibPromise=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    s.async=true;
+    s.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('لم يتم تحميل مكتبة Excel'));
+    s.onerror=()=>reject(new Error('تعذر تحميل مكتبة Excel. تأكد من الإنترنت.'));
+    document.head.appendChild(s);
+  });
+  return hesabiExcelLibPromise;
+}
+function normalizeExcelHeader(h){
+  return String(h||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[()]/g,'');
+}
+function pickExcelValue(row,keys,def=''){
+  for(const k of keys){
+    if(row[k]!==undefined && row[k]!==null && String(row[k]).trim()!=='') return row[k];
+  }
+  return def;
+}
+function excelNumber(v,def=0){
+  const n=Number(String(v??'').replace(/,/g,'').trim());
+  return Number.isFinite(n)?n:def;
+}
+function itemExportRows(){
+  return (cache.items||[]).map(i=>({
+    barcode:i.barcode||'',
+    imei:i.imei||'',
+    serial:i.serial||i.sn||'',
+    item_name:i.name||'',
+    model:i.model||'',
+    brand:i.brand||'',
+    category:itemCategory(i)||'عام',
+    unit:i.unit||'حبة',
+    cash_price:Number(i.cashPrice||i.price||0),
+    credit_price:Number(i.creditPrice||i.price||i.cashPrice||0),
+    stock:Number(i.stock||0),
+    min_stock:Number(i.minStock||0),
+    status:i.isActive===false?'موقوف':(i.status||'نشط'),
+    notes:i.notes||'',
+    source:i.source||'تطبيق حسابي',
+    last_update:new Date().toISOString().slice(0,10)
+  }));
+}
+async function exportItemsToExcel(){
+  try{
+    const XLSX=await loadHesabiExcelLib();
+    const rows=itemExportRows();
+    if(!rows.length){msg('لا توجد أصناف لتصديرها','error');return}
+    const ws=XLSX.utils.json_to_sheet(rows,{header:['barcode','imei','serial','item_name','model','brand','category','unit','cash_price','credit_price','stock','min_stock','status','notes','source','last_update']});
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'الأصناف');
+    const fileName='hesabi-items-export-'+new Date().toISOString().slice(0,10)+'.xlsx';
+    XLSX.writeFile(wb,fileName);
+    msg('تم تصدير الأصناف إلى Excel','success');
+  }catch(e){msg('تعذر تصدير Excel: '+(e.message||e),'error')}
+}
+function openItemsExcelImport(){ $('itemsExcelImportFile')?.click(); }
+async function importItemsFromExcelFile(file){
+  try{
+    if(!file){return}
+    if(state.role!=='trader'){msg('استيراد الأصناف متاح للتاجر فقط','error');return}
+    const XLSX=await loadHesabiExcelLib();
+    msg('جاري قراءة ملف Excel...', 'notice');
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const sheetName=wb.SheetNames.includes('الأصناف')?'الأصناف':wb.SheetNames[0];
+    const ws=wb.Sheets[sheetName];
+    const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+    if(!raw.length){msg('ملف Excel لا يحتوي أصناف','error');return}
+    const rows=raw.map(r=>{
+      const o={};
+      Object.keys(r).forEach(k=>{o[normalizeExcelHeader(k)]=r[k]});
+      return o;
+    });
+    const existingByCode=new Map();
+    (cache.items||[]).forEach(i=>{
+      [i.barcode,i.imei,i.serial,i.sn,i.code].forEach(c=>{
+        const key=normalizeItemCodeForLookup(c);
+        if(key) existingByCode.set(key,i);
+      });
+    });
+    let added=0, updated=0, skipped=0;
+    for(const r of rows){
+      const barcode=String(pickExcelValue(r,['barcode','باركود','كود','code'],'')).trim();
+      const imei=String(pickExcelValue(r,['imei','ايمي','آيمي'],'')).trim();
+      const serial=String(pickExcelValue(r,['serial','sn','s_n','رقم_تسلسلي','السيريال'],'')).trim();
+      const name=String(pickExcelValue(r,['item_name','name','اسم_الصنف','الصنف','اسم'],'')).trim();
+      if(!name){skipped++; continue}
+      const category=String(pickExcelValue(r,['category','التصنيف','فئة'],'عام')).trim()||'عام';
+      const unit=String(pickExcelValue(r,['unit','الوحدة'],'حبة')).trim()||'حبة';
+      const cashPrice=excelNumber(pickExcelValue(r,['cash_price','سعر_الكاش','سعر_نقدي','price_cash'],0),0);
+      const creditPrice=excelNumber(pickExcelValue(r,['credit_price','سعر_الآجل','سعر_اجل','price_credit'],cashPrice),cashPrice);
+      const price=creditPrice||cashPrice;
+      const stock=excelNumber(pickExcelValue(r,['stock','المخزون','الكمية'],0),0);
+      const minStock=excelNumber(pickExcelValue(r,['min_stock','حد_التنبيه','حد_المخزون'],0),0);
+      const status=String(pickExcelValue(r,['status','الحالة'],'نشط')).trim()||'نشط';
+      const notes=String(pickExcelValue(r,['notes','ملاحظات'],'')).trim();
+      const model=String(pickExcelValue(r,['model','الموديل'],'')).trim();
+      const brand=String(pickExcelValue(r,['brand','العلامة'],'')).trim();
+      const source=String(pickExcelValue(r,['source','المصدر'],'Excel')).trim()||'Excel';
+      const isActive=status!=='موقوف' && status.toLowerCase()!=='inactive' && status.toLowerCase()!=='disabled';
+      const payload={name,barcode,imei,serial,model,brand,category,unit,cashPrice,creditPrice,price,stock,minStock,status,notes,source,isActive,updatedAt:serverTimestamp()};
+      const matchKey=[barcode,imei,serial].map(normalizeItemCodeForLookup).find(k=>k && existingByCode.has(k));
+      if(matchKey){
+        const old=existingByCode.get(matchKey);
+        await updateDoc(doc(db,'shops',state.shopId,'items',old.id),payload);
+        updated++;
+      }else{
+        const ref=await addDoc(collection(db,'shops',state.shopId,'items'),{...payload,createdAt:serverTimestamp(),createdMs:Date.now()});
+        if(stock>0) await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'excel_import',note:'رصيد افتتاحي من استيراد Excel',createdAt:serverTimestamp(),createdMs:Date.now()});
+        [barcode,imei,serial].forEach(c=>{const k=normalizeItemCodeForLookup(c); if(k) existingByCode.set(k,{id:ref.id})});
+        added++;
+      }
+      if(barcode) rememberItemCodeName(barcode,{name,category,unit,cashPrice,creditPrice,price,notes});
+      if(imei) rememberItemCodeName(imei,{name,category,unit,cashPrice,creditPrice,price,notes});
+      if(serial) rememberItemCodeName(serial,{name,category,unit,cashPrice,creditPrice,price,notes});
+    }
+    await addAudit('excel_items_import',{added,updated,skipped,total:rows.length});
+    msg(`انتهى الاستيراد: جديد ${added}، تحديث ${updated}، متجاهل ${skipped}`,'success');
+  }catch(e){msg('تعذر استيراد Excel: '+(e.message||e),'error')}
+  finally{ if($('itemsExcelImportFile')) $('itemsExcelImportFile').value=''; }
+}
+
 async function addItem(){
   const name=$('itemName').value.trim();
   const category=($('itemCategory')?.value||'عام').trim()||'عام';
@@ -3824,8 +3952,8 @@ function renderItems(){
     setTimeout(bindCatalogButtons); return;
   }
   const rows=(cache.items||[]).map(i=>{const stock=Number(i.stock||0), min=Number(i.minStock||0); const st=i.isActive===false?'معطل':(stock<=0?'نافد':(min>0&&stock<=min?'منخفض':'نشط')); const cash=Number(i.cashPrice||i.price||0), credit=Number(i.creditPrice||i.price||cash); return `<tr><td class="name">${esc(i.name)}<div class="subcell">${i.barcode?`كود: ${esc(i.barcode)} · `:''}${i.notes?esc(i.notes):''}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'-')}</td><td><span class="inline-badge ok">كاش ${money(cash)}</span><br><span class="inline-badge warn">آجل ${money(credit)}</span></td><td>${stock}<div class="subcell">تنبيه: ${min}</div></td><td><span class="status ${i.isActive===false?'rejected':(stock<=0?'rejected':(min>0&&stock<=min?'pending':'approved'))}">${st}</span></td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-stock-item="${i.id}">كمية</button><button class="btn ${i.isActive===false?'ok':'warn'} mini" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button>`)}</td></tr>`});
-  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">استخدم أولًا "الماسح الداخلي الدقيق". زر التطبيق الخارجي يعمل فقط مع تطبيقات تدعم بروتوكول ZXing، وليس كل تطبيقات QR.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn ok" type="button" id="nativeItemBarcodeBtn">📷 الماسح الداخلي الدقيق</button><button class="btn secondary" type="button" id="externalItemBarcodeBtn">تطبيق خارجي متوافق</button><button class="btn light" type="button" id="itemOcrBtn">قراءة اسم الصنف OCR</button><button class="btn light" type="button" id="scanItemBarcodeBtn">كاميرا WebView</button><button class="btn light" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="usePendingBarcodeBtn">اعتماد الرقم المقروء</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">إذا فتح زر الخارجي شاشة "Open with" أو متجر Play فهذا يعني أن تطبيقات المسح المثبتة لا تدعم Intent المطلوب. بعد قراءة الكود: إذا كان محفوظًا سابقًا سيتم تعبئة اسم الصنف تلقائيًا. وإذا كان جديدًا يمكنك استخدام زر OCR لقراءة اسم/موديل الصنف من الملصق.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
-  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('externalItemBarcodeBtn')) $('externalItemBarcodeBtn').onclick=startExternalItemBarcodeScanner; if($('nativeItemBarcodeBtn')) $('nativeItemBarcodeBtn').onclick=startEmbeddedItemBarcodeScanner; if($('itemOcrBtn')) $('itemOcrBtn').onclick=startItemOcrNative; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('usePendingBarcodeBtn')) $('usePendingBarcodeBtn').onclick=usePendingItemBarcodeCandidate; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
+  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">استخدم أولًا "الماسح الداخلي الدقيق". زر التطبيق الخارجي يعمل فقط مع تطبيقات تدعم بروتوكول ZXing، وليس كل تطبيقات QR.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn ok" type="button" id="nativeItemBarcodeBtn">📷 الماسح الداخلي الدقيق</button><button class="btn secondary" type="button" id="externalItemBarcodeBtn">تطبيق خارجي متوافق</button><button class="btn light" type="button" id="itemOcrBtn">قراءة اسم الصنف OCR</button><button class="btn light" type="button" id="scanItemBarcodeBtn">كاميرا WebView</button><button class="btn light" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="usePendingBarcodeBtn">اعتماد الرقم المقروء</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">إذا فتح زر الخارجي شاشة "Open with" أو متجر Play فهذا يعني أن تطبيقات المسح المثبتة لا تدعم Intent المطلوب. بعد قراءة الكود: إذا كان محفوظًا سابقًا سيتم تعبئة اسم الصنف تلقائيًا. وإذا كان جديدًا يمكنك استخدام زر OCR لقراءة اسم/موديل الصنف من الملصق.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>استيراد وتصدير Excel</h2><span class="status approved">ملف الأصناف</span></div><p class="muted">يمكنك استيراد ملف Excel بالأعمدة القياسية أو تصدير الأصناف الحالية للتعديل عليها.</p><div class="settings-compact-actions"><button class="btn secondary" id="importItemsExcelBtn">استيراد Excel</button><button class="btn light" id="exportItemsExcelBtn">تصدير Excel</button><a class="btn light" href="./hesabi-items-1000-template.xlsx" target="_blank">تحميل نموذج 1000 صنف</a><input id="itemsExcelImportFile" type="file" accept=".xlsx,.xls" style="display:none"></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
+  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('importItemsExcelBtn')) $('importItemsExcelBtn').onclick=openItemsExcelImport; if($('exportItemsExcelBtn')) $('exportItemsExcelBtn').onclick=exportItemsToExcel; if($('itemsExcelImportFile')) $('itemsExcelImportFile').onchange=e=>importItemsFromExcelFile(e.target.files&&e.target.files[0]); if($('externalItemBarcodeBtn')) $('externalItemBarcodeBtn').onclick=startExternalItemBarcodeScanner; if($('nativeItemBarcodeBtn')) $('nativeItemBarcodeBtn').onclick=startEmbeddedItemBarcodeScanner; if($('itemOcrBtn')) $('itemOcrBtn').onclick=startItemOcrNative; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('usePendingBarcodeBtn')) $('usePendingBarcodeBtn').onclick=usePendingItemBarcodeCandidate; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
 }
 function renderCustomers(){
   if(state.role!=='trader'){show('home');return}

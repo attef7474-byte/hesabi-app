@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 11,
-  "latestVersionName": "1.0.11",
+  "latestVersionCode": 12,
+  "latestVersionName": "1.0.12",
   "required": false,
-  "title": "إضافة OCR لاسم الصنف",
-  "message": "تمت إضافة قراءة اسم أو موديل الصنف من صورة الملصق باستخدام OCR داخل تطبيق Android.",
+  "title": "استيراد وتصدير الأصناف من Excel",
+  "message": "تمت إضافة ملف Excel يحتوي 1000 صنف، وأزرار استيراد وتصدير الأصناف من وإلى Excel داخل صفحة الأصناف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
