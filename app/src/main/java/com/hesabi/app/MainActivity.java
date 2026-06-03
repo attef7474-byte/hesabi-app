@@ -64,6 +64,9 @@ public class MainActivity extends FragmentActivity {
     private String lastSessionJson = "{}";
     private long latestApkDownloadId = -1L;
     private File latestApkFile;
+    private boolean pendingPostInstallWebRefresh = false;
+    private boolean postInstallWebRefreshDone = false;
+
 
     private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
         @Override
@@ -105,12 +108,57 @@ public class MainActivity extends FragmentActivity {
             s.setSafeBrowsingEnabled(true);
         }
 
+        s.setCacheMode(WebSettings.LOAD_NO_CACHE);
+
+        int currentVersionCode = getInstalledVersionCodeSafe();
+        int lastVersionCode = getPreferences(Context.MODE_PRIVATE).getInt("last_opened_version_code", -1);
+        pendingPostInstallWebRefresh = lastVersionCode != currentVersionCode;
+        if (pendingPostInstallWebRefresh) {
+            try { webView.clearCache(true); } catch (Exception ignored) {}
+            try { webView.clearFormData(); } catch (Exception ignored) {}
+            getPreferences(Context.MODE_PRIVATE).edit().putInt("last_opened_version_code", currentVersionCode).apply();
+        }
+
         WebView.setWebContentsDebuggingEnabled(false);
         webView.addJavascriptInterface(new HesabiAndroidBridge(), "HesabiAndroid");
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new HesabiWebViewClient());
         webView.setWebChromeClient(new HesabiChromeClient());
 
-        webView.loadUrl(APP_URL);
+        webView.loadUrl(buildAppUrl(currentVersionCode));
+    }
+
+    private int getInstalledVersionCodeSafe() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) return (int) info.getLongVersionCode();
+            return info.versionCode;
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+
+    private String buildAppUrl(int versionCode) {
+        return APP_URL + "?apkVersion=" + versionCode + "&nativeTs=" + System.currentTimeMillis();
+    }
+
+    private class HesabiWebViewClient extends WebViewClient {
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            runPostInstallWebRefreshIfNeeded();
+        }
+    }
+
+    private void runPostInstallWebRefreshIfNeeded() {
+        if (!pendingPostInstallWebRefresh || postInstallWebRefreshDone || webView == null) return;
+        postInstallWebRefreshDone = true;
+        String js = "(async function(){"
+                + "try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));}}catch(e){}"
+                + "try{if('caches' in window){const keys=await caches.keys(); await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));}}catch(e){}"
+                + "try{sessionStorage.setItem('hesabi_native_apk_refresh', String(Date.now()));}catch(e){}"
+                + "setTimeout(function(){ location.replace('" + APP_URL + "?apkVersion=" + getInstalledVersionCodeSafe() + "&nativeRefresh=" + System.currentTimeMillis() + "'); }, 250);"
+                + "})();";
+        try { webView.evaluateJavascript(js, null); } catch (Exception ignored) {}
     }
 
     private void requestBasePermissions() {
@@ -444,13 +492,7 @@ public class MainActivity extends FragmentActivity {
 
         @JavascriptInterface
         public int getVersionCode() {
-            try {
-                PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) return (int) info.getLongVersionCode();
-                return info.versionCode;
-            } catch (Exception e) {
-                return 1;
-            }
+            return getInstalledVersionCodeSafe();
         }
 
         @JavascriptInterface
@@ -460,6 +502,17 @@ public class MainActivity extends FragmentActivity {
             } catch (Exception e) {
                 return "1.0.0";
             }
+        }
+
+        @JavascriptInterface
+        public void clearWebCacheForUpdate() {
+            runOnUiThread(() -> {
+                try { webView.clearCache(true); } catch (Exception ignored) {}
+                try {
+                    webView.evaluateJavascript("(async function(){try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));}}catch(e){} try{if('caches' in window){const keys=await caches.keys(); await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));}}catch(e){}})();", null);
+                } catch (Exception ignored) {}
+                Toast.makeText(MainActivity.this, "تم تجهيز الواجهات للتحديث الكامل.", Toast.LENGTH_SHORT).show();
+            });
         }
 
         @JavascriptInterface
