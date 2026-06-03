@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -48,6 +49,7 @@ public class MainActivity extends FragmentActivity {
     private static final String LATEST_APK_URL = "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk";
     private static final int REQ_MEDIA_PERMISSIONS = 7001;
     private static final int REQ_FILE_CHOOSER = 7002;
+    private static final int REQ_EXTERNAL_BARCODE = 7003;
 
     private WebView webView;
     private PermissionRequest pendingPermissionRequest;
@@ -195,6 +197,28 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void startNativeItemBarcodeScanner() {
+        // Use the external scanner first because it often has better autofocus/decoding.
+        // If no compatible scanner is installed, fall back to the embedded ZXing scanner.
+        if (startExternalItemBarcodeScanner()) return;
+        startEmbeddedItemBarcodeScanner();
+    }
+
+    private boolean startExternalItemBarcodeScanner() {
+        try {
+            Intent intent = new Intent("com.google.zxing.client.android.SCAN");
+            intent.putExtra("SCAN_MODE", "ONE_D_MODE");
+            intent.putExtra("SAVE_HISTORY", false);
+            intent.putExtra("PROMPT_MESSAGE", "وجّه الكاميرا نحو باركود الصنف");
+            startActivityForResult(intent, REQ_EXTERNAL_BARCODE);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void startEmbeddedItemBarcodeScanner() {
         try {
             if (!hasCameraPermission()) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQ_MEDIA_PERMISSIONS);
@@ -213,7 +237,20 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
-    private static String jsQuote(String value) {
+    private void openExternalScannerOrStore() {
+        try {
+            if (startExternalItemBarcodeScanner()) return;
+            Toast.makeText(this, "لم يتم العثور على تطبيق ماسح متوافق. ثبّت Barcode Scanner أو استخدم الماسح الداخلي.", Toast.LENGTH_LONG).show();
+            Intent market = new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=barcode%20scanner"));
+            startActivity(market);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/search?q=barcode%20scanner&c=apps")));
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private static String jsQuoteprivate static String jsQuote(String value) {
         if (value == null) return "''";
         String s = value
                 .replace("\\", "\\\\")
@@ -231,6 +268,22 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_EXTERNAL_BARCODE) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                String code = data.getStringExtra("SCAN_RESULT");
+                if (code == null || code.trim().isEmpty()) code = data.getStringExtra("com.google.zxing.client.android.SCAN.SCAN_RESULT");
+                if (code == null || code.trim().isEmpty()) code = data.getStringExtra("barcode");
+                if (code != null && !code.trim().isEmpty()) {
+                    sendItemBarcodeResult(code.trim(), "تم قراءة كود الصنف بالماسح الخارجي");
+                } else {
+                    sendItemBarcodeResult("", "لم يرجع تطبيق الماسح رقمًا واضحًا.");
+                }
+            } else {
+                sendItemBarcodeResult("", "تم إلغاء مسح كود الصنف.");
+            }
+            return;
+        }
+
         IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (scanResult != null) {
             if (scanResult.getContents() != null) {
@@ -282,6 +335,16 @@ public class MainActivity extends FragmentActivity {
         @JavascriptInterface
         public void scanItemBarcodeNative() {
             runOnUiThread(MainActivity.this::startNativeItemBarcodeScanner);
+        }
+
+        @JavascriptInterface
+        public void scanItemBarcodeExternal() {
+            runOnUiThread(MainActivity.this::openExternalScannerOrStore);
+        }
+
+        @JavascriptInterface
+        public void scanItemBarcodeEmbedded() {
+            runOnUiThread(MainActivity.this::startEmbeddedItemBarcodeScanner);
         }
 
         @JavascriptInterface
