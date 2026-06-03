@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 13,
-  "latestVersionName": "1.0.13",
+  "latestVersionCode": 14,
+  "latestVersionName": "1.0.14",
   "required": false,
-  "title": "إصلاح استيراد Excel",
-  "message": "تم إصلاح اختيار ملفات Excel داخل Android WebView، وتحسين تحميل مكتبة Excel من عدة مصادر.",
+  "title": "حذف الأصناف السابقة قبل استيراد Excel",
+  "message": "تمت إضافة زر آمن لحذف كل الأصناف السابقة وحركات المخزون المرتبطة بها قبل استيراد ملف Excel جديد.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
