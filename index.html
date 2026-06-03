@@ -246,6 +246,26 @@
   .security-lock-card .pattern-pad{margin-top:10px}
 </style>
 
+
+  <style id="hesabi-next-forms-safe-style">
+    .form-section-title{font-size:13px;font-weight:900;color:#0f766e;margin:8px 0 4px}
+    .form-hint{font-size:12px;color:#64748b;line-height:1.55;margin-top:4px}
+    .inline-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#f1f5f9;color:#475569;padding:3px 8px;font-size:11px;font-weight:800;margin:2px}
+    .inline-badge.ok{background:#ecfdf3;color:#027a48}.inline-badge.warn{background:#fff7ed;color:#9a3412}
+    .advanced-form-card{border:1px solid #bae6fd;background:linear-gradient(180deg,#fff,#f8fbff);border-radius:20px}
+    .field input[readonly]{background:#f8fafc;color:#64748b}
+  </style>
+
+
+  <style id="hesabi-barcode-scanner-safe-style">
+    .barcode-scan-box{border:1px solid #99f6e4;background:#f0fdfa;border-radius:18px;padding:10px;margin:8px 0}
+    .barcode-video{width:100%;max-height:260px;object-fit:cover;background:#0f172a;border-radius:16px;display:none;margin-top:8px}
+    .barcode-video.active{display:block}
+    .barcode-scan-line{font-size:12px;color:#115e59;line-height:1.6;margin-top:6px}
+    .barcode-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+    .barcode-actions .btn{width:auto!important;min-height:34px!important;padding:7px 10px!important;font-size:12px!important;border-radius:12px!important}
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -383,7 +403,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-03-dual-role-tasks-safe';
+const APP_VERSION='2026-06-03-مسح-كود-الصنف-بالكاميرا';
 
 function getJoinShopParam(){
   try{
@@ -1524,6 +1544,12 @@ async function addAudit(action, details={}){
   }catch(e){console.warn('audit failed',e)}
 }
 
+
+function effectiveItemPrice(item, paymentType='credit'){
+  const cash=Number(item?.cashPrice||item?.price||0);
+  const credit=Number(item?.creditPrice||item?.price||cash||0);
+  return paymentType==='cash' ? cash : credit;
+}
 function itemById(itemId){return cache.items.find(i=>i.id===itemId)}
 
 function normalizeSearchText(v){
@@ -1880,22 +1906,100 @@ function bindItemButtons(){
   document.querySelectorAll('[data-stock-item]').forEach(b=>b.onclick=()=>editStock(b.dataset.stockItem));
   document.querySelectorAll('[data-toggle-item]').forEach(b=>b.onclick=()=>toggleItem(b.dataset.toggleItem));
 }
+
+let itemBarcodeScannerStream=null;
+let itemBarcodeScannerTimer=null;
+
+async function startItemBarcodeScanner(){
+  try{
+    const input=$('itemBarcode');
+    const video=$('itemBarcodeVideo');
+    const status=$('itemBarcodeScanStatus');
+    if(!input||!video){msg('حقل كود الصنف غير جاهز','error');return}
+    if(!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia){
+      msg('الكاميرا غير مدعومة في هذه البيئة. افتح التطبيق من APK أو متصفح حديث.','error');
+      return;
+    }
+    if(!('BarcodeDetector' in window)){
+      msg('قارئ الباركود غير مدعوم في هذا المتصفح. يمكنك استخدام APK/Chrome حديث أو إدخال الكود يدويًا.','error');
+      if(status) status.textContent='BarcodeDetector غير متاح، أدخل الكود يدويًا.';
+      return;
+    }
+    await stopItemBarcodeScanner(false);
+    const formats=['qr_code','ean_13','ean_8','code_128','code_39','code_93','upc_a','upc_e','itf','codabar','data_matrix'];
+    let detector;
+    try{detector=new BarcodeDetector({formats});}catch(e){detector=new BarcodeDetector();}
+    itemBarcodeScannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    video.srcObject=itemBarcodeScannerStream;
+    video.classList.add('active');
+    await video.play();
+    if(status) status.textContent='وجّه الكاميرا نحو باركود الصنف أو QR. سيتم الحفظ في حقل الكود تلقائيًا.';
+    itemBarcodeScannerTimer=setInterval(async()=>{
+      try{
+        if(!video || video.readyState<2) return;
+        const codes=await detector.detect(video);
+        if(codes && codes.length){
+          const value=String(codes[0].rawValue||'').trim();
+          if(value){
+            input.value=value;
+            if(status) status.textContent='تم قراءة الكود: '+value;
+            if(navigator.vibrate) navigator.vibrate(90);
+            await stopItemBarcodeScanner(false);
+            msg('تم التعرف على كود الصنف','success');
+          }
+        }
+      }catch(e){}
+    },450);
+  }catch(e){
+    msg('تعذر فتح الكاميرا لقراءة الكود: '+(e.message||e),'error');
+    await stopItemBarcodeScanner(false);
+  }
+}
+
+async function stopItemBarcodeScanner(showMsg=true){
+  try{
+    if(itemBarcodeScannerTimer){clearInterval(itemBarcodeScannerTimer); itemBarcodeScannerTimer=null;}
+    if(itemBarcodeScannerStream){
+      itemBarcodeScannerStream.getTracks().forEach(t=>t.stop());
+      itemBarcodeScannerStream=null;
+    }
+    const video=$('itemBarcodeVideo');
+    if(video){video.pause?.(); video.srcObject=null; video.classList.remove('active');}
+    const status=$('itemBarcodeScanStatus');
+    if(status && showMsg) status.textContent='تم إيقاف الكاميرا.';
+  }catch(e){}
+}
+
+
 async function addItem(){
-  const name=$('itemName').value.trim(), category=($('itemCategory')?.value||'عام').trim()||'عام', price=Number($('itemPrice').value), unit=$('itemUnit').value.trim(), stock=Number($('itemStock').value), minStock=Number($('itemMinStock').value);
+  const name=$('itemName').value.trim();
+  const category=($('itemCategory')?.value||'عام').trim()||'عام';
+  const unit=($('itemUnit')?.value||'حبة').trim()||'حبة';
+  const cashPrice=Number($('itemCashPrice')?.value||$('itemPrice')?.value||0);
+  const creditPrice=Number($('itemCreditPrice')?.value||cashPrice||0);
+  const price=creditPrice || cashPrice;
+  const stock=Number($('itemStock')?.value||0);
+  const minStock=Number($('itemMinStock')?.value||0);
+  const barcode=($('itemBarcode')?.value||'').trim();
+  const notes=($('itemNotes')?.value||'').trim();
   if(!name||price<=0||stock<0){msg('أدخل اسم الصنف والسعر والكمية بشكل صحيح','error');return}
-  const ref=await addDoc(collection(db,'shops',state.shopId,'items'),{name,category,price,unit,stock,minStock,isActive:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  const payload={name,category,price,cashPrice,creditPrice,unit,stock,minStock,barcode,notes,isActive:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+  const ref=await addDoc(collection(db,'shops',state.shopId,'items'),payload);
   if(stock>0) await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,qty:stock,type:'opening',sourceId:ref.id,sourceType:'item',note:'رصيد افتتاحي عند إضافة الصنف',createdAt:serverTimestamp(),createdMs:Date.now()});
-  await addAudit('create_item',{itemId:ref.id,name,category,stock,price});
+  await addAudit('create_item',{itemId:ref.id,name,category,stock,price,cashPrice,creditPrice,barcode});
   msg('تم حفظ الصنف مع الكمية','success')
 }
 async function editItem(itemId){
   const i=itemById(itemId); if(!i)return;
   const name=prompt('اسم الصنف:',i.name); if(!name)return;
-  const price=Number(prompt('السعر:',i.price)); if(!(price>0)){msg('السعر غير صحيح','error');return}
+  const cashPrice=Number(prompt('سعر الكاش:',Number(i.cashPrice||i.price||0))); if(!(cashPrice>0)){msg('سعر الكاش غير صحيح','error');return}
+  const creditPrice=Number(prompt('سعر الآجل:',Number(i.creditPrice||i.price||cashPrice))); if(!(creditPrice>0)){msg('سعر الآجل غير صحيح','error');return}
   const unit=prompt('الوحدة:',i.unit||'حبة')||'حبة';
   const category=prompt('التصنيف:',itemCategory(i))||'عام';
+  const barcode=prompt('الباركود / كود الصنف اختياري:',i.barcode||'')||'';
+  const notes=prompt('ملاحظات الصنف اختياري:',i.notes||'')||'';
   const minStock=Number(prompt('حد التنبيه المنخفض:',Number(i.minStock||0))); if(minStock<0){msg('حد التنبيه غير صحيح','error');return}
-  await updateDoc(doc(db,'shops',state.shopId,'items',itemId),{name:name.trim(),category:category.trim()||'عام',price,unit:unit.trim(),minStock,updatedAt:serverTimestamp()});
+  await updateDoc(doc(db,'shops',state.shopId,'items',itemId),{name:name.trim(),category:category.trim()||'عام',price:creditPrice,cashPrice,creditPrice,unit:unit.trim(),barcode:barcode.trim(),notes:notes.trim(),minStock,updatedAt:serverTimestamp()});
   msg('تم تعديل الصنف','success')
 }
 async function editStock(itemId){
@@ -2023,6 +2127,54 @@ function renderCustomerCard(c){
   const status=c.status||'active';
   return `<div class="item"><div class="row"><h3>${esc(c.name)}</h3><span class="status ${customerStatusClass(status)}">${customerStatusLabel(status)}</span></div><div class="muted">الهاتف: ${esc(c.phone||'-')}<br>الدين الحالي: <b>${money(balance)}</b><br>سقف الدين: <b>${money(limit)}</b><br>المتاح: <b>${money(remain)}</b></div><div class="actions"><button class="btn secondary" data-set-limit="${c.customerId}">تعديل السقف</button><button class="btn ok" data-customer-status="${c.customerId}" data-status-value="active">نشط</button><button class="btn warn" data-customer-status="${c.customerId}" data-status-value="cash_only">كاش فقط</button><button class="btn danger" data-customer-status="${c.customerId}" data-status-value="blocked">إيقاف</button></div></div>`;
 }
+
+async function addManualCustomer(){
+  try{
+    if(state.role!=='trader'){msg('هذه العملية للتاجر فقط','error');return}
+    const name=($('newCustomerName')?.value||'').trim();
+    const phoneRaw=($('newCustomerPhone')?.value||'').trim();
+    const phoneKey=validPhoneOrWarn(phoneRaw,'رقم العميل');
+    if(!name||!phoneKey){msg('أدخل اسم العميل ورقم هاتف صحيح','error');return}
+    const exists=(cache.customers||[]).find(c=>normalizePhone(c.phone||c.customerPhone||'')===phoneKey);
+    if(exists && !confirm('يوجد عميل بنفس الرقم. هل تريد إضافة عميل آخر بنفس الرقم؟')) return;
+    const creditLimit=Number($('newCustomerLimit')?.value||0);
+    const balance=Number($('newCustomerOpening')?.value||0);
+    const status=$('newCustomerStatus')?.value||'active';
+    const notes=($('newCustomerNote')?.value||'').trim();
+    if(creditLimit<0||balance<0){msg('الرصيد والسقف يجب أن يكونا صفر أو أكثر','error');return}
+    const ref=await addDoc(collection(db,'shops',state.shopId,'customers'),{
+      shopId:state.shopId,
+      name,
+      phone:phoneKey,
+      phoneIntl:phoneKeyToInternational(phoneKey),
+      creditLimit,
+      balance,
+      status,
+      notes,
+      source:'manual_trader',
+      createdAt:serverTimestamp(),
+      updatedAt:serverTimestamp(),
+      createdMs:Date.now()
+    });
+    if(balance>0){
+      await addDoc(collection(db,'shops',state.shopId,'customerLedger'),{
+        shopId:state.shopId,
+        customerId:ref.id,
+        customerName:name,
+        type:'adjustment',
+        amount:balance,
+        direction:'debit',
+        note:'رصيد افتتاحي للعميل',
+        createdAt:serverTimestamp(),
+        createdMs:Date.now()
+      });
+    }
+    await addAudit('create_customer_manual',{customerId:ref.id,name,phone:phoneKey,creditLimit,balance,status});
+    ['newCustomerName','newCustomerPhone','newCustomerLimit','newCustomerOpening','newCustomerNote'].forEach(id=>{if($(id)) $(id).value=''});
+    msg('تمت إضافة العميل يدويًا','success');
+  }catch(e){msg(e.message||'تعذر إضافة العميل','error')}
+}
+
 async function setCreditLimit(customerId){
   const c=cache.customers.find(x=>x.customerId===customerId); if(!c)return;
   const val=Number(prompt(`سقف الدين للعميل ${c.name}:`,Number(c.creditLimit||0)));
@@ -2043,7 +2195,7 @@ async function sendTraderSale(){
       if(limit<=0){msg('لا يوجد سقف دين لهذا العميل. عدّل السقف أولًا.','error');return}
       if(balance+pending+total>limit){msg(`الطلب يتجاوز سقف العميل. المتاح بعد الطلبات المعلقة: ${money(Math.max(limit-balance-pending,0))}`,'error');return}
     }
-    await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,items:lines,total,paymentType,status:'pending_customer',source:'trader',note:$('saleNote').value.trim(),kind:'purchase',createdAt:serverTimestamp(),createdMs:Date.now()});
+    await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,items:lines,total,paymentType,status:'pending_customer',source:'trader',note:$('saleNote').value.trim(),dueDate:$('saleDueDate')?.value||'',priority:$('salePriority')?.value||'normal',kind:'purchase',createdAt:serverTimestamp(),createdMs:Date.now()});
     msg('تم إرسال طلب البيع للعميل للموافقة','success')
   }catch(e){msg(e.message,'error')}
 }
@@ -3315,17 +3467,17 @@ function renderItems(){
     <div id="catalogSelectedOnly">${renderSelectedCartTable(cart)}</div><div id="catalogCartBar"></div><div id="orderReviewDynamic" class="hidden"></div>`;
     setTimeout(bindCatalogButtons); return;
   }
-  const rows=(cache.items||[]).map(i=>{const stock=Number(i.stock||0), min=Number(i.minStock||0); const st=i.isActive===false?'معطل':(stock<=0?'نافد':(min>0&&stock<=min?'منخفض':'نشط')); return `<tr><td class="name">${esc(i.name)}</td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'-')}</td><td><b>${money(i.price)}</b></td><td>${stock}</td><td><span class="status ${i.isActive===false?'rejected':(stock<=0?'rejected':(min>0&&stock<=min?'pending':'approved'))}">${st}</span></td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-stock-item="${i.id}">كمية</button><button class="btn ${i.isActive===false?'ok':'warn'} mini" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button>`)}</td></tr>`});
-  $('page_items').innerHTML=`<div class="card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="field"><label>اسم الصنف</label><input id="itemName"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>السعر</label><input id="itemPrice" type="number" min="0"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>الكمية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد التنبيه</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','السعر','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
+  const rows=(cache.items||[]).map(i=>{const stock=Number(i.stock||0), min=Number(i.minStock||0); const st=i.isActive===false?'معطل':(stock<=0?'نافد':(min>0&&stock<=min?'منخفض':'نشط')); const cash=Number(i.cashPrice||i.price||0), credit=Number(i.creditPrice||i.price||cash); return `<tr><td class="name">${esc(i.name)}<div class="subcell">${i.barcode?`كود: ${esc(i.barcode)} · `:''}${i.notes?esc(i.notes):''}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'-')}</td><td><span class="inline-badge ok">كاش ${money(cash)}</span><br><span class="inline-badge warn">آجل ${money(credit)}</span></td><td>${stock}<div class="subcell">تنبيه: ${min}</div></td><td><span class="status ${i.isActive===false?'rejected':(stock<=0?'rejected':(min>0&&stock<=min?'pending':'approved'))}">${st}</span></td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-stock-item="${i.id}">كمية</button><button class="btn ${i.isActive===false?'ok':'warn'} mini" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button>`)}</td></tr>`});
+  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">اضغط زر المسح، ثم وجّه الكاميرا نحو الباركود أو QR.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn secondary" type="button" id="scanItemBarcodeBtn">📷 مسح الكود</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف الكاميرا</button></div></div><div class="grid"></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
   setTimeout(()=>{ $('addItem').onclick=addItem; bindItemButtons(); });
 }
 function renderCustomers(){
   if(state.role!=='trader'){show('home');return}
   const rows=(cache.customers||[]).map(c=>{const balance=Number(c.balance||0), limit=Number(c.creditLimit||0), remain=Math.max(limit-balance,0), status=c.status||'active'; return `<tr><td class="name">${esc(c.name)}</td><td>${esc(c.phone||'-')}</td><td><b>${money(balance)}</b></td><td>${money(limit)}</td><td>${money(remain)}</td><td><span class="status ${customerStatusClass(status)}">${customerStatusLabel(status)}</span></td><td>${compactActionButtons(`<button class="btn secondary mini" data-set-limit="${c.customerId}">السقف</button><button class="btn ok mini" data-customer-status="${c.customerId}" data-status-value="active">نشط</button><button class="btn warn mini" data-customer-status="${c.customerId}" data-status-value="cash_only">كاش</button><button class="btn danger mini" data-customer-status="${c.customerId}" data-status-value="blocked">إيقاف</button>`)}</td></tr>`});
   const options=(cache.customers||[]).map(c=>`<option value="${c.customerId}">${esc(c.name)} - دينه ${money(c.balance||0)}</option>`).join('');
-  const itemRows=(cache.items||[]).filter(i=>i.isActive!==false).map(i=>`<tr><td class="name">${esc(i.name)}</td><td>${money(i.price)}</td><td>${Number(i.stock||0)}</td><td><input class="qty-mini-input" data-item="${i.id}" data-name="${esc(i.name)}" data-price="${Number(i.price||0)}" data-stock="${Number(i.stock||0)}" type="number" min="0" max="${Number(i.stock||0)}" placeholder="0" ${Number(i.stock||0)>0?'':'disabled'}></td></tr>`);
-  $('page_customers').innerHTML=`<div class="card"><div class="row"><h2>العملاء وسقوف الدين</h2><span class="status approved">${rows.length} عميل</span></div>${compactTable(['العميل','الهاتف','الدين','السقف','المتاح','الحالة','إجراء'],rows,'لا يوجد عملاء مرتبطون بعد')}</div><div class="card"><h2>إنشاء طلب بيع للعميل</h2><div class="form compact-form"><div class="grid"><div class="field"><label>العميل</label><select id="saleCustomer">${options}</select></div><div class="field"><label>نوع الدفع</label><select id="salePayType"><option value="credit">آجل</option><option value="cash">كاش</option></select></div></div>${compactTable(['الصنف','السعر','المتوفر','الكمية'],itemRows,'لا توجد أصناف متاحة')}<div class="field"><label>ملاحظة للعميل</label><textarea id="saleNote"></textarea></div><button class="btn compact-main-btn" id="sendTraderSale" ${cache.customers.length&&cache.items.length?'':'disabled'}>إرسال الطلب للعميل</button></div></div>`;
-  setTimeout(()=>{document.querySelectorAll('[data-set-limit]').forEach(b=>b.onclick=()=>setCreditLimit(b.dataset.setLimit));document.querySelectorAll('[data-customer-status]').forEach(b=>b.onclick=()=>setCustomerStatus(b.dataset.customerStatus,b.dataset.statusValue)); if($('sendTraderSale')) $('sendTraderSale').onclick=sendTraderSale;});
+  const itemRows=(cache.items||[]).filter(i=>i.isActive!==false).map(i=>`<tr><td class="name">${esc(i.name)}</td><td>${money(i.price)}</td><td>${Number(i.stock||0)}</td><td><input class="qty-mini-input" data-item="${i.id}" data-name="${esc(i.name)}" data-price="${effectiveItemPrice(i,$('salePayType')?.value||'credit')}" data-stock="${Number(i.stock||0)}" type="number" min="0" max="${Number(i.stock||0)}" placeholder="0" ${Number(i.stock||0)>0?'':'disabled'}></td></tr>`);
+  $('page_customers').innerHTML=`<div class="card advanced-form-card"><h2>إضافة عميل يدويًا</h2><div class="form compact-form"><div class="grid"><div class="field"><label>اسم العميل</label><input id="newCustomerName" placeholder="اسم العميل"></div><div class="field"><label>رقم الهاتف</label><input id="newCustomerPhone" inputmode="tel" placeholder="777123456"></div><div class="field"><label>سقف الدين</label><input id="newCustomerLimit" type="number" min="0" value="0"></div><div class="field"><label>رصيد افتتاحي</label><input id="newCustomerOpening" type="number" min="0" value="0"></div><div class="field"><label>حالة العميل</label><select id="newCustomerStatus"><option value="active">نشط</option><option value="cash_only">كاش فقط</option><option value="blocked">موقوف</option></select></div><div class="field"><label>ملاحظات</label><input id="newCustomerNote" placeholder="اختياري"></div></div><div class="form-hint">الإضافة اليدوية تفيد عندما تريد فتح حساب عميل قبل أن يربط نفسه بكود التاجر. عند ربطه لاحقًا سيستخدم نفس رقم الهاتف.</div><button class="btn compact-main-btn" id="addManualCustomerBtn">حفظ العميل</button></div></div><div class="card"><div class="row"><h2>العملاء وسقوف الدين</h2><span class="status approved">${rows.length} عميل</span></div>${compactTable(['العميل','الهاتف','الدين','السقف','المتاح','الحالة','إجراء'],rows,'لا يوجد عملاء مرتبطون بعد')}</div><div class="card"><h2>إنشاء طلب بيع للعميل</h2><div class="form compact-form"><div class="grid"><div class="field"><label>العميل</label><select id="saleCustomer">${options}</select></div><div class="field"><label>نوع الدفع</label><select id="salePayType"><option value="credit">آجل</option><option value="cash">كاش</option></select></div><div class="field"><label>تاريخ الاستحقاق</label><input id="saleDueDate" type="date"></div><div class="field"><label>الأولوية</label><select id="salePriority"><option value="normal">عادي</option><option value="urgent">مستعجل</option></select></div></div>${compactTable(['الصنف','السعر','المتوفر','الكمية'],itemRows,'لا توجد أصناف متاحة')}<div class="field"><label>ملاحظة للعميل</label><textarea id="saleNote"></textarea></div><button class="btn compact-main-btn" id="sendTraderSale" ${cache.customers.length&&cache.items.length?'':'disabled'}>إرسال الطلب للعميل</button></div></div>`;
+  setTimeout(()=>{document.querySelectorAll('[data-set-limit]').forEach(b=>b.onclick=()=>setCreditLimit(b.dataset.setLimit));document.querySelectorAll('[data-customer-status]').forEach(b=>b.onclick=()=>setCustomerStatus(b.dataset.customerStatus,b.dataset.statusValue)); if($('addManualCustomerBtn')) $('addManualCustomerBtn').onclick=addManualCustomer; if($('sendTraderSale')) $('sendTraderSale').onclick=sendTraderSale;});
 }
 function orderActions(o){const canTrader=state.role==='trader'&&(o.status==='pending'||o.status==='pending_trader'); const canCustomer=state.role==='customer'&&o.status==='pending_customer'; const canCustomerEdit=editableCustomerOrder(o); return compactActionButtons(`${canTrader?`<button class="btn ok mini" data-approve-order="${o.id}">موافقة</button><button class="btn danger mini" data-reject-order="${o.id}">رفض</button>`:''}${canCustomer?`<button class="btn ok mini" data-customer-approve="${o.id}">موافقة</button><button class="btn danger mini" data-customer-reject="${o.id}">رفض</button>`:''}${canCustomerEdit?`<button class="btn secondary mini" data-edit-customer-order="${o.id}">تعديل</button><button class="btn danger mini" data-cancel-customer-order="${o.id}">إلغاء</button>`:''}`)}
 function renderOrders(){
