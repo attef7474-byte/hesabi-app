@@ -250,7 +250,7 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
-    private static String jsQuoteprivate static String jsQuote(String value) {
+    private static String jsQuote(String value) {
         if (value == null) return "''";
         String s = value
                 .replace("\\", "\\\\")
