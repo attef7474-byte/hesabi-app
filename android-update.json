@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 15,
-  "latestVersionName": "1.0.15",
+  "latestVersionCode": 16,
+  "latestVersionName": "1.0.16",
   "required": false,
-  "title": "تسريع عمليات Excel وإظهار نافذة تقدم",
-  "message": "تم تسريع الاستيراد والحذف باستخدام دفعات Firestore، وإضافة نافذة تقدم كبيرة مع زر إلغاء للعمليات الطويلة.",
+  "title": "تنظيم صفحة الأصناف بتبويبات",
+  "message": "تم تنظيم صفحة الأصناف إلى شريط أيقونات: الأصناف، إضافة صنف، تعديل صنف، استيراد وتصدير.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
