@@ -1,13 +1,14 @@
 {
-  "latestVersionCode": 32,
+  "latestVersionCode": 33,
   "latestVersionName": "1.0.32",
   "required": false,
   "title": "تحديث حسابي التجاري 1.0.32",
   "message": "تحسين صفحة الإعدادات: حذف النص الزائد، تصغير الأيقونات، وجعل كل تبويب يعرض محتواه فقط.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "تصغير أيقونات الإعدادات لتظهر بدون سحب، ونقل حالة التشغيل والصلاحيات إلى تبويباتها الخاصة.",
+  "releaseNotes": "إصلاح دائم لصلاحيات ربط العميل بالمتجر والبحث عن المتاجر ومنع ظهور Missing or insufficient permissions عند التهيئة.",
   "notes": "إصلاح واجهة الإعدادات فوق نسخة 1.0.31.",
-  "versionName": "1.0.32",
-  "versionCode": 32,
-  "minimumSupportedVersionCode": 1
+  "versionName": "1.0.33",
+  "versionCode": 33,
+  "minimumSupportedVersionCode": 1,
+  "forceRefresh": true
 }

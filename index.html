@@ -372,7 +372,7 @@
 
 
 <style id="hesabi-settings-top-side-fix-1-0-31">
-  /* 1.0.32: إعدادات مريحة: الأيقونات أول الصفحة، صغيرة، وإذا كثرت تتحول لشريط جانبي في الشاشات الواسعة */
+  /* 1.0.33: إعدادات مريحة: الأيقونات أول الصفحة، صغيرة، وإذا كثرت تتحول لشريط جانبي في الشاشات الواسعة */
   .settings-page-head{padding:10px!important;margin-bottom:8px!important}
   .settings-page-head h2{margin:0 0 4px!important;font-size:20px!important}
   .settings-page-head .muted{font-size:12px!important;line-height:1.45!important;margin:0 0 8px!important}
@@ -634,7 +634,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.32';
+const APP_VERSION='1.0.33';
 const APP_BUILD_CODE=29;
 
 function nativeAndroidAvailable(){
@@ -1523,6 +1523,17 @@ function bindLegacyAuthButtons(){
   };
 }
 
+
+function friendlyDbError(e, fallback='تعذر تنفيذ العملية'){
+  const m=String(e?.message||e||'');
+  const code=String(e?.code||'');
+  if(code.includes('permission-denied') || m.includes('Missing or insufficient permissions')){
+    return fallback+' بسبب صلاحيات قاعدة البيانات. تم تجهيز قواعد Firestore في هذا التحديث، تأكد من نشر firestore.rules من GitHub Actions أو Firebase.';
+  }
+  if(m.includes('offline') || m.includes('unavailable')) return fallback+' بسبب ضعف الاتصال. تأكد من الإنترنت ثم حاول مرة أخرى.';
+  return m || fallback;
+}
+
 function friendlyAuthError(e){
   const code=String(e?.code||''); const m=String(e?.message||e||'');
   if(code.includes('email-already-in-use')) return 'هذا الرقم لديه حساب سابق. استخدم زر دخول بدل إنشاء حساب.';
@@ -1628,7 +1639,7 @@ async function recoverShopByPhone(){
     state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.shopName=shop.name||shopId; state.role='trader'; save();
     await saveUserAccountProfile({traderShopId:shopId});
     startListeners(); render(); msg(claimByPhone?'تم نقل ربط المحل إلى حساب الهاتف الموثق واسترجاع البيانات بنجاح':'تم استرجاع المحل والبيانات من Firebase بنجاح','success');
-  }catch(e){msg(e.message||'تعذر استرجاع المحل','error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر استرجاع المحل'),'error')}
 }
 
 
@@ -1725,7 +1736,7 @@ async function recoverCustomerByPhone(){
       state.customerLinks.push({shopId:sid,customerId,customerName:c.name||name||'عميل',customerPhone:c.phone||phone,phoneKey,shopName:shop.name||sid});
       state.activeShopId=state.activeShopId||sid; state.shopId=state.activeShopId; state.customerId=currentCustomerLink()?.customerId||customerId; state.customerName=c.name||name||'عميل'; state.customerPhone=c.phone||phone; state.shopName=currentCustomerLink()?.shopName||shop.name||sid; state.profileDone=true; state.role='customer';
       ok++; last=shop.name||sid;
-    }catch(e){msg(e.message||'تعذر استرجاع حساب العميل','error')}
+    }catch(e){msg(friendlyDbError(e,'تعذر استرجاع حساب العميل'),'error')}
   }
   if(ok){
     save(); await saveUserAccountProfile(); startListeners(); render(); msg(ok===1?`تم استرجاع حساب العميل لدى ${last}`:`تم استرجاع ${ok} حسابات عميل بنجاح`,'success');
@@ -1763,7 +1774,7 @@ async function createShop(){
     state.shopId=shopId; state.traderPin=pin; state.profileDone=true; state.role='trader'; state.shopName=name; save();
     await saveUserAccountProfile({traderShopId:shopId});
     startListeners(); render(); msg('تم إنشاء المحل وربطه برقم الهاتف الموثق. أعطِ هذا الكود للعملاء: '+shopId,'success');
-  }catch(e){msg(e.message||'تعذر إنشاء المحل','error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر إنشاء المحل'),'error')}
 }
 
 async function joinShop(){
@@ -1836,7 +1847,7 @@ async function linkCustomerToShop(shopId,name,phone,first=false){
     startListeners(); render(); msg(existed?`تم استرجاع وربط حسابك السابق لدى ${shop.name||sid}`:(first?'تم ربطك بالمحل بنجاح':'تمت إضافة تاجر جديد لحسابك'),'success');
     try{ if(!existed) await notifyShopLinked(sid, customerId, customerName||name, customerPhone||phone, shop?.name||sid); }catch(e){console.warn('link notify failed', e)}
     return {ok:true, shopId:sid, shopName:shop?.name||sid, customerId, customerName:customerName||name, customerPhone:customerPhone||phone, existed};
-  }catch(e){msg(e.message||'تعذر ربط العميل بالمحل','error'); return {ok:false,error:e};}
+  }catch(e){msg(friendlyDbError(e,'تعذر ربط العميل بالمحل'),'error'); return {ok:false,error:e};}
 }
 
 async function notifyShopLinked(shopId, customerId, customerName, customerPhone, shopName){
@@ -1881,7 +1892,7 @@ async function recoverShopLinkInMyStores(){
     state.customerPhone=c.phone||phone; state.customerName=c.name||state.customerName||''; save();
     setActiveCustomerShop(sid);
     msg('تم استرجاع المتجر وربطه بحسابك مرة أخرى','success');
-  }catch(e){msg(e.message||'تعذر استرجاع المتجر','error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر استرجاع المتجر'),'error')}
 }
 
 function customerUidById(customerId){ const c=(cache.customers||[]).find(x=>x.customerId===customerId); return c?.customerUid||'' }
@@ -3149,7 +3160,7 @@ async function sendCustomerOrder(){
     await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,items:lines,total,paymentType:payType,status:'pending_trader',source:'customer',note,kind:'purchase',createdAt:serverTimestamp(),createdMs:Date.now()});
     if(state.role==='customer'){catalogState().cart={}; saveCatalog();}
     msg('تم إرسال طلب الشراء للتاجر','success')
-  }catch(e){msg(e.message,'error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}
 }
 
 function customerStatusLabel(status){return ({active:'نشط',cash_only:'كاش فقط',blocked:'موقوف'}[status]||'نشط')}
@@ -3233,7 +3244,7 @@ async function sendTraderSale(){
     }
     await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,customerId,customerUid:c.customerUid||'',customerName:c.name,items:lines,total,paymentType,status:'pending_customer',source:'trader',note:$('saleNote').value.trim(),dueDate:$('saleDueDate')?.value||'',priority:$('salePriority')?.value||'normal',kind:'purchase',createdAt:serverTimestamp(),createdMs:Date.now()});
     msg('تم إرسال طلب البيع للعميل للموافقة','success')
-  }catch(e){msg(e.message,'error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}
 }
 
 function renderOrderCard(o){
@@ -3288,8 +3299,8 @@ async function finalizeOrder(orderId, actor){
   });
 }
 async function approveOrder(orderId){
-  if(!requireTraderAction('قبول الطلب')) return;try{if(!confirm('تأكيد الموافقة على الطلب وتسليم الأصناف؟'))return; await finalizeOrder(orderId,'trader'); msg('تم قبول الطلب وتحديث المخزون والحساب','success')}catch(e){msg(e.message,'error')}}
-async function customerApproveOrder(orderId){try{if(!confirm('تأكيد موافقتك على الطلب؟'))return; await finalizeOrder(orderId,'customer'); msg('تمت موافقتك وتحديث حسابك','success')}catch(e){msg(e.message,'error')}}
+  if(!requireTraderAction('قبول الطلب')) return;try{if(!confirm('تأكيد الموافقة على الطلب وتسليم الأصناف؟'))return; await finalizeOrder(orderId,'trader'); msg('تم قبول الطلب وتحديث المخزون والحساب','success')}catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}}
+async function customerApproveOrder(orderId){try{if(!confirm('تأكيد موافقتك على الطلب؟'))return; await finalizeOrder(orderId,'customer'); msg('تمت موافقتك وتحديث حسابك','success')}catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}}
 async function rejectOrder(orderId){
   if(!requireTraderAction('رفض الطلب')) return;const reason=prompt('اكتب سبب الرفض:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),rejectedBy:'trader'}); await addAudit('reject_order',{orderId,reason}); msg('تم رفض الطلب','success')}
 async function customerRejectOrder(orderId){const reason=prompt('اكتب سبب رفضك للطلب:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:'رفض العميل: '+reason,reviewedAt:serverTimestamp(),rejectedBy:'customer'}); await addAudit('customer_reject_order',{orderId,reason}); msg('تم رفض الطلب','success')}
@@ -3553,7 +3564,7 @@ async function sendReturnRequest(){
       await addDoc(collection(db,'shops',state.shopId,'returnRequests'),{shopId:state.shopId,customerUid:uid(),invoiceId:inv.id,invoiceNo:inv.invoiceNo||'',customerId:state.customerId,customerName:state.customerName,itemId:l.itemId,itemName:l.itemName,price:l.price,qty:l.qty,amount:l.amount,paymentType:inv.paymentType||'cash',status:'pending',reason,createdAt:serverTimestamp(),createdMs:Date.now()});
     }
     msg('تم إرسال طلب المرتجع للتاجر','success');
-  }catch(e){msg(e.message,'error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}
 }
 async function approveReturn(returnId){
   if(!requireTraderAction('قبول المرتجع')) return;
@@ -3579,7 +3590,7 @@ async function approveReturn(returnId){
       tx.set(auditRef,{shopId:state.shopId,action:'approve_return',actorRole:'trader',actorName:cache.shop?.name||'التاجر',details:{returnId,invoiceId:rd.invoiceId,itemId:rd.itemId,qty:Number(rd.qty||0),amount:Number(rd.amount||0),paymentType:rd.paymentType},createdAt:serverTimestamp(),createdMs:Date.now()});
     });
     msg('تم قبول المرتجع وتحديث الحساب والمخزون','success');
-  }catch(e){msg(e.message,'error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}
 }
 async function rejectReturn(returnId){
   if(!requireTraderAction('رفض المرتجع')) return;
@@ -3601,7 +3612,7 @@ async function sendPayment(){
   if(debt<=0){msg('لا يوجد دين قائم للسداد','error');return}
   if(amount>debt){msg('مبلغ السداد أكبر من الدين الحالي','error');return}
   let receipt=null;
-  try{receipt=await fileToDataUrl($('payReceipt')?.files?.[0]);}catch(e){msg(e.message,'error');return}
+  try{receipt=await fileToDataUrl($('payReceipt')?.files?.[0]);}catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error');return}
   const payload={shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName,amount,method:$('payMethod').value,referenceNo:$('payRef').value.trim(),note:$('payNote').value.trim(),status:'pending',kind:'payment',createdAt:serverTimestamp(),createdMs:Date.now()};
   if(receipt){payload.receiptName=receipt.name; payload.receiptType=receipt.type; payload.receiptSize=receipt.size; payload.receiptData=receipt.dataUrl;}
   await addDoc(collection(db,'shops',state.shopId,'paymentRequests'),payload); msg('تم إرسال طلب السداد للتاجر','success')
@@ -3634,7 +3645,7 @@ async function approvePayment(payId){
       tx.set(auditRef,{shopId:state.shopId,action:'approve_payment',actorRole:'trader',actorName:cache.shop?.name||'التاجر',details:{paymentId:payId,customerId:p.customerId,amount,method:pd.method||'',referenceNo:pd.referenceNo||''},createdAt:serverTimestamp(),createdMs:Date.now()});
     });
     msg('تم قبول السداد وخصمه من الدين','success');
-  }catch(e){msg(e.message,'error')}
+  }catch(e){msg(friendlyDbError(e,'تعذر تنفيذ العملية'),'error')}
 }
 async function rejectPayment(payId){
   if(!requireTraderAction('رفض السداد')) return;const reason=prompt('اكتب سبب رفض السداد:'); if(!reason)return; await updateDoc(doc(db,'shops',state.shopId,'paymentRequests',payId),{status:'rejected',traderNote:reason,reviewedAt:serverTimestamp(),reviewedMs:Date.now()}); await addAudit('reject_payment',{paymentId:payId,reason}); msg('تم رفض السداد','success')}
