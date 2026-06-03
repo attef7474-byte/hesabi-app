@@ -207,8 +207,11 @@ public class MainActivity extends FragmentActivity {
         try {
             Intent intent = new Intent("com.google.zxing.client.android.SCAN");
             intent.putExtra("SCAN_MODE", "ONE_D_MODE");
+            intent.putExtra("SCAN_FORMATS", "CODE_128,CODE_39,CODE_93,EAN_13,EAN_8,UPC_A,UPC_E,ITF,CODABAR,QR_CODE");
             intent.putExtra("SAVE_HISTORY", false);
-            intent.putExtra("PROMPT_MESSAGE", "وجّه الكاميرا نحو باركود الصنف");
+            intent.putExtra("BEEP_ENABLED", true);
+            intent.putExtra("ORIENTATION_LOCKED", false);
+            intent.putExtra("PROMPT_MESSAGE", "قرّب الباركود المطلوب فقط داخل الإطار. إذا ظهرت عدة أكواد، غطِّ الأكواد الأخرى.");
             startActivityForResult(intent, REQ_EXTERNAL_BARCODE);
             return true;
         } catch (ActivityNotFoundException e) {

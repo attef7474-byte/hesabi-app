@@ -403,7 +403,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='2026-06-03-ماسح-كود-صنف-خارجي-دقيق';
+const APP_VERSION='2026-06-03-ماسح-خارجي-تمييز-IMEI-SN';
 
 function getJoinShopParam(){
   try{
@@ -1997,12 +1997,34 @@ function startNativeItemBarcodeScanner(){
     return false;
   }
 }
+let pendingItemBarcodeCandidate='';
+function usePendingItemBarcodeCandidate(){
+  const value=String(pendingItemBarcodeCandidate||'').trim();
+  if(!value){msg('لا يوجد كود مؤقت لاستخدامه','error');return}
+  const input=$('itemBarcode');
+  if(input) input.value=value;
+  const st=$('itemBarcodeScanStatus');
+  if(st) st.textContent='تم اعتماد الكود: '+value;
+  pendingItemBarcodeCandidate='';
+  msg('تم اعتماد كود الصنف','success');
+}
 window.hesabiReceiveItemBarcode=function(code,message){
   try{
     const input=$('itemBarcode');
+    const note=$('itemNotes');
     const st=$('itemBarcodeScanStatus');
     const value=String(code||'').trim();
     if(value){
+      const looksLikeImei=/^\d{15}$/.test(value);
+      if(looksLikeImei){
+        pendingItemBarcodeCandidate=value;
+        if(note && !String(note.value||'').includes(value)){
+          note.value=(note.value?note.value+' | ':'')+'IMEI: '+value;
+        }
+        if(st) st.innerHTML='تمت قراءة رقم IMEI: <b dir="ltr">'+esc(value)+'</b><br>إذا كنت تريد رقم S/N أو كود الصنف، أعد المسح وغطِّ باركود IMEI، أو اضغط اعتماد هذا الرقم إذا كان هو المطلوب.';
+        msg('تمت قراءة IMEI وليس بالضرورة كود الصنف. أعد المسح إذا كنت تريد S/N.','notice');
+        return;
+      }
       if(input) input.value=value;
       if(st) st.textContent='تم قراءة كود الصنف: '+value;
       if(navigator.vibrate) navigator.vibrate(120);
@@ -3599,8 +3621,8 @@ function renderItems(){
     setTimeout(bindCatalogButtons); return;
   }
   const rows=(cache.items||[]).map(i=>{const stock=Number(i.stock||0), min=Number(i.minStock||0); const st=i.isActive===false?'معطل':(stock<=0?'نافد':(min>0&&stock<=min?'منخفض':'نشط')); const cash=Number(i.cashPrice||i.price||0), credit=Number(i.creditPrice||i.price||cash); return `<tr><td class="name">${esc(i.name)}<div class="subcell">${i.barcode?`كود: ${esc(i.barcode)} · `:''}${i.notes?esc(i.notes):''}</div></td><td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'-')}</td><td><span class="inline-badge ok">كاش ${money(cash)}</span><br><span class="inline-badge warn">آجل ${money(credit)}</span></td><td>${stock}<div class="subcell">تنبيه: ${min}</div></td><td><span class="status ${i.isActive===false?'rejected':(stock<=0?'rejected':(min>0&&stock<=min?'pending':'approved'))}">${st}</span></td><td>${compactActionButtons(`<button class="btn light mini" data-edit-item="${i.id}">تعديل</button><button class="btn secondary mini" data-stock-item="${i.id}">كمية</button><button class="btn ${i.isActive===false?'ok':'warn'} mini" data-toggle-item="${i.id}">${i.isActive===false?'تفعيل':'تعطيل'}</button>`)}</td></tr>`});
-  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">الأفضل الآن: استخدم "تطبيق الماسح الخارجي" لأنه يعطي نفس دقة التطبيق الذي جربته. سيعود الرقم تلقائيًا إلى هذا الحقل.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn ok" type="button" id="externalItemBarcodeBtn">📷 تطبيق الماسح الخارجي</button><button class="btn secondary" type="button" id="nativeItemBarcodeBtn">ماسح داخلي</button><button class="btn light" type="button" id="scanItemBarcodeBtn">كاميرا WebView</button><button class="btn light" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">إذا قرأ WebView رقمًا خاطئًا، لا تستخدمه. استخدم تطبيق الماسح الخارجي لأنه أدق في التركيز والقراءة.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
-  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('externalItemBarcodeBtn')) $('externalItemBarcodeBtn').onclick=startExternalItemBarcodeScanner; if($('nativeItemBarcodeBtn')) $('nativeItemBarcodeBtn').onclick=startEmbeddedItemBarcodeScanner; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
+  $('page_items').innerHTML=`<div class="card advanced-form-card"><h2>إضافة صنف للبيع</h2><div class="form compact-form"><div class="form-section-title">بيانات الصنف</div><div class="field"><label>اسم الصنف</label><input id="itemName" placeholder="مثال: زيت طبخ 1 لتر"></div><div class="grid"><div class="field"><label>التصنيف</label><input id="itemCategory" value="عام"></div><div class="field"><label>الوحدة</label><input id="itemUnit" value="حبة"></div><div class="field"><label>باركود / كود الصنف</label><input id="itemBarcode" placeholder="اختياري أو امسحه بالكاميرا"></div><div class="field"><label>ملاحظات</label><input id="itemNotes" placeholder="اختياري"></div></div><div class="barcode-scan-box"><b>مسح كود الصنف بالكاميرا</b><div class="barcode-scan-line" id="itemBarcodeScanStatus">الأفضل: استخدم تطبيق الماسح الخارجي. إذا كان على الملصق أكثر من باركود، غطِّ الأكواد الأخرى ووجّه الكاميرا إلى الكود المطلوب فقط.</div><video id="itemBarcodeVideo" class="barcode-video" playsinline muted></video><div class="barcode-actions"><button class="btn ok" type="button" id="externalItemBarcodeBtn">📷 تطبيق الماسح الخارجي</button><button class="btn secondary" type="button" id="nativeItemBarcodeBtn">ماسح داخلي</button><button class="btn light" type="button" id="scanItemBarcodeBtn">كاميرا WebView</button><button class="btn light" type="button" id="snapItemBarcodeBtn">قراءة لقطة</button><button class="btn light" type="button" id="usePendingBarcodeBtn">اعتماد الرقم المقروء</button><button class="btn light" type="button" id="stopItemBarcodeScanBtn">إيقاف</button></div><div class="barcode-scan-line">ملاحظة: اسم الصنف لا يخرج من الباركود إلا إذا كان مخزنًا في قاعدة بيانات أو مكتوبًا داخل QR. باركود CODE_128 عادة يعطي رقمًا فقط مثل S/N أو IMEI.</div></div><div class="form-section-title">الأسعار والمخزون</div><div class="grid"><div class="field"><label>سعر الكاش</label><input id="itemCashPrice" type="number" min="0"></div><div class="field"><label>سعر الآجل</label><input id="itemCreditPrice" type="number" min="0"></div><div class="field"><label>الكمية الافتتاحية</label><input id="itemStock" type="number" min="0" value="0"></div><div class="field"><label>حد تنبيه المخزون</label><input id="itemMinStock" type="number" min="0" value="0"></div></div><div class="form-hint">سيستخدم التطبيق سعر الآجل في الطلبات الآجلة، ويبقي سعر الكاش محفوظًا للتقارير والبيع النقدي.</div><button class="btn compact-main-btn" id="addItem">حفظ الصنف</button></div></div><div class="card"><div class="row"><h2>الأصناف والمخزون</h2><span class="status approved">${rows.length} صنف</span></div>${compactTable(['الصنف','التصنيف','الوحدة','الأسعار','المخزون','الحالة','إجراء'],rows,'لا توجد أصناف')}</div>`;
+  setTimeout(()=>{ if($('addItem')) $('addItem').onclick=addItem; if($('externalItemBarcodeBtn')) $('externalItemBarcodeBtn').onclick=startExternalItemBarcodeScanner; if($('nativeItemBarcodeBtn')) $('nativeItemBarcodeBtn').onclick=startEmbeddedItemBarcodeScanner; if($('scanItemBarcodeBtn')) $('scanItemBarcodeBtn').onclick=startItemBarcodeScanner; if($('snapItemBarcodeBtn')) $('snapItemBarcodeBtn').onclick=scanItemBarcodeStillFrame; if($('usePendingBarcodeBtn')) $('usePendingBarcodeBtn').onclick=usePendingItemBarcodeCandidate; if($('stopItemBarcodeScanBtn')) $('stopItemBarcodeScanBtn').onclick=()=>stopItemBarcodeScanner(); bindItemButtons(); });
 }
 function renderCustomers(){
   if(state.role!=='trader'){show('home');return}

@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 6,
-  "latestVersionName": "1.0.6",
+  "latestVersionCode": 7,
+  "latestVersionName": "1.0.7",
   "required": false,
-  "title": "تحديث ماسح كود الصنف الخارجي",
-  "message": "تمت إضافة خيار مسح كود الصنف عبر تطبيق ماسح خارجي دقيق، مع عودة الرقم تلقائيًا إلى حقل كود الصنف.",
+  "title": "تحسين ماسح كود الصنف",
+  "message": "تم إصلاح بناء Android وتحسين التعامل مع الأكواد المتعددة مثل IMEI و S/N عند مسح كود الصنف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk"
 }
