@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 37,
-  "latestVersionName": "1.0.37",
+  "latestVersionCode": 39,
+  "latestVersionName": "1.0.39",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.37",
+  "title": "تحديث حسابي التجاري 1.0.39",
   "message": "إصلاح نهائي لواجهة طلب الشراء: زر إضافة للطلب، نموذج طلب واضح، سلة، بحث وتصنيف وصفحات.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "تم إصلاح صلاحيات قراءة الأصناف وإنشاء طلب الشراء للعميل، وضمان رابط العميل قبل تحميل الكتالوج.",
-  "notes": "Customer purchase order and catalog selection fix.",
-  "versionName": "1.0.37",
-  "versionCode": 37,
+  "releaseNotes": "تحسين نهائي لنموذج طلب الشراء: فاتورة مباشرة، صف فارغ بإكمال تلقائي، وصفحة إضافة أصناف منفصلة.",
+  "notes": "إصلاح نهائي لثبات لوحة المفاتيح أثناء البحث في طلب الشراء وكتابة الرسائل.",
+  "versionName": "1.0.39",
+  "versionCode": 39,
   "minimumSupportedVersionCode": 1,
   "forceRefresh": true
 }
