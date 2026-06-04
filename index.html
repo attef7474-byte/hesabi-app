@@ -42,6 +42,20 @@
     .purchase-add-page-toolbar{display:grid;grid-template-columns:1fr 150px;gap:8px;align-items:end}.purchase-add-page-table{width:100%;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden}.purchase-add-page-table th{background:#0f766e;color:#fff;padding:9px 6px;font-size:12px}.purchase-add-page-table td{border-bottom:1px solid #e5e7eb;padding:8px 6px;font-size:12px;text-align:center}.purchase-add-page-table td.name{text-align:right;font-weight:900}.purchase-add-page-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.purchase-add-page-actions .btn{width:auto;flex:1}
     @media(max-width:520px){.purchase-invoice-table th,.purchase-invoice-table td{font-size:11px;padding:6px 3px}.purchase-inline-name{min-width:150px}.purchase-inline-qty input{width:55px}.purchase-invoice-table-wrap{overflow-x:auto}.purchase-add-page-toolbar{grid-template-columns:1fr}.purchase-invoice-actions .btn{flex:1}.purchase-suggest{min-width:245px}}
 
+
+    /* 1.0.40 Global centered dialog and startup self-recovery */
+    .hesabi-dialog-backdrop{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)}
+    .hesabi-dialog-backdrop.hidden{display:none!important}
+    .hesabi-dialog{width:min(94vw,430px);background:#fff;border:1px solid #dbe7ee;border-radius:24px;box-shadow:0 24px 70px rgba(15,23,42,.28);overflow:hidden;text-align:right;animation:hesabiPop .14s ease-out}
+    @keyframes hesabiPop{from{transform:scale(.96);opacity:.2}to{transform:scale(1);opacity:1}}
+    .hesabi-dialog-head{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #edf2f7;background:linear-gradient(180deg,#f8fafc,#fff)}
+    .hesabi-dialog-title{font-size:17px;font-weight:900;color:#0f172a}.hesabi-dialog-icon{font-size:24px;line-height:1}
+    .hesabi-dialog-body{padding:16px;color:#334155;line-height:1.8;font-weight:800;white-space:pre-wrap}
+    .hesabi-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px 16px;background:#fbfdff}
+    .hesabi-dialog-actions .btn{width:100%;min-height:42px}.hesabi-dialog-actions.one{grid-template-columns:1fr}.hesabi-dialog-actions.three{grid-template-columns:1fr 1fr 1fr}
+    .dialog-error .hesabi-dialog{border-color:#fecaca}.dialog-error .hesabi-dialog-title{color:#991b1b}.dialog-success .hesabi-dialog{border-color:#bbf7d0}.dialog-success .hesabi-dialog-title{color:#166534}.dialog-warn .hesabi-dialog{border-color:#fed7aa}.dialog-warn .hesabi-dialog-title{color:#9a3412}
+    @media(max-width:420px){.hesabi-dialog{width:96vw;border-radius:20px}.hesabi-dialog-actions{grid-template-columns:1fr}.hesabi-dialog-actions.three{grid-template-columns:1fr}.hesabi-dialog-body{font-size:14px}.hesabi-dialog-title{font-size:16px}}
+
   </style>
 
   <style id="hesabi-ui-polish">
@@ -503,6 +517,13 @@
 <div class="app">
   <div class="top"><div class="title"><h1>حسابي التجاري</h1><span id="netBadge" class="badge">جاري الفحص...</span></div><div id="subTitle" class="muted"></div></div>
   <div id="msg"></div>
+  <div id="hesabiDialogBackdrop" class="hesabi-dialog-backdrop hidden" role="dialog" aria-modal="true">
+    <div id="hesabiDialog" class="hesabi-dialog">
+      <div class="hesabi-dialog-head"><span id="hesabiDialogTitle" class="hesabi-dialog-title">تنبيه</span><span id="hesabiDialogIcon" class="hesabi-dialog-icon">ℹ️</span></div>
+      <div id="hesabiDialogBody" class="hesabi-dialog-body"></div>
+      <div id="hesabiDialogActions" class="hesabi-dialog-actions one"></div>
+    </div>
+  </div>
 
   <section id="firebaseSetup" class="card hidden">
     <h2>إعداد Firebase Firestore</h2>
@@ -592,14 +613,24 @@
 
 <script>
 (function(){
+  window.hesabiHideDialog=function(){var b=document.getElementById('hesabiDialogBackdrop'); if(b)b.classList.add('hidden');};
+  window.hesabiShowNativeRecovery=function(message){
+    var b=document.getElementById('hesabiDialogBackdrop'), body=document.getElementById('hesabiDialogBody'), title=document.getElementById('hesabiDialogTitle'), icon=document.getElementById('hesabiDialogIcon'), actions=document.getElementById('hesabiDialogActions');
+    if(!b||!body||!title||!actions){var m=document.getElementById('msg'); if(m)m.innerHTML='<div class="notice error">'+String(message||'حدث خطأ في تشغيل التطبيق')+'</div>'; return;}
+    b.className='hesabi-dialog-backdrop dialog-warn'; title.textContent='التطبيق يحتاج تحديث أو تنظيف'; icon.textContent='🧹'; body.textContent=message||'حدث خطأ في تشغيل التطبيق.';
+    actions.className='hesabi-dialog-actions three';
+    actions.innerHTML='<button class="btn ok" id="dlgReloadBtn" type="button">تحديث الواجهات</button><button class="btn warn" id="dlgClearBtn" type="button">تنظيف الكاش</button><button class="btn light" id="dlgCancelBtn" type="button">إلغاء</button>';
+    document.getElementById('dlgReloadBtn').onclick=function(){try{location.href=location.pathname+"?v="+Date.now();}catch(e){location.reload();}};
+    document.getElementById('dlgClearBtn').onclick=async function(){try{if('serviceWorker' in navigator){var regs=await navigator.serviceWorker.getRegistrations(); for(var i=0;i<regs.length;i++){try{await regs[i].unregister();}catch(e){}}} if(window.caches){var ks=await caches.keys(); for(var j=0;j<ks.length;j++){try{await caches.delete(ks[j]);}catch(e){}}} localStorage.setItem('hesabi_last_cache_clean',String(Date.now()));}catch(e){} location.href=location.pathname+'?clean='+Date.now();};
+    document.getElementById('dlgCancelBtn').onclick=function(){window.hesabiHideDialog();};
+  };
   function setBadge(text, cls){var b=document.getElementById('netBadge'); if(b){b.className='badge '+(cls||''); b.textContent=text;}}
   setTimeout(function(){
     var main=document.getElementById('main'), auth=document.getElementById('authSetup'), role=document.getElementById('roleSetup');
     var anyVisible = (main && !main.classList.contains('hidden')) || (auth && !auth.classList.contains('hidden')) || (role && !role.classList.contains('hidden'));
     if(!anyVisible){
       setBadge(navigator.onLine?'متصل - جاري تحميل Firebase':'غير متصل', navigator.onLine?'online':'offline');
-      var m=document.getElementById('msg');
-      if(m && !m.innerHTML){m.innerHTML='<div class="notice error">إذا بقيت الصفحة فارغة، اعمل تحديث للصفحة أو امسح كاش التطبيق. جاري تحميل النسخة المستقرة. إذا استمرت الرسالة أكثر من ثوانٍ اضغط تحديث الواجهات من الإعدادات أو امسح كاش التطبيق.</div>'}
+      window.hesabiShowNativeRecovery && window.hesabiShowNativeRecovery('لم يكتمل تشغيل التطبيق تلقائيًا. اختر تحديث الواجهات أو تنظيف الكاش، وإذا استمرت المشكلة حدّث APK إلى آخر نسخة.');
     }
   },7000);
 })();
@@ -679,8 +710,9 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.39';
-const APP_BUILD_CODE=39;
+const APP_VERSION='1.0.40';
+const APP_BUILD_CODE=40;
+let renderReports;
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -864,7 +896,32 @@ function extractShopCodeFromText(text){
 function load(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
 function save(){localStorage.setItem(LS,JSON.stringify(state))}
 function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-function msg(t,type='notice'){ $('msg').innerHTML=`<div class="notice ${type}">${esc(t)}</div>`; setTimeout(()=>{$('msg').innerHTML=''},5000)}
+function hideAppDialog(){try{$('hesabiDialogBackdrop')?.classList.add('hidden')}catch{}}
+function showAppDialog(title, body, type='notice', buttons){
+  const back=$('hesabiDialogBackdrop'), ttl=$('hesabiDialogTitle'), icon=$('hesabiDialogIcon'), bdy=$('hesabiDialogBody'), acts=$('hesabiDialogActions');
+  if(!back||!ttl||!bdy||!acts){ if($('msg')) $('msg').innerHTML=`<div class="notice ${type}">${esc(body||title)}</div>`; return; }
+  const kind=type==='error'?'dialog-error':(type==='success'?'dialog-success':(type==='warn'?'dialog-warn':''));
+  back.className='hesabi-dialog-backdrop '+kind;
+  ttl.textContent=title||'تنبيه'; bdy.textContent=body||''; icon.textContent=type==='error'?'⚠️':(type==='success'?'✅':(type==='warn'?'🧹':'ℹ️'));
+  const list=buttons&&buttons.length?buttons:[{text:'موافق',cls:type==='error'?'danger':'ok',fn:hideAppDialog}];
+  acts.className='hesabi-dialog-actions '+(list.length===1?'one':(list.length===3?'three':''));
+  acts.innerHTML=list.map((x,i)=>`<button type="button" class="btn ${esc(x.cls||'secondary')}" data-dialog-action="${i}">${esc(x.text||'موافق')}</button>`).join('');
+  acts.querySelectorAll('[data-dialog-action]').forEach(btn=>{btn.onclick=()=>{const x=list[Number(btn.dataset.dialogAction)]; try{ if(x.close!==false) hideAppDialog(); if(typeof x.fn==='function') x.fn(); }catch(e){console.warn('dialog action failed',e)} };});
+}
+function msg(t,type='notice'){
+  const text=String(t||'');
+  const isErr=type==='error'||/خطأ|فشل|تعذر|Missing|Firebase|Uncaught|Error|ReferenceError/i.test(text);
+  showAppDialog(isErr?'تنبيه مهم':(type==='success'?'تم بنجاح':'تنبيه'), text, isErr?'error':type);
+}
+function showStartupRecoveryDialog(errorText=''){
+  const details=errorText?('\n\nالتفاصيل: '+String(errorText).slice(0,180)):'';
+  showAppDialog('تعذر تشغيل الصفحة', 'حصل خلل في تحميل الواجهة. يمكنك إصلاحه الآن بدون الخروج من التطبيق.'+details, 'warn', [
+    {text:'تحديث الواجهات',cls:'ok',fn:()=>{try{location.href=location.pathname+'?v='+Date.now()}catch(e){location.reload()}}},
+    {text:'تنظيف الكاش',cls:'warn',fn:async()=>{try{await refreshWebUiNow()}catch(e){} try{location.href=location.pathname+'?clean='+Date.now()}catch(e){location.reload()}}},
+    {text:'تحديث APK',cls:'secondary',fn:()=>{try{downloadApkUpdate()}catch(e){location.href='https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk'}}}
+  ]);
+}
+
 function money(n){return Number(n||0).toLocaleString('ar-YE')+' ريال'}
 function todayIso(){return new Date().toISOString().slice(0,10)}
 function fileToDataUrl(file, maxBytes=700000){
@@ -1087,8 +1144,8 @@ function isIgnorableBrowserError(m){
     m.includes('ResizeObserver loop') ||
     m.includes('Non-Error promise rejection captured');
 }
-window.addEventListener('error',e=>{try{const m=String(e.message||e.error?.message||e||''); console.warn('window.error',m,e.error||e); if(isIgnorableBrowserError(m)) return; msg('خطأ في تشغيل التطبيق: '+m,'error')}catch{}});
-window.addEventListener('unhandledrejection',e=>{try{const m=String(e.reason?.message||e.reason||e); console.warn('unhandledrejection',m,e.reason); if(isIgnorableBrowserError(m)) return; msg('خطأ في الاتصال أو تسجيل الدخول: '+m,'error')}catch{}});
+window.addEventListener('error',e=>{try{const m=String(e.message||e.error?.message||e||''); console.warn('window.error',m,e.error||e); if(isIgnorableBrowserError(m)) return; showStartupRecoveryDialog(m)}catch{}});
+window.addEventListener('unhandledrejection',e=>{try{const m=String(e.reason?.message||e.reason||e); console.warn('unhandledrejection',m,e.reason); if(isIgnorableBrowserError(m)) return; showStartupRecoveryDialog(m)}catch{}});
 
 function normalizeCustomerLinks(){
   if(state.role==='customer'){
@@ -1991,6 +2048,18 @@ function goBack(){
   const target = previousPage && previousPage!==active ? previousPage : 'home';
   show(target);
 }
+function renderPageLoadFallback(pageName){
+  const el=$('page_'+pageName)||$('page_home');
+  if(el){
+    el.innerHTML='<div class="card"><h2>هذه الصفحة تحتاج تحديث الواجهات</h2><p class="muted">لم يتم تحميل جزء من الصفحة بشكل صحيح. اضغط الزر التالي لتحديث الواجهة أو تنظيف الكاش.</p><div class="actions"><button class="btn ok" id="fallbackRefreshUi">تحديث الواجهات</button><button class="btn warn" id="fallbackCleanCache">تنظيف الكاش</button></div></div>';
+  }
+  setTimeout(()=>{if($('fallbackRefreshUi')) $('fallbackRefreshUi').onclick=()=>{location.href=location.pathname+'?v='+Date.now()}; if($('fallbackCleanCache')) $('fallbackCleanCache').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.href=location.pathname+'?clean='+Date.now()};});
+  showStartupRecoveryDialog('لم يتم تحميل صفحة '+pageName+' في النسخة الحالية.');
+}
+function safeRendererForPage(p){
+  const map={home:(typeof renderHome==='function'?renderHome:null),search:(typeof renderSearch==='function'?renderSearch:null),tasks:(typeof renderTasks==='function'?renderTasks:null),items:(typeof renderItems==='function'?renderItems:null),orders:(typeof renderOrders==='function'?renderOrders:null),customers:(typeof renderCustomers==='function'?renderCustomers:null),shops:(typeof renderShops==='function'?renderShops:null),messages:(typeof renderMessages==='function'?renderMessages:null),payments:(typeof renderPayments==='function'?renderPayments:null),invoices:(typeof renderInvoices==='function'?renderInvoices:null),statement:(typeof renderStatement==='function'?renderStatement:null),audit:(typeof renderAudit==='function'?renderAudit:null),stock:(typeof renderStock==='function'?renderStock:null),returns:(typeof renderReturns==='function'?renderReturns:null),schedules:(typeof renderSchedules==='function'?renderSchedules:null),collections:(typeof renderCollections==='function'?renderCollections:null),reports:(typeof renderReports==='function'?renderReports:null),policies:(typeof renderPolicies==='function'?renderPolicies:null),notifications:(typeof renderNotifications==='function'?renderNotifications:null),shopcode:(typeof renderShopCode==='function'?renderShopCode:null),settings:(typeof renderSettings==='function'?renderSettings:null),owner:(typeof renderOwnerConsole==='function'?renderOwnerConsole:null)};
+  return typeof map[p]==='function'?map[p]:(()=>renderPageLoadFallback(p));
+}
 function show(p){
   try{stopItemBarcodeScanner(false)}catch(e){}
 
@@ -2000,8 +2069,8 @@ function show(p){
   active=p;
   ['home','search','tasks','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
   renderNav();
-  const renderer={home:renderHome,search:renderSearch,tasks:renderTasks,items:renderItems,orders:renderOrders,customers:renderCustomers,shops:renderShops,messages:renderMessages,payments:renderPayments,invoices:renderInvoices,statement:renderStatement,audit:renderAudit,stock:renderStock,returns:renderReturns,schedules:renderSchedules,collections:renderCollections,reports:renderReports,policies:renderPolicies,notifications:renderNotifications,shopcode:renderShopCode,settings:renderSettings,owner:renderOwnerConsole}[p] || renderHome;
-  renderer();
+  const renderer=safeRendererForPage(p) || renderHome;
+  try{ renderer(); }catch(e){ console.error('page render failed',p,e); renderPageLoadFallback(p); }
   if(['orders','messages','payments','returns','schedules'].includes(p) && markPageNotificationsRead(p)){
     renderNav();
     updateAndroidLauncherBadge();
@@ -2935,7 +3004,7 @@ renderReports=function(){
     if(state.profileDone && state.role==='customer' && state.pendingJoinShopId && !(state.customerLinks||[]).some(x=>x.shopId===state.pendingJoinShopId)){ show('shopcode'); }
   }catch(e){
     console.error(e);
-    try{msg('فشل بدء التطبيق: '+(e.message||e),'error'); render();}catch{}
+    try{showStartupRecoveryDialog(e.message||e); render();}catch{}
   }
 })();
 </script>
