@@ -666,8 +666,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.36';
-const APP_BUILD_CODE=36;
+const APP_VERSION='1.0.37';
+const APP_BUILD_CODE=37;
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
@@ -1578,6 +1578,7 @@ function friendlyAuthError(e){
   if(code.includes('invalid-verification-code')) return 'كود التحقق غير صحيح.';
   if(code.includes('code-expired')) return 'انتهت صلاحية كود التحقق. أرسل كود جديد.';
   if(code.includes('network-request-failed')) return 'فشل الاتصال بالإنترنت أو Firebase. تحقق من الشبكة.';
+  if(code.includes('account-exists-with-different-credential') || code.includes('credential-already-in-use') || code.includes('phone-number-already-exists')) return 'هذا الرقم مسجل سابقًا في Firebase على حساب آخر. لا يمكن ربطه مباشرة بنفس الحساب، لذلك سيستخدم التطبيق تغيير رقم داخلي آمن بعد تحقق SMS أو يمكنك تسجيل الدخول/استرجاع الحساب الموجود بذلك الرقم.';
   return m;
 }
 
@@ -4422,7 +4423,7 @@ function bindSecurityLockSettingsControls(){
 
 function renderPhoneChangeSettingsBlock(){
   const current=verifiedPhoneDisplay() || phoneKeyToInternational(state.authPhoneKey||'');
-  return `<div class="card"><h2>تغيير رقم الهاتف</h2><div class="notice">يمكنك تغيير رقم الحساب بعد التحقق بكود SMS. ستبقى بياناتك، محلك، عملاؤك، ومتاجرك كما هي، ويتم نقل الربط إلى الرقم الجديد.</div><div class="settings-mini-card"><div class="muted">الرقم الحالي</div><b>${esc(current||'-')}</b></div><div class="form compact-form"><div class="field"><label>الرقم الجديد بصيغة دولية</label><input id="newAccountPhone" inputmode="tel" placeholder="+9677XXXXXXXX"></div><button class="btn secondary compact-main-btn" id="sendChangePhoneCode">إرسال كود للرقم الجديد</button><div id="changePhoneStatus" class="notice hidden"></div><div class="field"><label>كود التحقق 6 أرقام</label><input id="changePhoneCode" inputmode="numeric" maxlength="6" placeholder="123456"></div><button class="btn ok compact-main-btn" id="confirmChangePhoneCode">تأكيد تغيير الرقم</button></div></div>`;
+  return `<div class="card"><h2>تغيير رقم الهاتف</h2><div class="notice">يمكنك تغيير رقم الحساب بعد التحقق بكود SMS. إذا كان الرقم الجديد مستخدمًا سابقًا في Firebase، سيتم حفظه داخل بيانات التطبيق بأمان بدون ظهور خطأ خام، لأن Firebase لا يسمح بربط نفس الرقم بحسابين.</div><div class="settings-mini-card"><div class="muted">الرقم الحالي</div><b>${esc(current||'-')}</b></div><div class="form compact-form"><div class="field"><label>الرقم الجديد بصيغة دولية</label><input id="newAccountPhone" inputmode="tel" placeholder="+9677XXXXXXXX"></div><button class="btn secondary compact-main-btn" id="sendChangePhoneCode">إرسال كود للرقم الجديد</button><div id="changePhoneStatus" class="notice hidden"></div><div class="field"><label>كود التحقق 6 أرقام</label><input id="changePhoneCode" inputmode="numeric" maxlength="6" placeholder="123456"></div><button class="btn ok compact-main-btn" id="confirmChangePhoneCode">تأكيد تغيير الرقم</button><button class="btn light compact-main-btn" id="restoreExistingPhoneAccountBtn">استرجاع حساب موجود بهذا الرقم</button></div></div>`;
 }
 function renderNotificationSoundSettingsBlock(){
   const v=state.notifySound || 'classic';
@@ -4431,6 +4432,7 @@ function renderNotificationSoundSettingsBlock(){
 function bindPhoneAndSoundSettingsControls(){
   if($('sendChangePhoneCode')) $('sendChangePhoneCode').onclick=sendChangePhoneCode;
   if($('confirmChangePhoneCode')) $('confirmChangePhoneCode').onclick=confirmChangePhoneCode;
+  if($('restoreExistingPhoneAccountBtn')) $('restoreExistingPhoneAccountBtn').onclick=()=>{msg('لتفادي تعارض Firebase: سجّل خروج ثم ادخل برقم الهاتف الجديد من شاشة الدخول SMS، وبعد الدخول استخدم استرجاع الحساب إذا كان له بيانات سابقة.','notice')};
   if($('previewNotifySound')) $('previewNotifySound').onclick=()=>{state.soundEnabled=true; state.notifySound=$('notifySoundSelect')?.value||'classic'; save(); beep('preview');};
   if($('saveNotifySound')) $('saveNotifySound').onclick=()=>{state.notifySound=$('notifySoundSelect')?.value||'classic'; state.soundEnabled=state.notifySound!=='silent'; save(); msg('تم حفظ صوت الإشعارات والرسائل','success');};
 }
@@ -4466,6 +4468,22 @@ async function sendChangePhoneCode(){
     if(btn){btn.disabled=false;btn.textContent='إرسال كود للرقم الجديد';}
   }
 }
+
+function isExistingPhoneCredentialError(e){
+  const code=String(e?.code||''); const m=String(e?.message||e||'');
+  return code.includes('account-exists-with-different-credential') || code.includes('credential-already-in-use') || code.includes('phone-number-already-exists') || m.includes('account-exists-with-different-credential') || m.includes('credential-already-in-use');
+}
+async function applyAppOnlyPhoneChangeAfterVerifiedSms(pending){
+  if(!pending || !pending.newPhoneKey) throw new Error('بيانات تغيير الرقم غير مكتملة');
+  await updatePhoneReferencesAfterChange(pending.oldPhoneKey, pending.newPhoneKey, pending.newPhone, {appOnly:true, reason:'firebase_phone_already_used'});
+  state.authPhoneNumber=pending.newPhone;
+  state.authPhoneKey=pending.newPhoneKey;
+  if(state.role==='customer') state.customerPhone=pending.newPhone;
+  delete state.pendingChangePhone;
+  save();
+  await saveUserAccountProfile({phoneChangedAt:serverTimestamp(), phoneAuthLinkSkipped:true, phoneAuthLinkSkipReason:'firebase_phone_already_used'});
+}
+
 async function confirmChangePhoneCode(){
   if(!auth || !auth.currentUser){msg('يجب تسجيل الدخول أولًا','error');return}
   const pending=state.pendingChangePhone||{};
@@ -4490,12 +4508,23 @@ async function confirmChangePhoneCode(){
     msg('تم تغيير رقم الهاتف بنجاح','success');
     renderSettings();
   }catch(e){
-    setChangePhoneStatus('تعذر تغيير الرقم: '+friendlyAuthError(e),'error');
+    if(isExistingPhoneCredentialError(e)){
+      try{
+        await applyAppOnlyPhoneChangeAfterVerifiedSms(pending);
+        setChangePhoneStatus('تم تغيير الرقم داخل بيانات التطبيق بعد تحقق SMS. ملاحظة: الرقم كان مسجلًا سابقًا في Firebase، لذلك لم يتم ربطه كمزوّد دخول جديد لهذا الحساب. يمكنك الدخول لاحقًا بالحساب الموجود بهذا الرقم أو متابعة استخدام الحساب الحالي بدون فقدان البيانات.','success');
+        msg('تم تغيير رقم التطبيق بدون فقدان البيانات','success');
+        renderSettings();
+      }catch(e2){
+        setChangePhoneStatus('تم التحقق من الرقم، لكن تعذر نقل بيانات التطبيق: '+friendlyDbError(e2,'تعذر نقل الرقم'),'error');
+      }
+    }else{
+      setChangePhoneStatus('تعذر تغيير الرقم: '+friendlyAuthError(e),'error');
+    }
   }finally{
     if(btn){btn.disabled=false;btn.textContent='تأكيد تغيير الرقم';}
   }
 }
-async function updatePhoneReferencesAfterChange(oldKey,newKey,newIntl){
+async function updatePhoneReferencesAfterChange(oldKey,newKey,newIntl, options={}){
   if(!db || !uid()) return;
   oldKey=normalizePhone(oldKey||''); newKey=normalizePhone(newKey||'');
   const phoneValue=newIntl || phoneKeyToInternational(newKey);
@@ -4541,7 +4570,7 @@ async function updatePhoneReferencesAfterChange(oldKey,newKey,newIntl){
     state.customerPhone=phoneValue;
   }
   try{ if(oldKey && oldKey!==newKey) await deleteDoc(doc(db,'phoneUidLinks',oldKey)); }catch(e){}
-  await setDoc(doc(db,'phoneUidLinks',newKey),{phoneKey:newKey,uid:uid(),provider:'phone',updatedAt:serverTimestamp()},{merge:true});
+  await setDoc(doc(db,'phoneUidLinks',newKey),{phoneKey:newKey,uid:uid(),provider:options.appOnly?'app-phone':(state.authProvider||'phone'),appOnlyPhoneChange:!!options.appOnly,phoneChangeReason:options.reason||'',updatedAt:serverTimestamp()},{merge:true});
 }
 
 function settingsTabKey(){return 'hesabi_settings_tab_'+(uid() || state.authPhoneKey || 'guest')}
