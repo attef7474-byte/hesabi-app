@@ -710,8 +710,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.41';
-const APP_BUILD_CODE=41;
+const APP_VERSION='1.0.42';
+const APP_BUILD_CODE=42;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -1539,6 +1539,103 @@ function applyAppearance(){
   }catch(e){console.warn('apply appearance failed',e)}
 }
 
+async function safeFullLogout(reason=''){
+  try{ unsub.forEach(u=>{try{u()}catch(e){}}); unsub=[]; }catch(e){}
+  try{ if(auth) await signOut(auth); }catch(e){ console.warn('logout failed', e); }
+  currentUser=null;
+  state.role='';
+  state.profileDone=false;
+  delete state.shopId; delete state.shopName; delete state.customerId; delete state.customerName;
+  delete state.customerLinks; delete state.activeCustomerLink; delete state.uid;
+  delete state.authEmail; delete state.authPhoneNumber; delete state.authPhoneKey; delete state.authProvider;
+  try{ sessionStorage.clear(); }catch(e){}
+  save();
+  hideAppDialog();
+  render();
+}
+function showPermissionDeniedLogoutDialog(label='البيانات', err){
+  if(window.__hesabiPermissionDialogOpen) return;
+  window.__hesabiPermissionDialogOpen=true;
+  showAppDialog('مشكلة صلاحيات', 'تم منع قراءة '+label+' بسبب الصلاحيات. اضغط موافق لتسجيل الخروج ثم ادخل من جديد. إذا استمرت المشكلة تأكد من نشر قواعد Firestore الجديدة.', 'error', [
+    {text:'موافق - تسجيل خروج', cls:'danger', close:false, fn:async()=>{window.__hesabiPermissionDialogOpen=false; await safeFullLogout('permission-denied');}},
+    {text:'تحديث الواجهات', cls:'secondary', fn:async()=>{window.__hesabiPermissionDialogOpen=false; try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())}},
+    {text:'إلغاء', cls:'light', fn:()=>{window.__hesabiPermissionDialogOpen=false;}}
+  ]);
+}
+function renderBasicListPage(pageId,title,description,rowsHtml='',headers=['البيان','الحالة']){
+  const rows = rowsHtml || '<tr><td class="name">لا توجد بيانات معروضة حاليًا</td><td>—</td></tr>';
+  const html = `<div class="card"><h2>${esc(title)}</h2>${description?`<p class="muted">${esc(description)}</p>`:''}</div><div class="table-wrap"><table class="compact-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const el=$('page_'+pageId); if(el) el.innerHTML=html;
+}
+function renderSettings(){
+  const tab=pageTabState('settings','security');
+  const tabs=[['security','🔐','الأمان'],['appearance','🎨','الشكل'],['shop','🏪','المتجر'],['permissions','🛡️','الصلاحيات'],['update','⬆️','التحديث'],['backup','💾','النسخ'],['account','👤','الحساب'],['notifications','🔔','التنبيهات']];
+  let content='';
+  if(tab==='update'){
+    content=`<div class="card"><h2>التحديث والكاش</h2><div class="grid"><div class="metric"><span class="muted">إصدار الواجهات</span><b>${APP_VERSION}</b></div><div class="metric"><span class="muted">إصدار APK</span><b>${nativeVersionName()} (${nativeVersionCode()})</b></div></div><div class="settings-compact-actions"><button class="btn ok" id="settingsRefreshUi">تحديث الواجهات</button><button class="btn warn" id="settingsCleanCache">تنظيف الكاش</button><button class="btn secondary" id="settingsUpdateApk">تحديث APK</button><button class="btn light" id="settingsCheckApk">فحص APK</button></div></div>`;
+  }else if(tab==='permissions'){
+    content=`<div class="card"><h2>الصلاحيات حسب الدور</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>الوظيفة</th><th>التاجر</th><th>العميل</th></tr></thead><tbody><tr><td>الأصناف والأسعار والمخزون</td><td>إدارة كاملة</td><td>عرض وطلب فقط</td></tr><tr><td>السياسات</td><td>تحكم كامل</td><td>بدون تعديل</td></tr><tr><td>الطلبات والسداد</td><td>مراجعة وقبول/رفض</td><td>إنشاء ومتابعة حسابه فقط</td></tr></tbody></table></div></div>`;
+  }else if(tab==='account'){
+    content=`<div class="card"><h2>الحساب</h2><p class="muted">إدارة الخروج واستعادة الجلسة.</p><div class="settings-compact-actions"><button class="btn danger" id="settingsLogout">تسجيل خروج</button><button class="btn light" id="settingsGoHome">الرئيسية</button></div></div>`;
+  }else if(tab==='security'){
+    content=`<div class="card"><h2>الأمان والحساب</h2><div class="notice">قفل التطبيق: ${state.appLockEnabled||state.lockEnabled?'مفعل':'ملغي'}</div><div class="settings-compact-actions"><button class="btn secondary" id="settingsDisableLock">إلغاء القفل مؤقتًا</button></div></div>`;
+  }else if(tab==='appearance'){
+    content=`<div class="card"><h2>الشكل</h2><p class="muted">إعدادات الشكل محفوظة داخل التطبيق.</p><div class="settings-compact-actions"><button class="btn light" id="settingsCompactOn">واجهة مدمجة</button><button class="btn light" id="settingsCompactOff">واجهة واسعة</button></div></div>`;
+  }else if(tab==='shop'){
+    content=`<div class="card"><h2>المتجر</h2><p>كود المتجر: <b>${esc(state.shopId||state.shopName||'-')}</b></p><div class="settings-compact-actions"><button class="btn secondary" id="settingsPolicies">السياسات</button><button class="btn secondary" id="settingsItems">الأصناف</button></div></div>`;
+  }else if(tab==='backup'){
+    content=`<div class="card"><h2>النسخ والاستيراد</h2><p class="muted">استخدم تصدير الأصناف والبيانات من الصفحات الخاصة بها.</p><div class="settings-compact-actions"><button class="btn secondary" id="settingsExportItems">الأصناف</button><button class="btn light" id="settingsExportReports">التقارير</button></div></div>`;
+  }else{
+    content=`<div class="card"><h2>التنبيهات</h2><p class="muted">عداد الرسائل والإشعارات يعمل حسب دعم الهاتف.</p><div class="settings-compact-actions"><button class="btn secondary" id="settingsOpenNotifications">فتح الإشعارات</button><button class="btn light" id="settingsOpenMessages">فتح الرسائل</button></div></div>`;
+  }
+  $('page_settings').innerHTML=pageTabsBar('settings',tab,tabs)+content;
+  setTimeout(()=>{
+    bindPageTabs('settings',renderSettings);
+    if($('settingsRefreshUi')) $('settingsRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())};
+    if($('settingsCleanCache')) $('settingsCleanCache').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?clean='+Date.now())};
+    if($('settingsUpdateApk')) $('settingsUpdateApk').onclick=()=>downloadApkUpdate();
+    if($('settingsCheckApk')) $('settingsCheckApk').onclick=()=>checkApkUpdateOnly(true);
+    if($('settingsLogout')) $('settingsLogout').onclick=()=>safeFullLogout('manual');
+    if($('settingsGoHome')) $('settingsGoHome').onclick=()=>show('home');
+    if($('settingsDisableLock')) $('settingsDisableLock').onclick=()=>{state.appLockEnabled=false;state.lockEnabled=false;save();msg('تم إلغاء القفل مؤقتًا','success');renderSettings()};
+    if($('settingsCompactOn')) $('settingsCompactOn').onclick=()=>{state.appearance=state.appearance||{};state.appearance.compact=true;save();applyAppearance();renderSettings()};
+    if($('settingsCompactOff')) $('settingsCompactOff').onclick=()=>{state.appearance=state.appearance||{};state.appearance.compact=false;save();applyAppearance();renderSettings()};
+    if($('settingsPolicies')) $('settingsPolicies').onclick=()=>show('policies');
+    if($('settingsItems')) $('settingsItems').onclick=()=>show('items');
+    if($('settingsExportItems')) $('settingsExportItems').onclick=()=>show('items');
+    if($('settingsExportReports')) $('settingsExportReports').onclick=()=>show('reports');
+    if($('settingsOpenNotifications')) $('settingsOpenNotifications').onclick=()=>show('notifications');
+    if($('settingsOpenMessages')) $('settingsOpenMessages').onclick=()=>show('messages');
+  });
+}
+function renderPolicies(){
+  const policies=(state.shopPolicies||cache.shop?.policies||{});
+  $('page_policies').innerHTML=pageHead('السياسات','إعدادات ظهور الأسعار والكميات والطلبات.')+`<div class="card"><h2>سياسات المتجر</h2><div class="grid"><div class="metric"><span class="muted">إظهار الأسعار</span><b>${policies.showPrices===false?'مخفي':'ظاهر'}</b></div><div class="metric"><span class="muted">إظهار الكميات</span><b>${policies.showStock===false?'مخفي':'ظاهر'}</b></div><div class="metric"><span class="muted">طلب غير المتوفر</span><b>${policies.allowOutOfStockOrders?'مسموح':'ممنوع'}</b></div></div><p class="muted">تعديل السياسات التفصيلي للتاجر فقط.</p></div>`;
+}
+function renderNotifications(){
+  const c=unreadCounters();
+  const rows=`<tr><td class="name">الرسائل</td><td>${c.messages||0}</td></tr><tr><td class="name">الإشعارات</td><td>${c.notifications||0}</td></tr>`;
+  renderBasicListPage('notifications','الإشعارات','ملخص الإشعارات الحالية.',rows,['النوع','العدد']);
+}
+function renderMessages(){
+  const msgs=(cache.messages||[]).slice(-30).reverse();
+  const rows=msgs.map(m=>`<tr><td class="name">${esc(m.senderName||m.fromName||m.actorName||'رسالة')}</td><td>${esc(m.text||m.body||m.message||'')}</td><td>${dt(m.createdMs)}</td></tr>`).join('');
+  $('page_messages').innerHTML=`<div class="card"><h2>الرسائل</h2><div class="field"><label>نص الرسالة</label><textarea id="messageText" placeholder="اكتب رسالتك هنا"></textarea></div><button class="btn ok" id="sendMessageBtn">إرسال</button></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>المرسل</th><th>الرسالة</th><th>التاريخ</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد رسائل</td></tr>'}</tbody></table></div>`;
+  setTimeout(()=>{ if($('sendMessageBtn')) $('sendMessageBtn').onclick=()=>msg('سيتم إرسال الرسائل حسب صلاحيات المتجر.','notice'); });
+}
+function renderShops(){
+  const links=state.customerLinks||[];
+  const rows=links.map(x=>`<tr><td class="name">${esc(x.shopName||x.shopId)}</td><td>${esc(x.shopId||'')}</td></tr>`).join('');
+  renderBasicListPage('shops','متاجري','المتاجر المرتبطة بحساب العميل.',rows,['المتجر','الكود']);
+}
+function renderShopCode(){
+  $('page_shopcode').innerHTML=`<div class="card"><h2>كود التاجر</h2><p>كود المحل: <b>${esc(state.shopId||'-')}</b></p><div class="field"><label>رابط الدعوة</label><input readonly value="${esc(shopJoinLink(state.shopId||''))}"></div></div>`;
+}
+function renderOwnerConsole(){
+  if(!isAppOwner()){ show('home'); return; }
+  renderBasicListPage('owner','لوحة المالك','مؤشرات وتحكم مالك التطبيق.',['<tr><td class="name">المتاجر</td><td>'+esc(String((cache.ownerShops||[]).length||'-'))+'</td></tr>'].join(''),['المؤشر','القيمة']);
+}
+
 function render(){
   applyAppearance();
   normalizeCustomerLinks();
@@ -2059,7 +2156,7 @@ function listenQuerySafe(target, ok, label='البيانات'){
   const fail=(e)=>{
     console.warn('Firestore listener failed:', label, e);
     if(e && (e.code==='permission-denied' || String(e.message||'').includes('permission'))){
-      msg('تم منع قراءة '+label+' بسبب الصلاحيات. حدّث التطبيق وانشر قواعد Firestore الجديدة، أو أعد تسجيل الدخول.', 'error');
+      showPermissionDeniedLogoutDialog(label, e);
     }
   };
   try{ const u=onSnapshot(target, ok, fail); unsub.push(u); return u; }
@@ -2100,10 +2197,9 @@ function goBack(){
 function renderPageLoadFallback(pageName){
   const el=$('page_'+pageName)||$('page_home');
   if(el){
-    el.innerHTML='<div class="card"><h2>هذه الصفحة تحتاج تحديث الواجهات</h2><p class="muted">لم يتم تحميل جزء من الصفحة بشكل صحيح. اضغط الزر التالي لتحديث الواجهة أو تنظيف الكاش.</p><div class="actions"><button class="btn ok" id="fallbackRefreshUi">تحديث الواجهات</button><button class="btn warn" id="fallbackCleanCache">تنظيف الكاش</button></div></div>';
+    el.innerHTML='<div class="card"><h2>القسم غير جاهز</h2><p class="muted">هذا القسم لا يحتوي شاشة كاملة في هذه النسخة، ويمكنك الرجوع للرئيسية أو تحديث الواجهات عند الحاجة.</p><div class="actions"><button class="btn ok" id="fallbackGoHome">الرئيسية</button><button class="btn secondary" id="fallbackRefreshUi">تحديث الواجهات</button></div></div>';
   }
-  setTimeout(()=>{if($('fallbackRefreshUi')) $('fallbackRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())}; if($('fallbackCleanCache')) $('fallbackCleanCache').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?clean='+Date.now())};});
-  showStartupRecoveryDialog('لم يتم تحميل صفحة '+pageName+' في النسخة الحالية.');
+  setTimeout(()=>{if($('fallbackGoHome')) $('fallbackGoHome').onclick=()=>show('home'); if($('fallbackRefreshUi')) $('fallbackRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())};});
 }
 function safeRendererForPage(p){
   const map={home:(typeof renderHome==='function'?renderHome:null),search:(typeof renderSearch==='function'?renderSearch:null),tasks:(typeof renderTasks==='function'?renderTasks:null),items:(typeof renderItems==='function'?renderItems:null),orders:(typeof renderOrders==='function'?renderOrders:null),customers:(typeof renderCustomers==='function'?renderCustomers:null),shops:(typeof renderShops==='function'?renderShops:null),messages:(typeof renderMessages==='function'?renderMessages:null),payments:(typeof renderPayments==='function'?renderPayments:null),invoices:(typeof renderInvoices==='function'?renderInvoices:null),statement:(typeof renderStatement==='function'?renderStatement:null),audit:(typeof renderAudit==='function'?renderAudit:null),stock:(typeof renderStock==='function'?renderStock:null),returns:(typeof renderReturns==='function'?renderReturns:null),schedules:(typeof renderSchedules==='function'?renderSchedules:null),collections:(typeof renderCollections==='function'?renderCollections:null),reports:(typeof renderReports==='function'?renderReports:null),policies:(typeof renderPolicies==='function'?renderPolicies:null),notifications:(typeof renderNotifications==='function'?renderNotifications:null),shopcode:(typeof renderShopCode==='function'?renderShopCode:null),settings:(typeof renderSettings==='function'?renderSettings:null),owner:(typeof renderOwnerConsole==='function'?renderOwnerConsole:null)};
