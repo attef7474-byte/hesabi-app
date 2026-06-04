@@ -21,6 +21,9 @@ service cloud.firestore {
     function canClaimCustomerByPhone(){ return signed() && resource.data.phoneKey is string && isAuthPhone(resource.data.phoneKey); }
     function onlyChanged(keys){ return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
 
+    function requestCustomerMatchesLink(shopId){ return signed() && hasCustomerLink(shopId) && request.resource.data.customerUid == request.auth.uid && request.resource.data.customerId == linkedCustomerId(shopId); }
+    function resourceCustomerMatchesLink(shopId){ return signed() && hasCustomerLink(shopId) && resource.data.customerId == linkedCustomerId(shopId) && (resource.data.customerUid == request.auth.uid || !('customerUid' in resource.data)); }
+
     match /shopPhones/{phoneKey} {
       allow read: if signed();
       allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
@@ -74,9 +77,9 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /purchaseRequests/{id} {
-        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId);
-        allow create: if isAppOwner() || isOwner(shopId) || (signed() && request.resource.data.customerUid == request.auth.uid && request.resource.data.customerId is string && shopActive(shopId));
-        allow update: if isAppOwner() || isOwner(shopId) || (isCustomerOwned(shopId) && request.resource.data.customerUid == request.auth.uid && onlyChanged(['items','total','paymentType','note','status','editedBy','editedAt','updatedAt','updatedMs','editCount']));
+        allow read: if isAppOwner() || isOwner(shopId) || isCustomerOwned(shopId) || resourceCustomerMatchesLink(shopId);
+        allow create: if isAppOwner() || isOwner(shopId) || (requestCustomerMatchesLink(shopId) && shopActive(shopId) && request.resource.data.status == 'pending_trader');
+        allow update: if isAppOwner() || isOwner(shopId) || (resourceCustomerMatchesLink(shopId) && requestCustomerMatchesLink(shopId) && request.resource.data.status in ['pending_trader','cancelled'] && onlyChanged(['items','lines','itemCount','qtyCount','total','paymentType','note','status','editedBy','editedAt','updatedAt','updatedMs','editCount','customerAck','customerAckAt','customerNote','customerRejectedAt']));
         allow delete: if false;
       }
       match /paymentRequests/{id} {

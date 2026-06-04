@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 42,
-  "latestVersionName": "1.0.42",
+  "latestVersionCode": 52,
+  "latestVersionName": "1.0.52",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.42",
-  "message": "إصلاح حلقة مربع حوار التشغيل، وإصلاح قفل التطبيق المفقود، وتحسين زر تحديث APK ليحمل آخر نسخة متوفرة.",
+  "title": "تحديث حسابي التجاري 1.0.52",
+  "message": "المرحلة التاسعة: تثبيت الرسائل والإشعارات والعداد وتحديث APK وتنظيف الكاش واستقرار الأجهزة القديمة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إصلاح shouldAppLock is not defined، إضافة وظائف تنظيف كاش وتحديث APK قوية، ومنع بقاء المستخدم في حلقة مربعات حوار متكررة.",
-  "notes": "إذا تعطل تحميل الواجهة تظهر للمستخدم أزرار تحديث الواجهات أو تنظيف الكاش أو تحديث APK.",
-  "versionName": "1.0.42",
-  "versionCode": 42,
+  "releaseNotes": "تحسين مركز الإشعارات، تصفير العدّاد، تفعيل التنبيهات، قراءة الرسائل، تحديث APK من آخر إصدار، وتحسين استقرار فتح التطبيق.",
+  "notes": "الفحص النهائي الشامل المرحلي: تسجيل، ربط، شراء، اعتماد، فواتير، سداد، مرتجعات، أقساط، أصناف، سياسات، رسائل، إشعارات، تحديثات وصلاحيات.",
+  "versionName": "1.0.52",
+  "versionCode": 52,
   "minimumSupportedVersionCode": 1,
   "forceRefresh": true
 }
