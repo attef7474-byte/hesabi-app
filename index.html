@@ -710,8 +710,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.53';
-const APP_BUILD_CODE=53;
+const APP_VERSION='1.0.54';
+const APP_BUILD_CODE=54;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -2216,7 +2216,7 @@ function goBack(){
   show(target);
 }
 function renderPageLoadFallback(pageName){
-  // 1.0.53: لا نعرض للمستخدم صفحة "غير جاهز" إلا إذا كانت الصفحة غير معروفة فعلاً.
+  // 1.0.54: لا نعرض للمستخدم صفحة "غير جاهز" إلا إذا كانت الصفحة غير معروفة فعلاً.
   // إذا حدث نقص في محرك العرض، نعيد بناء سجل الصفحات ثم نحاول مرة واحدة قبل إظهار شاشة استرداد.
   try{
     buildPageRendererRegistry();
@@ -4219,10 +4219,215 @@ function phase8ValidatePoliciesSettingsOwner(){
 }
 
 
+
+
+/* 1.0.54 FULL PAGE + BUTTON AUDIT HOTFIX
+   الهدف: لا يوجد زر داخل الصفحات يستدعي دالة غير موجودة، ولا تظهر صفحة "القسم غير جاهز" للصفحات المكتملة.
+   هذه الدوال تعيد ربط ما فُقد أثناء تجميع المراحل السابقة وتمنع تخريب صفحة كانت تعمل سابقًا. */
+let selectedItemIdsForDelete = globalThis.__selectedItemIdsForDelete || new Set();
+globalThis.__selectedItemIdsForDelete = selectedItemIdsForDelete;
+function fieldValue(id){return String($(id)?.value||'').trim();}
+function numericValue(id, fallback=0){const n=Number($(id)?.value); return Number.isFinite(n)?n:Number(fallback||0);}
+function normalizeItemKey(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ');}
+function selectedItemsArray(){return [...selectedItemIdsForDelete].filter(Boolean);}
+function clearSelectedItems(){selectedItemIdsForDelete.clear();}
+function itemDuplicateExists({name='',barcode='',excludeId=''}={}){
+  const n=normalizeItemKey(name), b=normalizeItemKey(barcode);
+  return (cache.items||[]).some(i=>i && i.id!==excludeId && i.isDeleted!==true && ((b && normalizeItemKey(i.barcode||i.code)===b) || (n && normalizeItemKey(i.name)===n)));
+}
+function currentItemDoc(itemId){return doc(db,'shops',state.shopId,'items',itemId);}
+function safeItemById(itemId){return (cache.items||[]).find(i=>i.id===itemId)||null;}
+function ensureTraderOrStop(action){return requireTraderAction(action||'هذه العملية');}
+
+async function addItem(){
+  try{
+    if(!ensureTraderOrStop('إضافة صنف')) return;
+    const name=fieldValue('itemName');
+    const category=fieldValue('itemCategory')||'عام';
+    const unit=fieldValue('itemUnit')||'حبة';
+    const barcode=fieldValue('itemBarcode');
+    const notes=fieldValue('itemNotes');
+    if(!name){msg('اكتب اسم الصنف قبل الحفظ.','error');return;}
+    if(itemDuplicateExists({name,barcode})){msg('لا يمكن حفظ صنف مكرر بنفس الاسم أو نفس الباركود.','error');return;}
+    const cashPrice=numericValue('itemCashPrice',0);
+    const creditPrice=numericValue('itemCreditPrice',cashPrice);
+    const stock=numericValue('itemStock',0);
+    const minStock=numericValue('itemMinStock',0);
+    const now=Date.now();
+    const ref=doc(collection(db,'shops',state.shopId,'items'));
+    await setDoc(ref,{id:ref.id,shopId:state.shopId,name,category,unit,barcode,code:barcode,notes,cashPrice,creditPrice,price:cashPrice,stock,minStock,isActive:true,customerVisible:true,createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now,createdBy:uid(),createdByName:actorName()});
+    if(stock!==0){await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,type:'opening',qty:stock,qtyChange:stock,beforeQty:0,afterQty:stock,reason:'رصيد افتتاحي عند إضافة الصنف',createdAt:serverTimestamp(),createdMs:now,actorUid:uid(),actorName:actorName()});}
+    await addAudit('add_item',{itemId:ref.id,name,stock,cashPrice,creditPrice});
+    ['itemName','itemBarcode','itemNotes'].forEach(id=>{const el=$(id); if(el) el.value='';});
+    if($('itemStock')) $('itemStock').value='0';
+    state.itemsTab='list'; save(); msg('تم حفظ الصنف بنجاح.','success'); renderItems();
+  }catch(e){console.error('addItem failed',e); msg('تعذر حفظ الصنف: '+friendlyFirestoreError(e),'error');}
+}
+function selectItemForEdit(itemId){
+  if(!ensureTraderOrStop('تعديل صنف')) return;
+  state.editItemId=itemId; state.itemsTab='edit'; save(); renderItems();
+}
+async function saveSelectedItemEdit(){
+  try{
+    if(!ensureTraderOrStop('تعديل صنف')) return;
+    const itemId=state.editItemId; const old=safeItemById(itemId); if(!old){msg('اختر الصنف أولًا.','error');return;}
+    const name=fieldValue('editItemName'); const barcode=fieldValue('editItemBarcode');
+    if(!name){msg('اسم الصنف مطلوب.','error');return;}
+    if(itemDuplicateExists({name,barcode,excludeId:itemId})){msg('لا يمكن تكرار الاسم أو الباركود مع صنف آخر.','error');return;}
+    const beforeQty=Number(old.stock||0), afterQty=numericValue('editItemStock',beforeQty), diff=afterQty-beforeQty;
+    const payload={name,category:fieldValue('editItemCategory')||'عام',unit:fieldValue('editItemUnit')||'حبة',barcode,code:barcode,notes:fieldValue('editItemNotes'),cashPrice:numericValue('editItemCashPrice',0),creditPrice:numericValue('editItemCreditPrice',numericValue('editItemCashPrice',0)),price:numericValue('editItemCashPrice',0),stock:afterQty,minStock:numericValue('editItemMinStock',0),customerVisible:String($('editItemCustomerVisible')?.value||'true')!=='false',updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()};
+    await updateDoc(currentItemDoc(itemId),payload);
+    if(diff!==0){await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId,itemName:name,type:diff>0?'adjustment_add':'adjustment_remove',qty:Math.abs(diff),qtyChange:diff,beforeQty,afterQty,reason:'تعديل كمية من نموذج الصنف',createdAt:serverTimestamp(),createdMs:Date.now(),actorUid:uid(),actorName:actorName()});}
+    await addAudit('edit_item',{itemId,name,diff});
+    state.editItemId=''; state.itemsTab='list'; save(); msg('تم حفظ تعديل الصنف.','success'); renderItems();
+  }catch(e){console.error('saveSelectedItemEdit failed',e); msg('تعذر تعديل الصنف: '+friendlyFirestoreError(e),'error');}
+}
+async function saveItemPriceQuick(itemId){
+  try{
+    if(!ensureTraderOrStop('تعديل سعر صنف')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const cashPrice=Number($('priceCash_'+itemId)?.value||0), creditPrice=Number($('priceCredit_'+itemId)?.value||cashPrice);
+    if(cashPrice<0 || creditPrice<0 || !Number.isFinite(cashPrice) || !Number.isFinite(creditPrice)){msg('السعر غير صحيح.','error');return;}
+    await updateDoc(currentItemDoc(itemId),{cashPrice,creditPrice,price:cashPrice,updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()});
+    await addAudit('quick_price_update',{itemId,itemName:item.name,cashPrice,creditPrice});
+    msg('تم حفظ السعر.','success');
+  }catch(e){console.error('saveItemPriceQuick failed',e); msg('تعذر حفظ السعر: '+friendlyFirestoreError(e),'error');}
+}
+async function toggleItemCustomerVisible(itemId){
+  try{
+    if(!ensureTraderOrStop('إظهار أو إخفاء صنف')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const customerVisible=item.customerVisible===false;
+    await updateDoc(currentItemDoc(itemId),{customerVisible,updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()});
+    await addAudit('toggle_item_customer_visible',{itemId,itemName:item.name,customerVisible});
+    msg(customerVisible?'تم إظهار الصنف للعملاء.':'تم إخفاء الصنف عن العملاء.','success'); renderItems();
+  }catch(e){console.error('toggleItemCustomerVisible failed',e); msg('تعذر تحديث ظهور الصنف: '+friendlyFirestoreError(e),'error');}
+}
+async function deleteSingleItem(itemId){
+  try{
+    if(!ensureTraderOrStop('حذف صنف')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const ok=await confirmDialog('حذف صنف','سيتم حذف الصنف من قائمة الأصناف. هل تريد المتابعة؟','حذف'); if(!ok) return;
+    await deleteDoc(currentItemDoc(itemId)); selectedItemIdsForDelete.delete(itemId); await addAudit('delete_item',{itemId,itemName:item.name}); msg('تم حذف الصنف.','success'); renderItems();
+  }catch(e){console.error('deleteSingleItem failed',e); msg('تعذر حذف الصنف: '+friendlyFirestoreError(e),'error');}
+}
+async function deleteItemsByIds(ids){
+  try{
+    if(!ensureTraderOrStop('حذف عدة أصناف')) return;
+    ids=(ids||[]).filter(Boolean); if(!ids.length){msg('حدد أصنافًا للحذف.','error');return;}
+    const ok=await confirmDialog('حذف الأصناف المحددة','سيتم حذف '+ids.length+' صنف. هل تريد المتابعة؟','حذف المحدد'); if(!ok) return;
+    const batch=writeBatch(db); ids.forEach(id=>batch.delete(currentItemDoc(id))); await batch.commit(); clearSelectedItems(); await addAudit('delete_items_bulk',{count:ids.length,ids}); msg('تم حذف الأصناف المحددة.','success'); renderItems();
+  }catch(e){console.error('deleteItemsByIds failed',e); msg('تعذر حذف الأصناف: '+friendlyFirestoreError(e),'error');}
+}
+async function adjustStockItem(itemId,newQty,reason='تسوية مخزون'){
+  try{
+    if(!ensureTraderOrStop('تسوية المخزون')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const beforeQty=Number(item.stock||0), afterQty=Number(newQty);
+    if(!Number.isFinite(afterQty) || afterQty<0){msg('الكمية غير صحيحة.','error');return;}
+    const diff=afterQty-beforeQty; if(diff===0){msg('لم تتغير الكمية.','notice');return;}
+    await updateDoc(currentItemDoc(itemId),{stock:afterQty,updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()});
+    await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId,itemName:item.name,type:'adjustment_set',qty:Math.abs(diff),qtyChange:diff,beforeQty,afterQty,reason,createdAt:serverTimestamp(),createdMs:Date.now(),actorUid:uid(),actorName:actorName()});
+    await addAudit('stock_adjustment',{itemId,itemName:item.name,beforeQty,afterQty,diff,reason});
+    msg('تمت تسوية المخزون.','success'); renderStock();
+  }catch(e){console.error('adjustStockItem failed',e); msg('تعذر تسوية المخزون: '+friendlyFirestoreError(e),'error');}
+}
+function openStockAdjustmentDialog(itemId){
+  const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+  const v=prompt('الكمية الجديدة للصنف: '+item.name, Number(item.stock||0)); if(v===null) return;
+  const r=prompt('سبب التسوية:', 'تسوية مخزون يدوية') || 'تسوية مخزون يدوية';
+  adjustStockItem(itemId,Number(v),r);
+}
+function editStock(itemId){openStockAdjustmentDialog(itemId);}
+
+function editableCustomerOrder(order){return state.role==='customer' && order && order.source==='customer' && order.customerId===state.customerId && (order.status==='pending'||order.status==='pending_trader');}
+function clearOrderEditing(){const cs=catalogState(); delete cs.editingOrderId; delete cs.editingOrderNo; saveCatalog();}
+function loadOrderForEdit(orderId){
+  const o=(cache.orders||[]).find(x=>x.id===orderId); if(!editableCustomerOrder(o)){msg('لا يمكن تعديل هذا الطلب لأنه لم يعد بانتظار موافقة التاجر.','error');return;}
+  const cs=catalogState(); cs.cart={};
+  for(const l of (o.items||o.lines||[])){const item=safeItemById(l.itemId); const qty=Math.max(0,Number(l.qty||l.quantity||0)); if(item && qty>0) cs.cart[l.itemId]=qty;}
+  cs.editingOrderId=orderId; cs.editingOrderNo=o.id; cs.purchaseMode='invoice'; saveCatalog(); show('items'); setTimeout(()=>{if($('payType')) $('payType').value=o.paymentType||'credit'; if($('orderNote')) $('orderNote').value=o.note||'';},80); msg('تم فتح الطلب للتعديل.','success');
+}
+async function cancelCustomerOrder(orderId){
+  try{
+    const o=(cache.orders||[]).find(x=>x.id===orderId); if(!editableCustomerOrder(o)){msg('لا يمكن إلغاء هذا الطلب.','error');return;}
+    const ok=await confirmDialog('إلغاء الطلب','هل تريد إلغاء طلب الشراء قبل مراجعته من التاجر؟','إلغاء الطلب'); if(!ok)return;
+    await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'cancelled',customerNote:'إلغاء من العميل',cancelledBy:uid(),cancelledAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    await addAudit('cancel_customer_order',{orderId}); msg('تم إلغاء الطلب.','success'); renderOrders();
+  }catch(e){console.error('cancelCustomerOrder failed',e); msg('تعذر إلغاء الطلب: '+friendlyFirestoreError(e),'error');}
+}
+async function addManualCustomer(){
+  try{
+    if(!ensureTraderOrStop('إضافة عميل')) return;
+    const name=fieldValue('newCustomerName'), phoneRaw=fieldValue('newCustomerPhone'), phone=normalizePhone(phoneRaw);
+    if(!name || !phone){msg('اسم العميل ورقم الهاتف مطلوبان.','error');return;}
+    const exists=(cache.customers||[]).find(c=>normalizePhone(c.phone)===phone); if(exists){msg('هذا العميل موجود مسبقًا.','error');return;}
+    const now=Date.now(); const ref=doc(collection(db,'shops',state.shopId,'customers'));
+    const opening=numericValue('newCustomerOpening',0), limit=numericValue('newCustomerLimit',0), status=fieldValue('newCustomerStatus')||'active';
+    await setDoc(ref,{id:ref.id,shopId:state.shopId,name,phone,phoneRaw,creditLimit:limit,balance:opening,status,note:fieldValue('newCustomerNote'),createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now,createdBy:uid()});
+    if(opening){await addDoc(collection(db,'shops',state.shopId,'customerLedger'),{shopId:state.shopId,customerId:ref.id,customerName:name,type:'opening_balance',amount:opening,note:'رصيد افتتاحي',createdAt:serverTimestamp(),createdMs:now,actorUid:uid(),actorName:actorName()});}
+    await addAudit('add_customer',{customerId:ref.id,name,phone,opening,limit,status}); msg('تم حفظ العميل.','success'); renderCustomers();
+  }catch(e){console.error('addManualCustomer failed',e); msg('تعذر حفظ العميل: '+friendlyFirestoreError(e),'error');}
+}
+async function setCreditLimit(customerId){
+  try{if(!ensureTraderOrStop('تعديل سقف العميل')) return; const c=(cache.customers||[]).find(x=>x.id===customerId); if(!c){msg('العميل غير موجود.','error');return;} const v=prompt('سقف الدين للعميل '+(c.name||''), Number(c.creditLimit||0)); if(v===null)return; const limit=Number(v); if(!Number.isFinite(limit)||limit<0){msg('السقف غير صحيح.','error');return;} await updateDoc(doc(db,'shops',state.shopId,'customers',customerId),{creditLimit:limit,updatedAt:serverTimestamp(),updatedMs:Date.now()}); await addAudit('set_credit_limit',{customerId,limit}); msg('تم تحديث سقف الدين.','success'); renderCustomers();}catch(e){msg('تعذر تحديث السقف: '+friendlyFirestoreError(e),'error');}
+}
+async function setCustomerStatus(customerId,status){
+  try{if(!ensureTraderOrStop('تعديل حالة العميل')) return; await updateDoc(doc(db,'shops',state.shopId,'customers',customerId),{status,updatedAt:serverTimestamp(),updatedMs:Date.now()}); await addAudit('set_customer_status',{customerId,status}); msg('تم تحديث حالة العميل.','success'); renderCustomers();}catch(e){msg('تعذر تحديث حالة العميل: '+friendlyFirestoreError(e),'error');}
+}
+async function sendTraderSale(){
+  try{
+    if(!ensureTraderOrStop('إنشاء طلب بيع للعميل')) return;
+    const customerId=$('saleCustomer')?.value; const c=(cache.customers||[]).find(x=>x.id===customerId); if(!c){msg('اختر العميل.','error');return;}
+    const lines=[]; for(const inp of document.querySelectorAll('[data-sale-qty]')){const qty=Number(inp.value||0); if(qty>0){const item=safeItemById(inp.dataset.itemId); if(item){const price=effectiveItemPrice(item,$('salePayType')?.value||'credit'); lines.push({itemId:item.id,name:item.name,qty,price,total:qty*price,unit:item.unit||'حبة'});}}}
+    if(!lines.length){msg('اختر صنفًا واحدًا على الأقل.','error');return;}
+    const total=lines.reduce((a,l)=>a+Number(l.total||0),0); const now=Date.now();
+    await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,source:'trader',customerId:c.id,customerUid:c.customerUid||'',customerName:c.name,customerPhone:c.phone,items:lines,lines,total,paymentType:$('salePayType')?.value||'credit',dueDate:$('saleDueDate')?.value||'',priority:$('salePriority')?.value||'normal',note:fieldValue('saleNote'),status:'pending_customer',createdBy:uid(),createdByRole:'trader',createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now});
+    await addAudit('send_trader_sale',{customerId:c.id,total,count:lines.length}); msg('تم إرسال الطلب للعميل.','success'); renderOrders(); show('orders');
+  }catch(e){console.error('sendTraderSale failed',e); msg('تعذر إرسال الطلب للعميل: '+friendlyFirestoreError(e),'error');}
+}
+function ledgerRowsForCustomer(customerId){
+  let rows=(cache.customerLedger||[]).filter(x=>x.customerId===customerId);
+  if(rows.length) return rows.sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+  const invs=(cache.invoices||[]).filter(x=>x.customerId===customerId).map(x=>({type:x.paymentType==='credit'?'debit_invoice':'cash_invoice',amount:Number(x.total||0),note:'فاتورة '+(x.invoiceNo||x.id),createdMs:x.createdMs||0}));
+  const pays=(cache.payments||[]).filter(x=>x.customerId===customerId&&x.status==='approved').map(x=>({type:'payment',amount:-Number(x.amount||0),note:'سداد مقبول '+(x.method||''),createdMs:x.createdMs||0}));
+  return [...invs,...pays].sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+}
+async function shareStatementText(customerId){
+  try{const c=state.role==='customer'?customerDebtInfo().c:(cache.customers||[]).find(x=>x.id===customerId)||{}; const rows=ledgerRowsForCustomer(customerId||c.id||state.customerId); let running=0; const body=rows.map(r=>{running+=Number(r.amount||0); return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`;}).join('\n'); const text=`كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\n----------------\n${body||'لا توجد حركات.'}`; if(navigator.share) await navigator.share({title:'كشف حساب',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب.','success');}}catch(e){msg('تعذر مشاركة كشف الحساب: '+friendlyFirestoreError(e),'error');}
+}
+
+function stopItemBarcodeScanner(showMsg=true){try{const v=$('itemBarcodeVideo'); if(v && v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop()); v.srcObject=null;} if(v) v.classList.remove('active'); if(showMsg) msg('تم إيقاف الماسح.','notice');}catch(e){}}
+async function startItemBarcodeScanner(){msg('افتح الكاميرا/الماسح من التطبيق أو استخدم إدخال الباركود يدويًا.','notice');}
+async function scanItemBarcodeStillFrame(){msg('قراءة اللقطة غير متاحة في هذا الجهاز. أدخل الكود يدويًا أو استخدم الماسح الداخلي.','notice');}
+async function startEmbeddedItemBarcodeScanner(){try{if(window.AndroidBridge?.scanBarcode){window.AndroidBridge.scanBarcode('itemBarcode');return;} msg('الماسح الداخلي غير متاح في هذه النسخة. استخدم إدخال الباركود يدويًا.','notice');}catch(e){msg('تعذر فتح الماسح.','error');}}
+async function startExternalItemBarcodeScanner(){try{if(window.AndroidBridge?.scanBarcodeExternal){window.AndroidBridge.scanBarcodeExternal('itemBarcode');return;} msg('تطبيق الماسح الخارجي غير متاح.','notice');}catch(e){msg('تعذر فتح الماسح الخارجي.','error');}}
+async function startItemOcrNative(){try{if(window.AndroidBridge?.scanText){window.AndroidBridge.scanText('itemName');return;} msg('OCR غير متاح على هذا الجهاز.','notice');}catch(e){msg('تعذر تشغيل OCR.','error');}}
+function usePendingItemBarcodeCandidate(){const code=state.pendingItemBarcode||''; if(code && $('itemBarcode')){$('itemBarcode').value=code; msg('تم اعتماد الكود المقروء.','success');} else msg('لا يوجد كود مقروء لاعتماده.','notice');}
+function openItemsExcelImport(){const f=$('itemsExcelImportFile'); if(f) f.click(); else msg('حقل اختيار ملف Excel غير موجود في الصفحة.','error');}
+function exportItemsToExcel(){exportCsv('hesabi-items.csv',['name','barcode','category','unit','cashPrice','creditPrice','stock'],cache.items||[]);}
+function exportInvoicesCsv(){exportCsv('hesabi-invoices.csv',['invoiceNo','customerName','paymentType','total','createdMs'],cache.invoices||[]);}
+function exportPaymentsCsv(){exportCsv('hesabi-payments.csv',['customerName','amount','method','reference','status','createdMs'],cache.payments||[]);}
+function exportCustomersCsv(){exportCsv('hesabi-customers.csv',['name','phone','balance','creditLimit','status'],cache.customers||[]);}
+function exportCsv(filename, cols, rows){try{const escCsv=v=>'"'+String(v??'').replace(/"/g,'""')+'"'; const csv='\ufeff'+cols.join(',')+'\n'+(rows||[]).map(r=>cols.map(c=>escCsv(c==='createdMs'&&r[c]?new Date(Number(r[c])).toLocaleString('ar-YE'):r[c])).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); msg('تم تجهيز ملف التصدير.','success');}catch(e){msg('تعذر التصدير: '+String(e.message||e),'error');}}
+async function deleteAllItemsAndStock(){try{if(!ensureTraderOrStop('حذف كل الأصناف')) return; const ok=await confirmDialog('حذف كل الأصناف','سيتم حذف كل الأصناف وحركات المخزون المرتبطة. تأكد أنك صدّرت نسخة احتياطية. هل تريد المتابعة؟','حذف الكل'); if(!ok)return; const batch=writeBatch(db); (cache.items||[]).forEach(i=>batch.delete(doc(db,'shops',state.shopId,'items',i.id))); (cache.stockLedger||[]).forEach(x=>batch.delete(doc(db,'shops',state.shopId,'stockLedger',x.id))); await batch.commit(); clearSelectedItems(); await addAudit('delete_all_items',{count:(cache.items||[]).length}); msg('تم حذف كل الأصناف.','success'); renderItems();}catch(e){msg('تعذر حذف كل الأصناف: '+friendlyFirestoreError(e),'error');}}
+async function shareBusinessReport(){try{const text=`تقرير حسابي التجاري\nالمتجر: ${cache.shop?.name||state.shopName||''}\nالفواتير: ${(cache.invoices||[]).length}\nالسداد: ${(cache.payments||[]).length}\nالعملاء: ${(cache.customers||[]).length}\nالأصناف: ${(cache.items||[]).length}`; if(navigator.share) await navigator.share({title:'تقرير حسابي التجاري',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير.','success');}}catch(e){msg('تعذر مشاركة التقرير.','error');}}
+
+function fullPageButtonAudit(){
+  const renderers=buildPageRendererRegistry();
+  const pages=['home','search','tasks','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'];
+  const missingRenderers=pages.filter(p=>typeof renderers[p]!=='function');
+  const must=['addItem','saveSelectedItemEdit','saveItemPriceQuick','toggleItemCustomerVisible','deleteSingleItem','deleteItemsByIds','adjustStockItem','editStock','loadOrderForEdit','cancelCustomerOrder','addManualCustomer','setCreditLimit','setCustomerStatus','sendTraderSale','shareStatementText','stopItemBarcodeScanner','startItemBarcodeScanner','scanItemBarcodeStillFrame','startEmbeddedItemBarcodeScanner','startExternalItemBarcodeScanner','startItemOcrNative','usePendingItemBarcodeCandidate','openItemsExcelImport','exportItemsToExcel','exportInvoicesCsv','exportPaymentsCsv','exportCustomersCsv','deleteAllItemsAndStock','shareBusinessReport'];
+  const missingFunctions=must.filter(n=>{try{return typeof eval(n)!=='function'}catch(e){return true}});
+  return {ok:!missingRenderers.length&&!missingFunctions.length,version:APP_VERSION,build:APP_BUILD_CODE,missingRenderers,missingFunctions};
+}
+window.hesabiPageButtonAudit=fullPageButtonAudit;
+
+
 /* Phase 10 final audit: non-intrusive runtime self-check helpers. */
 function phase10FinalSelfCheck(){
   const requiredFunctions=[
-    'render','show','renderProfileSetup','ensureLiveDataListeners','renderCustomerItemsReadonly','renderCustomerAddItemsPage','addItemToPurchaseInvoice','sendCustomerOrder','approveOrder','rejectOrder','sendPayment','approvePayment','rejectPayment','sendReturnRequest','approveReturn','rejectReturn','createSchedule','paySchedule','renderItems','addItem','saveSelectedItemEdit','saveItemPriceQuick','deleteSingleItem','deleteItemsByIds','adjustStockItem','renderPolicies','saveShopPoliciesPhase8','renderSettings','renderMessages','renderNotifications','renderOwnerConsole','downloadApkUpdate','refreshWebUiNow','showPermissionDeniedLogoutDialog','safeFullLogout'
+    'render','show','renderProfileSetup','ensureLiveDataListeners','renderCustomerItemsReadonly','renderCustomerAddItemsPage','addItemToPurchaseInvoice','sendCustomerOrder','approveOrder','rejectOrder','sendPayment','approvePayment','rejectPayment','sendReturnRequest','approveReturn','rejectReturn','createSchedule','paySchedule','renderItems','addItem','saveSelectedItemEdit','saveItemPriceQuick','toggleItemCustomerVisible','deleteSingleItem','deleteItemsByIds','adjustStockItem','editStock','loadOrderForEdit','cancelCustomerOrder','addManualCustomer','setCreditLimit','setCustomerStatus','sendTraderSale','shareStatementText','renderPolicies','saveShopPoliciesPhase8','renderSettings','renderMessages','renderNotifications','renderOwnerConsole','downloadApkUpdate','refreshWebUiNow','showPermissionDeniedLogoutDialog','safeFullLogout'
   ];
   const missing=[];
   for(const n of requiredFunctions){ try{ if(typeof eval(n)!=='function') missing.push(n); }catch(e){ missing.push(n); } }
@@ -4233,7 +4438,7 @@ function phase10FinalSelfCheck(){
 window.hesabiFinalSelfCheck=function(){ try{return phase10FinalSelfCheck();}catch(e){return {ok:false,error:String(e&&e.message||e),version:APP_VERSION,build:APP_BUILD_CODE};} };
 
 
-/* 1.0.53: بناء سجل عرض الصفحات بعد تحميل كل الدوال حتى لا تظهر كل الصفحات كأقسام غير جاهزة. */
+/* 1.0.54: بناء سجل عرض الصفحات بعد تحميل كل الدوال حتى لا تظهر كل الصفحات كأقسام غير جاهزة. */
 buildPageRendererRegistry();
 
 

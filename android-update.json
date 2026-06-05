@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 53,
-  "latestVersionName": "1.0.53",
+  "latestVersionCode": 54,
+  "latestVersionName": "1.0.54",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.53",
-  "message": "المرحلة التاسعة: تثبيت الرسائل والإشعارات والعداد وتحديث APK وتنظيف الكاش واستقرار الأجهزة القديمة.",
+  "title": "تحديث حسابي التجاري 1.0.54",
+  "message": "إصلاح شامل لسجل الصفحات والأزرار ومنع ظهور القسم غير جاهز أو دوال غير معرفة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "تحسين مركز الإشعارات، تصفير العدّاد، تفعيل التنبيهات، قراءة الرسائل، تحديث APK من آخر إصدار، وتحسين استقرار فتح التطبيق.",
-  "notes": "إصلاح سجل عرض الصفحات ومنع ظهور القسم غير جاهز في الصفحات المكتملة.",
-  "versionName": "1.0.53",
-  "versionCode": 53,
+  "releaseNotes": "مراجعة ربط الصفحات والدوال، استرجاع دوال الأصناف والعملاء والتقارير والتصدير والماسح، وتفعيل فحص داخلي للصفحات والأزرار.",
+  "notes": "Full Page and Button Audit Hotfix",
+  "versionName": "1.0.54",
+  "versionCode": 54,
   "minimumSupportedVersionCode": 1,
   "forceRefresh": true
 }
