@@ -710,8 +710,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.52';
-const APP_BUILD_CODE=52;
+const APP_VERSION='1.0.53';
+const APP_BUILD_CODE=53;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -2216,15 +2216,49 @@ function goBack(){
   show(target);
 }
 function renderPageLoadFallback(pageName){
+  // 1.0.53: لا نعرض للمستخدم صفحة "غير جاهز" إلا إذا كانت الصفحة غير معروفة فعلاً.
+  // إذا حدث نقص في محرك العرض، نعيد بناء سجل الصفحات ثم نحاول مرة واحدة قبل إظهار شاشة استرداد.
+  try{
+    buildPageRendererRegistry();
+    const fn = globalThis.__hesabiRenderers && globalThis.__hesabiRenderers[pageName];
+    if(typeof fn==='function') { fn(); return; }
+  }catch(e){ console.warn('fallback retry failed', pageName, e); }
   const el=$('page_'+pageName)||$('page_home');
   if(el){
-    el.innerHTML='<div class="card"><h2>القسم غير جاهز</h2><p class="muted">هذا القسم لا يحتوي شاشة كاملة في هذه النسخة، ويمكنك الرجوع للرئيسية أو تحديث الواجهات عند الحاجة.</p><div class="actions"><button class="btn ok" id="fallbackGoHome">الرئيسية</button><button class="btn secondary" id="fallbackRefreshUi">تحديث الواجهات</button></div></div>';
+    el.innerHTML='<div class="card"><h2>تعذر فتح القسم</h2><p class="muted">لم يتم العثور على شاشة هذا القسم داخل الواجهة الحالية. جرّب تحديث الواجهات أو الرجوع للرئيسية.</p><div class="actions"><button class="btn ok" id="fallbackGoHome">الرئيسية</button><button class="btn secondary" id="fallbackRefreshUi">تحديث الواجهات</button></div></div>';
   }
   setTimeout(()=>{if($('fallbackGoHome')) $('fallbackGoHome').onclick=()=>show('home'); if($('fallbackRefreshUi')) $('fallbackRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())};});
 }
+function buildPageRendererRegistry(){
+  globalThis.__hesabiRenderers={
+    home:typeof renderHome==='function'?renderHome:null,
+    search:typeof renderSearch==='function'?renderSearch:null,
+    tasks:typeof renderTasks==='function'?renderTasks:null,
+    items:typeof renderItems==='function'?renderItems:null,
+    orders:typeof renderOrders==='function'?renderOrders:null,
+    customers:typeof renderCustomers==='function'?renderCustomers:null,
+    shops:typeof renderShops==='function'?renderShops:null,
+    messages:typeof renderMessages==='function'?renderMessages:null,
+    payments:typeof renderPayments==='function'?renderPayments:null,
+    invoices:typeof renderInvoices==='function'?renderInvoices:null,
+    statement:typeof renderStatement==='function'?renderStatement:null,
+    audit:typeof renderAudit==='function'?renderAudit:null,
+    stock:typeof renderStock==='function'?renderStock:null,
+    returns:typeof renderReturns==='function'?renderReturns:null,
+    schedules:typeof renderSchedules==='function'?renderSchedules:null,
+    collections:typeof renderCollections==='function'?renderCollections:null,
+    reports:typeof renderReports==='function'?renderReports:null,
+    policies:typeof renderPolicies==='function'?renderPolicies:null,
+    notifications:typeof renderNotifications==='function'?renderNotifications:null,
+    shopcode:typeof renderShopCode==='function'?renderShopCode:null,
+    settings:typeof renderSettings==='function'?renderSettings:null,
+    owner:typeof renderOwnerConsole==='function'?renderOwnerConsole:null
+  };
+  return globalThis.__hesabiRenderers;
+}
 function safeRendererForPage(p){
-  const map={home:(typeof renderHome==='function'?renderHome:null),search:(typeof renderSearch==='function'?renderSearch:null),tasks:(typeof renderTasks==='function'?renderTasks:null),items:(typeof renderItems==='function'?renderItems:null),orders:(typeof renderOrders==='function'?renderOrders:null),customers:(typeof renderCustomers==='function'?renderCustomers:null),shops:(typeof renderShops==='function'?renderShops:null),messages:(typeof renderMessages==='function'?renderMessages:null),payments:(typeof renderPayments==='function'?renderPayments:null),invoices:(typeof renderInvoices==='function'?renderInvoices:null),statement:(typeof renderStatement==='function'?renderStatement:null),audit:(typeof renderAudit==='function'?renderAudit:null),stock:(typeof renderStock==='function'?renderStock:null),returns:(typeof renderReturns==='function'?renderReturns:null),schedules:(typeof renderSchedules==='function'?renderSchedules:null),collections:(typeof renderCollections==='function'?renderCollections:null),reports:(typeof renderReports==='function'?renderReports:null),policies:(typeof renderPolicies==='function'?renderPolicies:null),notifications:(typeof renderNotifications==='function'?renderNotifications:null),shopcode:(typeof renderShopCode==='function'?renderShopCode:null),settings:(typeof renderSettings==='function'?renderSettings:null),owner:(typeof renderOwnerConsole==='function'?renderOwnerConsole:null)};
-  return typeof map[p]==='function'?map[p]:(()=>renderPageLoadFallback(p));
+  const reg = (globalThis.__hesabiRenderers && Object.keys(globalThis.__hesabiRenderers).length) ? globalThis.__hesabiRenderers : buildPageRendererRegistry();
+  return typeof reg[p]==='function'?reg[p]:null;
 }
 function show(p){
   try{stopItemBarcodeScanner(false)}catch(e){}
@@ -2235,8 +2269,14 @@ function show(p){
   active=p;
   ['home','search','tasks','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
   renderNav();
-  const renderer=safeRendererForPage(p) || renderHome;
-  try{ renderer(); }catch(e){ console.error('page render failed',p,e); renderPageLoadFallback(p); }
+  const renderer=safeRendererForPage(p);
+  try{
+    if(typeof renderer==='function') renderer();
+    else { console.warn('missing renderer for page',p); renderPageLoadFallback(p); }
+  }catch(e){
+    console.error('page render failed',p,e);
+    showAppDialog('تعذر تشغيل الصفحة','حدث خطأ داخل هذا القسم: '+String(e.message||e),'warn',[{text:'الرئيسية',cls:'ok',fn:()=>show('home')},{text:'تحديث الواجهات',cls:'secondary',fn:async()=>{try{await refreshWebUiNow()}catch(x){} location.replace(location.pathname+'?v='+Date.now())}}]);
+  }
   if(['orders','payments','returns','schedules'].includes(p) && markPageNotificationsRead(p)){
     renderNav();
     updateAndroidLauncherBadge();
@@ -4191,6 +4231,11 @@ function phase10FinalSelfCheck(){
   return {ok:missing.length===0 && missingPages.length===0, version:APP_VERSION, build:APP_BUILD_CODE, missingFunctions:missing, missingPages};
 }
 window.hesabiFinalSelfCheck=function(){ try{return phase10FinalSelfCheck();}catch(e){return {ok:false,error:String(e&&e.message||e),version:APP_VERSION,build:APP_BUILD_CODE};} };
+
+
+/* 1.0.53: بناء سجل عرض الصفحات بعد تحميل كل الدوال حتى لا تظهر كل الصفحات كأقسام غير جاهزة. */
+buildPageRendererRegistry();
+
 
 
 (async function boot(){
