@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 55,
-  "latestVersionName": "1.0.55",
+  "latestVersionCode": 56,
+  "latestVersionName": "1.0.56",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.55",
-  "message": "فحص تفصيلي منفرد للصفحات والأزرار والنماذج وإصلاح دوال الربط المفقودة والصفحات غير الجاهزة.",
+  "title": "تحديث حسابي التجاري 1.0.56",
+  "message": "إصلاح حرج لخطأ تشغيل الواجهة الناتج عن تكرار renderReports ومنع بقاء مربع التحديث/التنظيف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إصلاح renderReports ودوال الجداول والأصناف والبحث والتصنيفات والتقارير وأزرار الإعدادات، مع فحص سجل الصفحات والأزرار.",
+  "releaseNotes": "إصلاح Syntax/Startup بعد 1.0.55 وتوحيد الإصدار.",
   "notes": "Final Full Audit Fix",
-  "versionName": "1.0.55",
-  "versionCode": 55,
+  "versionName": "1.0.56",
+  "versionCode": 56,
   "minimumSupportedVersionCode": 1,
   "forceRefresh": true
 }

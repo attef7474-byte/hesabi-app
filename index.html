@@ -710,8 +710,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.55';
-const APP_BUILD_CODE=55;
+const APP_VERSION='1.0.56';
+const APP_BUILD_CODE=56;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -4440,7 +4440,7 @@ window.hesabiFinalSelfCheck=function(){ try{return phase10FinalSelfCheck();}catc
 
 
 
-/* 1.0.55: Full isolated page/form/button audit helpers.
+/* 1.0.56: Full isolated page/form/button audit helpers.
    These helpers restore shared table/page functions that were referenced by pages
    after phased merges, so a missing helper cannot collapse finished pages into fallback screens. */
 function dt(v){
@@ -4634,28 +4634,9 @@ function go(id,page){
   const el=$(id);
   if(el) el.onclick=()=>show(page);
 }
-function renderReports(){
-  if(!isTrader()){show('home');return}
-  const invoices=cache.invoices||[], payments=cache.payments||[], items=cache.items||[], customers=cache.customers||[];
-  const salesTotal=invoices.reduce((s,x)=>s+Number(x.total||0),0);
-  const cashTotal=invoices.filter(x=>x.paymentType==='cash').reduce((s,x)=>s+Number(x.total||0),0);
-  const creditTotal=invoices.filter(x=>x.paymentType!=='cash').reduce((s,x)=>s+Number(x.total||0),0);
-  const paidTotal=payments.filter(x=>x.status==='approved').reduce((s,x)=>s+Number(x.amount||0),0);
-  const debtTotal=customers.reduce((s,x)=>s+Number(x.balance||0),0);
-  const low=items.filter(i=>Number(i.stock||0)<=Number(i.minStock||0));
-  $('page_reports').innerHTML=`<div class="workspace-tabs"><button class="workspace-tab active">📊 ملخص</button></div>
-  <div class="grid3">
-    <div class="card kpi"><h3>إجمالي المبيعات</h3><b>${money(salesTotal)}</b></div>
-    <div class="card kpi"><h3>كاش</h3><b>${money(cashTotal)}</b></div>
-    <div class="card kpi"><h3>آجل</h3><b>${money(creditTotal)}</b></div>
-    <div class="card kpi"><h3>المسدّد</h3><b>${money(paidTotal)}</b></div>
-    <div class="card kpi"><h3>ديون العملاء</h3><b>${money(debtTotal)}</b></div>
-    <div class="card kpi"><h3>منخفض المخزون</h3><b>${money(low.length)}</b></div>
-  </div>
-  <div class="card"><div class="row"><h2>الأصناف منخفضة المخزون</h2><button class="btn secondary" id="exportReportsCsvBtn">تصدير التقرير</button></div>
-  <div class="tablewrap"><table><thead><tr><th>الصنف</th><th>المخزون</th><th>الحد</th></tr></thead><tbody>${low.slice(0,50).map(i=>`<tr><td>${esc(i.name||'')}</td><td>${money(i.stock||0)}</td><td>${money(i.minStock||0)}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">لا توجد أصناف منخفضة.</td></tr>'}</tbody></table></div></div>`;
-  setTimeout(()=>{if($('exportReportsCsvBtn')) $('exportReportsCsvBtn').onclick=()=>exportCsv('hesabi-report.csv',['metric','value'],[{metric:'sales',value:salesTotal},{metric:'cash',value:cashTotal},{metric:'credit',value:creditTotal},{metric:'paid',value:paidTotal},{metric:'debt',value:debtTotal},{metric:'lowStock',value:low.length}]);});
-}
+
+/* 1.0.56: removed duplicate renderReports function; existing renderReports assignment above is kept. */
+
 
 
 /* 1.0.54: بناء سجل عرض الصفحات بعد تحميل كل الدوال حتى لا تظهر كل الصفحات كأقسام غير جاهزة. */
