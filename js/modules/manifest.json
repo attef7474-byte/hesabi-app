@@ -1,6 +1,6 @@
 {
-  "version": "1.0.76",
-  "buildCode": 76,
+  "version": "1.0.77",
+  "buildCode": 77,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 184,
+      "lines": 186,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -81,6 +81,11 @@
       "file": "js/modules/15_statements_helpers.js",
       "lines": 261,
       "description": "Statements page stabilization helpers for safe ledger normalization, debit/credit summaries, customer filters, rows rendering, action binding and self-checks"
+    },
+    {
+      "file": "js/modules/16_returns_helpers.js",
+      "lines": 220,
+      "description": "Returns page stabilization helpers for safe return normalization, request form fallback, status filters, summary stats, rows rendering, action binding and self-checks"
     },
     {
       "file": "js/modules/20_router_setup_profile.js",

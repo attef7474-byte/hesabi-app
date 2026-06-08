@@ -1,14 +1,14 @@
 {
   "latestVersionCode": 76,
-  "latestVersionName": "1.0.76",
+  "latestVersionName": "1.0.77",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.76",
+  "title": "تحديث حسابي التجاري 1.0.77",
   "message": "تثبيت صفحة كشف الحساب وحماية عرض الحركات والرصيد والمدين والدائن وربط فحص ذاتي لكشف الحساب بدون تغيير منطق Firestore أو الفواتير أو السداد.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
   "releaseNotes": "إضافة js/modules/15_statements_helpers.js وربط renderStatement بها، وإدخال فحص statements ضمن runtime smoke.",
   "notes": "تثبيت صفحة كشف الحساب وفحصها الذاتي بدون تغيير منطق الفواتير أو السداد.",
-  "versionName": "1.0.76",
-  "versionCode": 76,
+  "versionName": "1.0.77",
+  "versionCode": 77,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

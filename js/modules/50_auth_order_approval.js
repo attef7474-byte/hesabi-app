@@ -105,6 +105,32 @@ renderStock=function(){
 }
 
 renderReturns=function(){
+  const returnsHelper=window.hesabiReturnsHelpers;
+  if(returnsHelper && typeof returnsHelper.renderPage==='function'){
+    try{
+      const tab=pageTabState('returns',state.role==='customer'?'request':'pending');
+      const rendered=returnsHelper.renderPage({
+        returns:cache.returns||[],
+        role:state.role,
+        state,
+        tab,
+        customerId:state.customerId||''
+      });
+      $('page_returns').innerHTML=rendered.html;
+      setTimeout(()=>returnsHelper.bindActions({
+        renderReturns,
+        sendReturnRequest,
+        approveReturn,
+        rejectReturn,
+        phase6BindReturnForm,
+        bindPageTabs,
+        bindDemandTable
+      }));
+      return;
+    }catch(e){
+      console.warn('returns helper render failed, fallback to legacy renderer', e);
+    }
+  }
   const tab=pageTabState('returns',state.role==='customer'?'request':'pending');
   const tabs=state.role==='customer'?[['request','↩️','طلب مرتجع'],['list','📋','مرتجعاتي'],['pending','⏳','معلقة'],['done','✅','منتهية']]:[['pending','⏳','معلقة'],['done','✅','منتهية'],['all','📋','كل المرتجعات']];
   const requestBox=state.role==='customer'?`<div class="card"><h2>طلب مرتجع</h2><p class="muted">اختر الفاتورة والصنف من بياناتك ثم أرسل الطلب للتاجر للمراجعة.</p>${renderReturnLines()}<div class="field"><label>سبب المرتجع</label><textarea id="returnReason"></textarea></div><button class="btn compact-main-btn" id="sendReturnRequest">إرسال طلب المرتجع</button></div>`:'';
