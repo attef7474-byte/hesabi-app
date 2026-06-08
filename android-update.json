@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 73,
-  "latestVersionName": "1.0.73",
+  "latestVersionCode": 74,
+  "latestVersionName": "1.0.74",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.73",
-  "message": "تثبيت صفحة الرسائل وحماية عرض المحادثات وربط فحص ذاتي للرسائل بدون تغيير منطق Firestore أو السداد أو الطلبات.",
+  "title": "تحديث حسابي التجاري 1.0.74",
+  "message": "تثبيت صفحة السداد وحماية عرض الدفعات والحالات وربط فحص ذاتي للسداد بدون تغيير منطق Firestore أو الموافقة والرفض.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة js/modules/12_messages_helpers.js وربط renderMessages بها، وإدخال فحص messages ضمن runtime smoke.",
-  "notes": "مرحلة Messages Page Stabilization: مساعدات آمنة لتطبيع الرسائل، عرض آخر الرسائل، بناء جدول الرسائل، خيارات العميل للتاجر، وربط زر الإرسال بدون تغيير عملية الإرسال.",
-  "versionName": "1.0.73",
-  "versionCode": 73,
+  "releaseNotes": "إضافة js/modules/13_payments_helpers.js وربط renderPayments بها، وإدخال فحص payments ضمن runtime smoke.",
+  "notes": "مرحلة Payments Page Stabilization: مساعدات آمنة لتطبيع الدفعات، فلترة الحالات، حساب ملخص السداد، بناء جدول السداد، وربط أزرار الإيصال والقبول والرفض بدون تغيير عمليات الإرسال أو الاعتماد.",
+  "versionName": "1.0.74",
+  "versionCode": 74,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

@@ -30,6 +30,28 @@ renderInvoices=function(){
 }
 
 renderPayments=function(){
+  const paymentsHelper=window.hesabiPaymentsHelpers;
+  if(paymentsHelper && typeof paymentsHelper.renderPage==='function'){
+    try{
+      const tab=pageTabState('payments',state.role==='customer'?'request':'pending');
+      const debt=state.role==='customer'?customerDebtInfo().balance:0;
+      const rendered=paymentsHelper.renderPage({payments:cache.payments||[],role:state.role,state,tab,debt});
+      $('page_payments').innerHTML=rendered.html;
+      setTimeout(()=>paymentsHelper.bindActions({
+        tab,
+        renderPayments,
+        sendPayment,
+        approvePayment,
+        rejectPayment,
+        openReceipt,
+        bindPageTabs,
+        bindDemandTable
+      }));
+      return;
+    }catch(e){
+      console.warn('payments helper render failed, fallback to legacy renderer',e);
+    }
+  }
   const tab=pageTabState('payments',state.role==='customer'?'request':'pending');
   const tabs=state.role==='customer'?[['request','💸','إرسال سداد'],['list','📋','سداداتي'],['pending','⏳','معلقة'],['approved','✅','مقبولة']]:[['pending','⏳','بانتظار الموافقة'],['approved','✅','مقبولة'],['rejected','❌','مرفوضة'],['all','📋','كل السداد']];
   const debt=state.role==='customer'?customerDebtInfo().balance:0;
@@ -40,7 +62,6 @@ renderPayments=function(){
   $('page_payments').innerHTML=pageHead('السداد والتحويلات','السداد منظم حسب الإرسال والمراجعة والحالة.')+pageTabsBar('payments',tab,tabs)+pageStats([['كل السداد',cache.payments.length],['معلق',(cache.payments||[]).filter(p=>p.status==='pending').length],['مقبول',(cache.payments||[]).filter(p=>p.status==='approved').length],['الدين',money(debt)]])+(tab==='request'?payBox:demandTableCard('paymentsList23',state.role==='trader'?'طلبات السداد':'سداداتي',['العميل','المبلغ','الطريقة','المرجع','الحالة','التاريخ','إجراء'],rows,meta,'لا توجد طلبات سداد مطابقة'));
   setTimeout(()=>{bindPageTabs('payments',renderPayments); bindDemandTable('paymentsList23', renderPayments); if($('sendPayment')) $('sendPayment').onclick=sendPayment; bindPaymentRows();});
 }
-
 renderStock=function(){
   if(state.role!=='trader'){show('home');return}
   const tab=pageTabState('stock','balances');
