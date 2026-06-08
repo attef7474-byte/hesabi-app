@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.64';
-const APP_BUILD_CODE = 64;
+const APP_VERSION='1.0.65';
+const APP_BUILD_CODE = 65;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -306,7 +306,8 @@ function extractShopCodeFromText(text){
 
 function load(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
 function save(){localStorage.setItem(LS,JSON.stringify(state))}
-function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function hesabiUtils(){return window.hesabiUtilsHelpers||{}}
+function esc(v){const u=hesabiUtils(); if(typeof u.escapeHtml==='function') return u.escapeHtml(v); return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function hideAppDialog(){
   const dialogs=window.hesabiDialogsToasts;
   if(dialogs&&typeof dialogs.hideAppDialog==='function') return dialogs.hideAppDialog();
@@ -346,21 +347,25 @@ function showStartupRecoveryDialog(errorText=''){
   ]);
 }
 
-function money(n){return Number(n||0).toLocaleString('ar-YE')+' ريال'}
-function todayIso(){return new Date().toISOString().slice(0,10)}
+function money(n){const u=hesabiUtils(); if(typeof u.formatMoney==='function') return u.formatMoney(n,'ريال'); return Number(n||0).toLocaleString('ar-YE')+' ريال'}
+function todayIso(){const u=hesabiUtils(); if(typeof u.todayIso==='function') return u.todayIso(); return new Date().toISOString().slice(0,10)}
 function fileToDataUrl(file, maxBytes=700000){
+  const u=hesabiUtils();
+  if(typeof u.fileToDataUrl==='function') return u.fileToDataUrl(file,maxBytes);
   return new Promise((resolve,reject)=>{
     if(!file){resolve(null);return}
     if(file.size>maxBytes){reject(new Error('حجم صورة الإيصال كبير جدًا. اختر صورة أقل من 700KB أو صغّرها قبل الإرسال.'));return}
     const r=new FileReader(); r.onload=()=>resolve({name:file.name,type:file.type,size:file.size,dataUrl:r.result}); r.onerror=()=>reject(new Error('تعذر قراءة صورة الإيصال')); r.readAsDataURL(file);
   })
 }
-function id(prefix){return prefix+'-'+Math.random().toString(36).slice(2,7).toUpperCase()+Date.now().toString().slice(-4)}
+function id(prefix){const u=hesabiUtils(); if(typeof u.makeId==='function') return u.makeId(prefix); return prefix+'-'+Math.random().toString(36).slice(2,7).toUpperCase()+Date.now().toString().slice(-4)}
 function statusText(s){return ({pending:'معلّق',pending_trader:'بانتظار موافقة التاجر',pending_customer:'بانتظار موافقة العميل',approved:'مقبول',rejected:'مرفوض',cancelled:'ملغي'}[s]||s||'معلّق')}
 function payTypeText(v){return v==='credit'?'آجل':'كاش'}
 function ledgerTypeText(v){return ({debit_invoice:'فاتورة آجل',cash_invoice:'فاتورة كاش',payment:'سداد',return_credit:'مرتجع آجل',return_cash:'مرتجع كاش',adjustment:'تسوية'}[v]||v||'حركة')}
 function onlineBadge(){const on=navigator.onLine;$('netBadge').className='badge '+(on?'online':'offline');$('netBadge').textContent=on?'متصل بالإنترنت':'غير متصل'}
 function normalizePhone(v){
+  const u=hesabiUtils();
+  if(typeof u.normalizePhone==='function') return u.normalizePhone(v);
   let x=String(v||'').trim();
   const ar='٠١٢٣٤٥٦٧٨٩'; const fa='۰۱۲۳۴۵۶۷۸۹';
   x=x.replace(/[٠-٩]/g,d=>String(ar.indexOf(d))).replace(/[۰-۹]/g,d=>String(fa.indexOf(d)));
@@ -371,12 +376,16 @@ function normalizePhone(v){
   return x;
 }
 function phoneKeyToInternational(phoneKey){
+  const u=hesabiUtils();
+  if(typeof u.phoneKeyToInternational==='function') return u.phoneKeyToInternational(phoneKey);
   let x=normalizePhone(phoneKey);
   if(x.startsWith('0')) x=x.slice(1);
   if(x.startsWith('967')) return '+'+x;
   return '+967'+x;
 }
 function toInternationalPhone(v){
+  const u=hesabiUtils();
+  if(typeof u.toInternationalPhone==='function') return u.toInternationalPhone(v);
   let raw=String(v||'').trim();
   const ar='٠١٢٣٤٥٦٧٨٩'; const fa='۰۱۲۳۴۵۶۷۸۹';
   raw=raw.replace(/[٠-٩]/g,d=>String(ar.indexOf(d))).replace(/[۰-۹]/g,d=>String(fa.indexOf(d)));

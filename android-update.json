@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 64,
-  "latestVersionName": "1.0.64",
+  "latestVersionCode": 65,
+  "latestVersionName": "1.0.65",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.64",
-  "message": "مرحلة آمنة لاستخراج الرسائل والتنبيهات ومربعات الحوار إلى وحدة مستقلة بدون تغيير منطق الشراء أو السداد أو Firestore.",
+  "title": "تحديث حسابي التجاري 1.0.65",
+  "message": "مرحلة آمنة لاستخراج الأدوات العامة والمساعدات إلى وحدة مستقلة بدون تغيير منطق الشراء أو السداد أو Firestore.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة js/modules/08_dialogs_toasts.js وتوحيد wrappers للرسائل والحوار مع الحفاظ على أسماء الدوال القديمة للتوافق.",
-  "notes": "تحديث صغير وآمن بعد 1.0.63: توحيد رسائل التطبيق والتنبيهات مع رفع رقم الإصدار والكاش.",
-  "versionName": "1.0.64",
-  "versionCode": 64,
+  "releaseNotes": "إضافة js/modules/07_utils_helpers.js وتوحيد wrappers آمنة للتنسيق والهواتف والمعرفات وقراءة الملفات مع الحفاظ على أسماء الدوال القديمة للتوافق.",
+  "notes": "تحديث صغير وآمن بعد 1.0.64: استخراج أدوات عامة ومساعدات بدون لمس الوظائف الحساسة مع رفع رقم الإصدار والكاش.",
+  "versionName": "1.0.65",
+  "versionCode": 65,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

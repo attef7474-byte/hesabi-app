@@ -1,11 +1,16 @@
 {
-  "version": "1.0.64",
-  "buildCode": 64,
+  "version": "1.0.65",
+  "buildCode": 65,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
-      "lines": 784,
+      "lines": 793,
       "description": "丕賱賳賵丕丞 丕賱毓丕賲丞貙 丕賱廿氐丿丕乇丕鬲貙 丕賱丨賵丕乇丕鬲貙 丕賱鬲丨丿賷孬貙 丕賱賲氐丕丿賯丞 丕賱賲爻丕毓丿丞 賵丕賱鬲賳亘賷賴丕鬲"
+    },
+    {
+      "file": "js/modules/07_utils_helpers.js",
+      "lines": 108,
+      "description": "Safe generic utilities/helpers for escaping, money formatting, IDs, phone normalization and file reading wrappers"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",
