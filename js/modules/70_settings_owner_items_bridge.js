@@ -341,11 +341,16 @@ window.hesabiReceiveItemOcr=function(text,message){
 };
 
 function openItemsExcelImport(){const f=$('itemsExcelImportFile'); if(f) f.click(); else msg('حقل اختيار ملف Excel غير موجود في الصفحة.','error');}
+function hesabiExcel(){return window.hesabiExcelImportExport||{}}
 function exportItemsToExcel(){exportCsv('hesabi-items.csv',['name','barcode','category','unit','cashPrice','creditPrice','stock'],cache.items||[]);}
 function exportInvoicesCsv(){exportCsv('hesabi-invoices.csv',['invoiceNo','customerName','paymentType','total','createdMs'],cache.invoices||[]);}
 function exportPaymentsCsv(){exportCsv('hesabi-payments.csv',['customerName','amount','method','reference','status','createdMs'],cache.payments||[]);}
 function exportCustomersCsv(){exportCsv('hesabi-customers.csv',['name','phone','balance','creditLimit','status'],cache.customers||[]);}
-function exportCsv(filename, cols, rows){try{const escCsv=v=>'"'+String(v??'').replace(/"/g,'""')+'"'; const csv='\ufeff'+cols.join(',')+'\n'+(rows||[]).map(r=>cols.map(c=>escCsv(c==='createdMs'&&r[c]?new Date(Number(r[c])).toLocaleString('ar-YE'):r[c])).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); msg('تم تجهيز ملف التصدير.','success');}catch(e){msg('تعذر التصدير: '+String(e.message||e),'error');}}
+function exportCsv(filename, cols, rows){
+  const excel=hesabiExcel();
+  if(typeof excel.exportCsv==='function') return excel.exportCsv(filename,cols,rows);
+  try{const escCsv=v=>'"'+String(v??'').replace(/"/g,'""')+'"'; const csv='\ufeff'+cols.join(',')+'\n'+(rows||[]).map(r=>cols.map(c=>escCsv(c==='createdMs'&&r[c]?new Date(Number(r[c])).toLocaleString('ar-YE'):r[c])).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); msg('تم تجهيز ملف التصدير.','success');}catch(e){msg('تعذر التصدير: '+String(e.message||e),'error');}
+}
 async function deleteAllItemsAndStock(){try{if(!ensureTraderOrStop('حذف كل الأصناف')) return; const ok=await confirmDialog('حذف كل الأصناف','سيتم حذف كل الأصناف وحركات المخزون المرتبطة. تأكد أنك صدّرت نسخة احتياطية. هل تريد المتابعة؟','حذف الكل'); if(!ok)return; const batch=writeBatch(db); (cache.items||[]).forEach(i=>batch.delete(doc(db,'shops',state.shopId,'items',i.id))); (cache.stockLedger||[]).forEach(x=>batch.delete(doc(db,'shops',state.shopId,'stockLedger',x.id))); await batch.commit(); clearSelectedItems(); await addAudit('delete_all_items',{count:(cache.items||[]).length}); msg('تم حذف كل الأصناف.','success'); renderItems();}catch(e){msg('تعذر حذف كل الأصناف: '+friendlyFirestoreError(e),'error');}}
 async function shareBusinessReport(){try{const text=`تقرير حسابي التجاري\nالمتجر: ${cache.shop?.name||state.shopName||''}\nالفواتير: ${(cache.invoices||[]).length}\nالسداد: ${(cache.payments||[]).length}\nالعملاء: ${(cache.customers||[]).length}\nالأصناف: ${(cache.items||[]).length}`; if(navigator.share) await navigator.share({title:'تقرير حسابي التجاري',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير.','success');}}catch(e){msg('تعذر مشاركة التقرير.','error');}}
 
@@ -535,15 +540,16 @@ async function importItemsFromExcelFile(file){
   try{
     if(!file){msg('اختر ملفًا أولًا.','error');return}
     const text=await file.text();
-    const lines=text.split(/\r?\n/).filter(Boolean);
-    if(!lines.length){msg('الملف فارغ أو غير مدعوم. استخدم CSV أو الاستيراد من القالب بعد تحويله إلى CSV.','error');return}
-    const headers=lines.shift().split(/,|;|\t/).map(x=>x.trim().replace(/^"|"$/g,''));
-    const idxOf=(names)=>headers.findIndex(h=>names.includes(h)||names.includes(h.toLowerCase()));
+    const excel=hesabiExcel();
+    const parsed=typeof excel.parseDelimitedText==='function'?excel.parseDelimitedText(text):null;
+    const headers=parsed?parsed.headers:[];
+    const rows=parsed?parsed.rows:[];
+    if(!rows.length&&!headers.length){msg('الملف فارغ أو غير مدعوم. استخدم CSV أو الاستيراد من القالب بعد تحويله إلى CSV.','error');return}
+    const idxOf=(names)=>typeof excel.indexOfHeader==='function'?excel.indexOfHeader(headers,names):headers.findIndex(h=>names.includes(h)||names.includes(h.toLowerCase()));
     const nameI=idxOf(['name','اسم الصنف','الصنف']); const barcodeI=idxOf(['barcode','الباركود','code','الكود']); const catI=idxOf(['category','التصنيف']); const unitI=idxOf(['unit','الوحدة']); const cashI=idxOf(['cashPrice','سعر الكاش','cash']); const creditI=idxOf(['creditPrice','سعر الآجل','credit']); const stockI=idxOf(['stock','المخزون','quantity','الكمية']);
     if(nameI<0){msg('لم أجد عمود اسم الصنف في الملف.','error');return}
     let count=0; const batch=writeBatch(db);
-    for(const line of lines){
-      const cols=line.split(/,|;|\t/).map(x=>x.trim().replace(/^"|"$/g,''));
+    for(const cols of rows){
       const name=cols[nameI]||''; if(!name) continue;
       const barcode=barcodeI>=0?cols[barcodeI]:'';
       if(itemDuplicateExists({name,barcode})) continue;
@@ -590,7 +596,7 @@ function exposeHesabiRuntimeGlobals(){
     'deleteSingleItem','deleteItemsByIds','deleteAllItemsAndStock','adjustStockItem','openStockAdjustmentDialog','editStock',
     'addManualCustomer','setCreditLimit','setCustomerStatus','sendTraderSale','shareStatementText',
     'renderPolicies','saveShopPoliciesPhase8','renderSettings','renderMessages','sendMessage','renderNotifications','renderOwnerConsole','renderReports',
-    'downloadApkUpdate','refreshWebUiNow','checkApkUpdateOnly','showPermissionDeniedLogoutDialog','safeFullLogout',
+    'downloadApkUpdate','refreshWebUiNow','checkApkUpdateOnly','showPermissionDeniedLogoutDialog','safeFullLogout','exportCsv','importItemsFromExcelFile',
     'requestNotificationPermission','clearAllNotificationCounters',
     'startEmbeddedItemBarcodeScanner','startExternalItemBarcodeScanner','startItemOcrNative','startItemBarcodeScanner','scanItemBarcodeStillFrame','usePendingItemBarcode',
     'buildPageRendererRegistry','fullPageButtonAudit','phase10FinalSelfCheck'

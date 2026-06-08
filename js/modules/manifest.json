@@ -1,6 +1,6 @@
 {
-  "version": "1.0.65",
-  "buildCode": 65,
+  "version": "1.0.66",
+  "buildCode": 66,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -11,6 +11,11 @@
       "file": "js/modules/07_utils_helpers.js",
       "lines": 108,
       "description": "Safe generic utilities/helpers for escaping, money formatting, IDs, phone normalization and file reading wrappers"
+    },
+    {
+      "file": "js/modules/06_excel_import_export.js",
+      "lines": 103,
+      "description": "Safe Excel/CSV import-export helpers, CSV builder/downloader and delimited text parser wrappers"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",
@@ -54,7 +59,7 @@
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 663,
+      "lines": 669,
       "description": "丕賱廿毓丿丕丿丕鬲 賵丕賱賲丕賱賰 賵丕賱兀氐賳丕賮 賵丕賱兀爻毓丕乇 賵丕賱賲禺夭賵賳 賵噩爻乇 兀賳丿乇賵賷丿 賵丕賱鬲卮睾賷賱"
     },
     {

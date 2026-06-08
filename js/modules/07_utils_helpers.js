@@ -1,8 +1,8 @@
-/* Hesabi 1.0.65 - Safe utilities and helpers module.
+/* Hesabi 1.0.66 - Safe utilities and helpers module.
    This module centralizes generic formatting, IDs, phone normalization and file helpers.
    Legacy helper names in core modules keep working and delegate here when available. */
 (function(){
-  const MODULE_VERSION = '1.0.65';
+  const MODULE_VERSION = '1.0.66';
 
   function normalizeArabicDigits(value){
     const ar = '٠١٢٣٤٥٦٧٨٩';
