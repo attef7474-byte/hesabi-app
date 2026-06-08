@@ -1,6 +1,6 @@
 {
-  "version": "1.0.77",
-  "buildCode": 77,
+  "version": "1.0.81",
+  "buildCode": 81,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 186,
+      "lines": 194,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -54,7 +54,7 @@
     },
     {
       "file": "js/modules/10_firebase_live_data.js",
-      "lines": 242,
+      "lines": 252,
       "description": "تهيئة Firebase والمستمعات اللحظية والبيانات العامة"
     },
     {
@@ -88,8 +88,28 @@
       "description": "Returns page stabilization helpers for safe return normalization, request form fallback, status filters, summary stats, rows rendering, action binding and self-checks"
     },
     {
+      "file": "js/modules/17_schedules_helpers.js",
+      "lines": 129,
+      "description": "Schedules page stabilization helpers for safe installments, due/overdue filters, summary stats, rows rendering, action binding and self-checks"
+    },
+    {
+      "file": "js/modules/18_notifications_helpers.js",
+      "lines": 65,
+      "description": "Notifications and Android badge stabilization helpers for safe counters, unread notification rows, badge detail text, action binding and self-checks"
+    },
+    {
+      "file": "js/modules/19_owner_subscription_helpers.js",
+      "lines": 60,
+      "description": "Owner console and subscription settings stabilization helpers for safe owner metrics, users, shops, controls, subscription forms and self-checks"
+    },
+    {
+      "file": "js/modules/20_permissions_role_guards.js",
+      "lines": 43,
+      "description": "Permissions and role guard review helpers for safe page access matrix, trader/owner checks and self-checks"
+    },
+    {
       "file": "js/modules/20_router_setup_profile.js",
-      "lines": 875,
+      "lines": 882,
       "description": "محرك العرض والتنقل وتهيئة الحساب والربط والصفحات العامة"
     },
     {
@@ -104,7 +124,7 @@
     },
     {
       "file": "js/modules/50_auth_order_approval.js",
-      "lines": 580,
+      "lines": 618,
       "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر مع تفويض آمن لحسابات التقارير والسداد"
     },
     {
@@ -114,7 +134,7 @@
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 697,
+      "lines": 717,
       "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات والرسائل"
     },
     {

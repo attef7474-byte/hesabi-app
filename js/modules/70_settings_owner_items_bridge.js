@@ -74,6 +74,26 @@ async function loadOwnerConsoleDataPhase8(force=false){
 function ownerShopStatusText(s){return ({active:'نشط',trial:'تجريبي',warning:'إنذار',suspended:'موقوف',expired:'منتهي'}[s]||s||'غير محدد');}
 function renderOwnerConsole(){
   if(!isAppOwner()){show('home');return;}
+  const ownerHelper=window.hesabiOwnerSubscriptionHelpers;
+  if(ownerHelper && typeof ownerHelper.renderPage==='function'){
+    try{
+      const tab=pageTabState('owner','metrics');
+      const rendered=ownerHelper.renderPage({tab,shops:cache.ownerShops||[],users:cache.ownerUsers||[]});
+      $('page_owner').innerHTML=rendered.html;
+      setTimeout(()=>ownerHelper.bindActions({
+        bindPageTabs,
+        renderOwnerConsole,
+        reload:async()=>{await loadOwnerConsoleDataPhase8(true); renderOwnerConsole();},
+        ownerSendMessage:ownerSendMessagePhase8,
+        ownerSetShopStatus:ownerSetShopStatusPhase8,
+        ownerSaveSubscription:ownerSaveSubscriptionPhase8
+      }));
+      if(!cache.ownerLoadedAt) setTimeout(async()=>{await loadOwnerConsoleDataPhase8(); if((state.page||'')==='owner') renderOwnerConsole();},50);
+      return;
+    }catch(e){
+      console.warn('owner helper render failed, fallback to legacy renderer',e);
+    }
+  }
   const tab=pageTabState('owner','metrics');
   const tabs=[['metrics','📊','المؤشرات'],['users','👤','المستخدمون'],['shops','🏪','المتاجر'],['message','💬','مراسلة'],['control','⛔','التحكم'],['subs','💳','الاشتراكات'],['logs','🗂️','السجل']];
   const shops=cache.ownerShops||[], users=cache.ownerUsers||[];

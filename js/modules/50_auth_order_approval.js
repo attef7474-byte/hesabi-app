@@ -142,6 +142,18 @@ renderReturns=function(){
 }
 
 renderSchedules=function(){
+  const schedulesHelper=window.hesabiSchedulesHelpers;
+  if(schedulesHelper && typeof schedulesHelper.renderPage==='function'){
+    try{
+      const tab=pageTabState('schedules',state.role==='trader'?'due':'list');
+      const rendered=schedulesHelper.renderPage({schedules:cache.schedules||[],customers:cache.customers||[],invoices:cache.invoices||[],role:state.role,state,tab});
+      $('page_schedules').innerHTML=rendered.html;
+      setTimeout(()=>schedulesHelper.bindActions({renderSchedules,bindPageTabs,bindDemandTable,createSchedule,paySchedule,cancelSchedule,fillScheduleFromInvoice}));
+      return;
+    }catch(e){
+      console.warn('schedules helper render failed, fallback to legacy renderer',e);
+    }
+  }
   const tab=pageTabState('schedules',state.role==='trader'?'due':'list');
   const tabs=state.role==='trader'?[['create','➕','إنشاء'],['due','📅','المستحقة'],['overdue','⚠️','المتأخرة'],['all','📋','الكل']]:[['list','📅','استحقاقاتي'],['overdue','⚠️','المتأخرة'],['paid','✅','المدفوعة']];
   let data=(cache.schedules||[]).slice().sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||'')));

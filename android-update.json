@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 76,
-  "latestVersionName": "1.0.77",
+  "latestVersionCode": 81,
+  "latestVersionName": "1.0.81",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.77",
-  "message": "تثبيت صفحة كشف الحساب وحماية عرض الحركات والرصيد والمدين والدائن وربط فحص ذاتي لكشف الحساب بدون تغيير منطق Firestore أو الفواتير أو السداد.",
+  "title": "تحديث حسابي التجاري 1.0.78-1.0.81",
+  "message": "حزمة تثبيت مجمعة لأربع مراحل: الجداول والأقساط، الإشعارات والبادج، لوحة المالك والاشتراكات، ومراجعة حراس الصلاحيات بدون تغيير منطق Firestore أو السداد أو الفواتير.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة js/modules/15_statements_helpers.js وربط renderStatement بها، وإدخال فحص statements ضمن runtime smoke.",
-  "notes": "تثبيت صفحة كشف الحساب وفحصها الذاتي بدون تغيير منطق الفواتير أو السداد.",
-  "versionName": "1.0.77",
-  "versionCode": 77,
+  "releaseNotes": "إضافة modules: 17_schedules_helpers.js, 18_notifications_helpers.js, 19_owner_subscription_helpers.js, 20_permissions_role_guards.js وربطها بالفحص الشامل.",
+  "notes": "حزمة تثبيت آمنة مجمعة من 1.0.78 إلى 1.0.81.",
+  "versionName": "1.0.81",
+  "versionCode": 81,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

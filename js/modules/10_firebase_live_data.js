@@ -214,8 +214,18 @@ function renderBasicListPage(pageId,title,description,rowsHtml='',headers=['ال
 /* phase9: removed older duplicate renderPolicies; final implementation appears later. */
 
 function renderNotifications(){
+  const notificationsHelper=window.hesabiNotificationsHelpers;
   const c=appNotificationCounters();
   const notes=unreadNotifications();
+  if(notificationsHelper && typeof notificationsHelper.renderPage==='function'){
+    try{
+      $('page_notifications').innerHTML=notificationsHelper.renderPage({counters:c,notes,permission:notificationPermissionState()});
+      setTimeout(()=>notificationsHelper.bindActions({requestNotificationPermission,clearAllNotificationCounters,openNotificationPage,msg}));
+      return;
+    }catch(e){
+      console.warn('notifications helper render failed, fallback to legacy renderer',e);
+    }
+  }
   const rows=notes.map(n=>`<tr><td class="name"><b>${esc(n.title||'تنبيه')}</b><div class="muted">${esc(n.body||'')}</div></td><td>${dt(n.createdMs)}</td><td><button class="btn light" data-notify-open="${esc(n.page||'home')}">فتح</button></td></tr>`).join('');
   $('page_notifications').innerHTML=`<div class="card"><h2>الإشعارات</h2><div class="grid"><div class="metric"><span class="muted">الرسائل</span><b>${c.messages||0}</b></div><div class="metric"><span class="muted">الطلبات والمراجعات</span><b>${(c.orders||0)+(c.payments||0)+(c.returns||0)+(c.schedules||0)}</b></div></div><div class="actions"><button class="btn ok" id="enableNotifyBtn">تفعيل التنبيهات</button><button class="btn light" id="clearNotifyBtn">تصفير العدّاد</button><button class="btn secondary" id="testBadgeBtn">اختبار العدّاد</button></div><p class="muted">صلاحية التنبيهات: ${esc(notificationPermissionState())}</p></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>التنبيه</th><th>الوقت</th><th>إجراء</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد إشعارات غير مقروءة</td></tr>'}</tbody></table></div>`;
   setTimeout(()=>{

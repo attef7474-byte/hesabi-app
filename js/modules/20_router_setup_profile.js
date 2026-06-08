@@ -612,6 +612,13 @@ function safeRendererForPage(p){
 function show(p){
   try{stopItemBarcodeScanner(false)}catch(e){}
 
+  try{
+    const roleGuard=window.hesabiPermissionsRoleGuards;
+    if(roleGuard && typeof roleGuard.canOpenPage==='function'){
+      const access=roleGuard.canOpenPage({page:p,role:state.role,profileDone:state.profileDone,isOwner:isAppOwner(),isTrader:isTrader(),isCustomer:isCustomer()});
+      if(!access.ok){ msg(access.message||'لا تملك صلاحية فتح هذه الصفحة','error'); p=access.fallback||'home'; }
+    }
+  }catch(e){ console.warn('permissions role guard skipped',e); }
   if(p==='owner' && !isAppOwner()){ msg('صفحة مالك التطبيق خاصة بحساب المالك فقط','error'); p='home'; }
   if(!isTrader() && isTraderOnlyPage(p)) { msg('هذه الصفحة خاصة بالتاجر فقط','error'); p='home'; } if(isTrader() && p==='shops') p='home';
   if(p!==active){ previousPage=active || 'home'; }
