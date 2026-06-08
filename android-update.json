@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 62,
-  "latestVersionName": "1.0.62",
+  "latestVersionCode": 63,
+  "latestVersionName": "1.0.63",
   "required": false,
-  "title": "鬲丨丿賷孬 丨爻丕亘賷 丕賱鬲噩丕乇賷 1.0.62",
+  "title": "鬲丨丿賷孬 丨爻丕亘賷 丕賱鬲噩丕乇賷 1.0.63",
   "message": "廿氐賱丕丨 賳賴丕卅賷 賱丕爻鬲賯乇丕乇 丕賱鬲卮睾賷賱貙 丕賱噩爻乇 丕賱兀氐賱賷貙 賮丨氐 丕賱氐賮丨丕鬲 賵丕賱兀夭乇丕乇貙 賵鬲丨丿賷孬 APK.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
   "releaseNotes": "鬲賯爻賷賲 JavaScript 廿賱賶 賲賱賮丕鬲 賵馗賷賮賷丞 賲毓 丕賱丨賮丕馗 毓賱賶 丕賱鬲卮睾賷賱 賵丕賱丕爻鬲賯乇丕乇.",
   "notes": "鬲賯爻賷賲 index.html 廿賱賶 賲賱賮丕鬲 CSS 賵JavaScript 賲賳賮氐賱丞 賲毓 丕賱丨賮丕馗 毓賱賶 鬲卮睾賷賱 丕賱鬲胤亘賷賯.",
-  "versionName": "1.0.62",
-  "versionCode": 62,
+  "versionName": "1.0.63",
+  "versionCode": 63,
   "minimumSupportedVersionCode": 59,
   "forceRefresh": true
 }

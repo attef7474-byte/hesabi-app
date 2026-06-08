@@ -40,8 +40,8 @@
 
   async function safeClearWebCache(){
     try {
-      if (window.HesabiAndroid && typeof window.HesabiAndroid.clearWebCacheForUpdate === "function") {
-        window.HesabiAndroid.clearWebCacheForUpdate();
+      if (window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.clearWebCacheForUpdate === "function") {
+        window.hesabiAndroidBridge.clearWebCacheForUpdate();
       }
     } catch (e) {
       console.warn("Native cache clear warning", e);

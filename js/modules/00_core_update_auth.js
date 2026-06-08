@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.62';
-const APP_BUILD_CODE = 62;
+const APP_VERSION='1.0.63';
+const APP_BUILD_CODE = 63;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -112,7 +112,7 @@ async function refreshWebUiNow(){
     if('caches' in window){const keys=await caches.keys(); for(const k of keys){try{await caches.delete(k)}catch(e){}}}
     try{localStorage.setItem('hesabi_last_cache_clean', String(Date.now()));}catch(e){}
     try{sessionStorage.setItem('hesabi_force_update_ts', String(Date.now()));}catch(e){}
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.clearWebCacheForUpdate==='function'){try{window.HesabiAndroid.clearWebCacheForUpdate();}catch(e){}}
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.clearWebCacheForUpdate==='function'){try{window.hesabiAndroidBridge.clearWebCacheForUpdate();}catch(e){}}
   }catch(e){console.warn('refreshWebUiNow failed',e)}
 }
 function latestApkDirectUrl(){return 'https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk';}
@@ -126,20 +126,20 @@ window.refreshWebUiNow=refreshWebUiNow;
 window.downloadApkUpdate=downloadApkUpdate;
 
 function nativeAndroidAvailable(){
-  return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');
+  return !!(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.getPlatform==='function' && window.hesabiAndroidBridge.hasNative());
 }
 function nativeVersionCode(){
   try{
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.getVersionCode==='function'){
-      return Number(window.HesabiAndroid.getVersionCode()||0);
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.getVersionCode==='function'){
+      return Number(window.hesabiAndroidBridge.getVersionCode()||0);
     }
   }catch(e){}
   return 0;
 }
 function nativeVersionName(){
   try{
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.getVersionName==='function'){
-      return String(window.HesabiAndroid.getVersionName()||'');
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.getVersionName==='function'){
+      return String(window.hesabiAndroidBridge.getVersionName()||'');
     }
   }catch(e){}
   return '';
@@ -199,18 +199,18 @@ async function prepareFullUpdateRefresh(){
   }
   try{ localStorage.setItem('hesabi_last_update_prepare_ts', String(Date.now())); }catch(e){}
   try{ sessionStorage.setItem('hesabi_force_full_apk_update_ts', String(Date.now())); }catch(e){}
-  if(window.HesabiAndroid && typeof window.HesabiAndroid.clearWebCacheForUpdate==='function'){
-    try{ window.HesabiAndroid.clearWebCacheForUpdate(); }catch(e){}
+  if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.clearWebCacheForUpdate==='function'){
+    try{ window.hesabiAndroidBridge.clearWebCacheForUpdate(); }catch(e){}
   }
 }
 function openApkDownloadUrl(apkUrl){
-  if(window.HesabiAndroid && typeof window.HesabiAndroid.openApkUrl==='function'){
-    window.HesabiAndroid.openApkUrl(apkUrl);
-    return true;
+  if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.openApkUrl==='function'){
+    const nativeOpen = window.hesabiAndroidBridge.openApkUrl(apkUrl);
+    if(nativeOpen && nativeOpen.ok) return true;
   }
-  if(window.HesabiAndroid && typeof window.HesabiAndroid.openLatestApk==='function'){
-    window.HesabiAndroid.openLatestApk();
-    return true;
+  if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.openLatestApk==='function'){
+    const latestOpen = window.hesabiAndroidBridge.openLatestApk();
+    if(latestOpen && latestOpen.ok) return true;
   }
   try{
     const a=document.createElement('a');
@@ -396,12 +396,12 @@ function nativeSessionPayload(){
 }
 function notifyAndroidSession(){
   try{
-    if(!uid() || !state.profileDone || !window.HesabiAndroid) return;
+    if(!uid() || !state.profileDone || !window.hesabiAndroidBridge || !window.hesabiAndroidBridge.hasNative()) return;
     const payload=nativeSessionPayload();
     const key=JSON.stringify(payload);
     if(key===lastNativeSessionKey) return;
     lastNativeSessionKey=key;
-    window.HesabiAndroid.registerSession(key);
+    window.hesabiAndroidBridge.registerSession(key);
   }catch(e){console.warn('Android bridge session skipped',e)}
 }
 
@@ -439,13 +439,13 @@ function updateAndroidLauncherBadge(){
     if(c.returns) parts.push('مرتجعات: '+c.returns);
     if(c.schedules) parts.push('استحقاقات: '+c.schedules);
     const detail=parts.length?parts.join(' | '):'لا توجد مراجعات جديدة';
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.updateLauncherBadge==='function') window.HesabiAndroid.updateLauncherBadge(total, detail);
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.updateLauncherBadge==='function') window.hesabiAndroidBridge.updateLauncherBadge(total, detail);
     try{ document.querySelectorAll('[data-home-page="notifications"] .qbadge,[data-tab="notifications"] .nav-badge').forEach(el=>{el.textContent=total>99?'99+':String(total);}); }catch(e){}
   }catch(e){console.warn('Android badge update skipped',e)}
 }
 function clearAllNotificationCounters(){
   markNotificationsRead();
-  try{ if(window.HesabiAndroid && typeof window.HesabiAndroid.updateLauncherBadge==='function') window.HesabiAndroid.updateLauncherBadge(0, 'لا توجد مراجعات جديدة'); }catch(e){}
+  try{ if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.updateLauncherBadge==='function') window.hesabiAndroidBridge.updateLauncherBadge(0, 'لا توجد مراجعات جديدة'); }catch(e){}
   renderNav();
   if(active==='notifications') renderNotifications();
 }

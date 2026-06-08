@@ -221,7 +221,7 @@ function renderNotifications(){
   setTimeout(()=>{
     if($('enableNotifyBtn')) $('enableNotifyBtn').onclick=()=>requestNotificationPermission(true);
     if($('clearNotifyBtn')) $('clearNotifyBtn').onclick=()=>{clearAllNotificationCounters(); msg('تم تصفير عداد الإشعارات.','success');};
-    if($('testBadgeBtn')) $('testBadgeBtn').onclick=()=>{try{ if(window.HesabiAndroid&&window.HesabiAndroid.updateLauncherBadge) window.HesabiAndroid.updateLauncherBadge(1,'اختبار عداد حسابي التجاري'); msg('تم إرسال اختبار للعداد. قد يظهر رقم أو نقطة حسب نوع الهاتف.','success'); }catch(e){msg('تعذر اختبار العداد: '+(e.message||e),'error')}};
+    if($('testBadgeBtn')) $('testBadgeBtn').onclick=()=>{try{ if(window.hesabiAndroidBridge&&window.hesabiAndroidBridge.updateLauncherBadge) window.hesabiAndroidBridge.updateLauncherBadge(1,'اختبار عداد حسابي التجاري'); msg('تم إرسال اختبار للعداد. قد يظهر رقم أو نقطة حسب نوع الهاتف.','success'); }catch(e){msg('تعذر اختبار العداد: '+(e.message||e),'error')}};
     document.querySelectorAll('[data-notify-open]').forEach(b=>b.onclick=()=>openNotificationPage(b.dataset.notifyOpen));
   });
 }

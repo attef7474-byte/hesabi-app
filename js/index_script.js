@@ -1,9 +1,9 @@
-// Hesabi App 1.0.62
+// Hesabi App 1.0.63
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.62';
-const HESABI_APP_BUILD_CODE = 62;
+const HESABI_APP_VERSION = '1.0.63';
+const HESABI_APP_BUILD_CODE = 63;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -130,7 +130,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.62.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.63.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);

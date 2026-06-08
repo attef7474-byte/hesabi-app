@@ -289,8 +289,7 @@ async function startItemBarcodeScanner(){return startEmbeddedItemBarcodeScanner(
 async function scanItemBarcodeStillFrame(){return startEmbeddedItemBarcodeScanner()}
 async function startEmbeddedItemBarcodeScanner(){
   try{
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemBarcodeEmbedded==='function'){
-      window.HesabiAndroid.scanItemBarcodeEmbedded();
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.scanItemBarcodeEmbedded==='function' && window.hesabiAndroidBridge.scanItemBarcodeEmbedded().ok){
       const st=$('itemBarcodeScanStatus'); if(st) st.textContent='تم فتح الماسح الداخلي. وجّه الكاميرا نحو الباركود.';
       return true;
     }
@@ -299,8 +298,7 @@ async function startEmbeddedItemBarcodeScanner(){
 }
 async function startExternalItemBarcodeScanner(){
   try{
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemBarcodeExternal==='function'){
-      window.HesabiAndroid.scanItemBarcodeExternal();
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.scanItemBarcodeExternal==='function' && window.hesabiAndroidBridge.scanItemBarcodeExternal().ok){
       const st=$('itemBarcodeScanStatus'); if(st) st.textContent='محاولة فتح ماسح خارجي، وإذا لم يتوفر سيُستخدم الماسح الداخلي.';
       return true;
     }
@@ -309,8 +307,7 @@ async function startExternalItemBarcodeScanner(){
 }
 async function startItemOcrNative(){
   try{
-    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemOcrNative==='function'){
-      window.HesabiAndroid.scanItemOcrNative();
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.scanItemOcrNative==='function' && window.hesabiAndroidBridge.scanItemOcrNative().ok){
       const st=$('itemBarcodeScanStatus'); if(st) st.textContent='صوّر ملصق الصنف بوضوح لاستخراج الاسم أو الموديل.';
       return true;
     }
