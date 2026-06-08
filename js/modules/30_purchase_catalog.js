@@ -20,8 +20,14 @@ function itemCategory(i){
 
 /* phase9: removed older duplicate shopPolicyBool; final implementation appears later. */
 
-function customerCanSeeItem(i){return i && i.isActive!==false && i.customerVisible!==false;}
+function customerCanSeeItem(i){
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.customerCanSeeItem==='function') return helpers.customerCanSeeItem(i);
+  return i && i.isActive!==false && i.customerVisible!==false;
+}
 function shopIsOpenNow(){
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.shopIsOpenNow==='function') return helpers.shopIsOpenNow(cache.shop||{});
   const sh=cache.shop||{};
   if(!sh.workingHoursEnabled) return true;
   const open=String(sh.workingOpenTime||'08:00');
@@ -33,6 +39,8 @@ function shopIsOpenNow(){
 }
 
 function catalogState(){
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.catalogState==='function') return helpers.catalogState(state,state.shopId);
   if(!state.catalog) state.catalog={};
   const sid=state.shopId||'default';
   if(!state.catalog[sid]) state.catalog[sid]={q:'',category:'الكل',availableOnly:true,sort:'popular',limit:30,favorites:{},cart:{}};
@@ -41,6 +49,12 @@ function catalogState(){
 function saveCatalog(){save()}
 function catalogCartLines(){
   const cs=catalogState();
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.cartLines==='function'){
+    const lines=helpers.cartLines({catalogState:cs,itemById,allowOutOfStock:shopPolicyBool('allowOutOfStockOrders', false)});
+    saveCatalog();
+    return lines;
+  }
   const lines=[];
   for(const [itemId,qtyRaw] of Object.entries(cs.cart||{})){
     const qty=Number(qtyRaw||0); if(qty<=0) continue;
@@ -56,27 +70,39 @@ function catalogCartLines(){
   saveCatalog();
   return lines;
 }
-function catalogCartTotal(){const lines=catalogCartLines(); return {lines,count:lines.reduce((a,l)=>a+l.qty,0),items:lines.length,total:lines.reduce((a,l)=>a+l.total,0)}}
+function catalogCartTotal(){const lines=catalogCartLines(); const helpers=window.hesabiCatalogHelpers||{}; return typeof helpers.cartTotal==='function'?helpers.cartTotal(lines):{lines,count:lines.reduce((a,l)=>a+l.qty,0),items:lines.length,total:lines.reduce((a,l)=>a+l.total,0)}}
 function setCartQty(itemId,qty){
   const cs=catalogState(); const i=itemById(itemId); if(!i) return;
   const stock=Number(i.stock||0);
   let q=Math.max(0,Number(qty||0));
   const allowOut=shopPolicyBool('allowOutOfStockOrders', false);
-  if(stock<=0 && !allowOut){q=0; msg('هذا الصنف غير متوفر حاليًا','error')}
-  if(q>stock && !allowOut){q=stock; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error')}
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.safeCartQty==='function'){
+    const result=helpers.safeCartQty({item:i,qty:q,allowOutOfStock:allowOut});
+    if(!result.ok && result.reason==='out-of-stock'){q=0; msg('هذا الصنف غير متوفر حاليًا','error')}
+    else if(result.reason==='limited-by-stock'){q=result.qty; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error')}
+    else q=result.qty;
+  }else{
+    if(stock<=0 && !allowOut){q=0; msg('هذا الصنف غير متوفر حاليًا','error')}
+    if(q>stock && !allowOut){q=stock; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error')}
+  }
   if(q>0) cs.cart[itemId]=q; else delete cs.cart[itemId];
   saveCatalog(); refreshCatalogUi();
 }
 function changeCartQty(itemId,delta){const cs=catalogState(); setCartQty(itemId,Number(cs.cart?.[itemId]||0)+Number(delta||0))}
 function toggleFavorite(itemId){const cs=catalogState(); cs.favorites[itemId]=!cs.favorites[itemId]; if(!cs.favorites[itemId]) delete cs.favorites[itemId]; saveCatalog(); refreshCatalogUi()}
-function itemSoldQty(itemId){return cache.invoices.reduce((a,inv)=>a+(inv.lines||inv.items||[]).filter(l=>l.itemId===itemId).reduce((x,l)=>x+Number(l.qty||0),0),0)}
+function itemSoldQty(itemId){const helpers=window.hesabiCatalogHelpers||{}; return typeof helpers.itemSoldQty==='function'?helpers.itemSoldQty(cache.invoices,itemId):cache.invoices.reduce((a,inv)=>a+(inv.lines||inv.items||[]).filter(l=>l.itemId===itemId).reduce((x,l)=>x+Number(l.qty||0),0),0)}
 function commonCustomerItems(){
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.commonCustomerItems==='function') return helpers.commonCustomerItems(cache.invoices,itemById);
   const counts={};
   for(const inv of cache.invoices||[]) for(const l of (inv.lines||inv.items||[])) if(l.itemId) counts[l.itemId]=(counts[l.itemId]||0)+Number(l.qty||1);
   return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([id])=>itemById(id)).filter(Boolean);
 }
 function filteredCatalogItems(){
   const cs=catalogState();
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.filteredCatalogItems==='function') return helpers.filteredCatalogItems({catalogState:cs,items:cache.items,itemCategory,searchMatch,itemSoldQty});
   let items=cache.items.filter(i=>customerCanSeeItem(i));
   if(cs.availableOnly) items=items.filter(i=>Number(i.stock||0)>0);
   if(cs.category && cs.category!=='الكل' && cs.category!=='المفضلة' && cs.category!=='الأكثر طلبًا') items=items.filter(i=>itemCategory(i)===cs.category);
@@ -103,6 +129,8 @@ function renderCatalogItem(i){
 function catalogSearchMatches(q){
   const text=String(q||'').trim();
   if(!text) return [];
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.catalogSearchMatches==='function') return helpers.catalogSearchMatches({query:text,items:cache.items,itemCategory,searchMatch,normalizeSearchText,limit:80});
   const nq=normalizeSearchText(text);
   const score=i=>{
     const name=normalizeSearchText(i.name);
@@ -170,11 +198,15 @@ function renderCatalogCartBar(cart){
 }
 
 function visibleCustomerPurchaseItems(){
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.visibleCustomerPurchaseItems==='function') return helpers.visibleCustomerPurchaseItems(cache.items||[], shopPolicyBool('allowOutOfStockOrders', false));
   return (cache.items||[]).filter(customerCanSeeItem).filter(i=>Number(i.stock||0)>0 || shopPolicyBool('allowOutOfStockOrders', false));
 }
 function purchaseInlineMatches(q, limit=8){
   const text=String(q||'').trim();
   if(!text) return [];
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.purchaseInlineMatches==='function') return helpers.purchaseInlineMatches({query:text,items:visibleCustomerPurchaseItems(),itemCategory,searchMatch,normalizeSearchText,limit});
   const nq=normalizeSearchText(text);
   const score=i=>{
     const name=normalizeSearchText(i.name||'');
@@ -195,9 +227,17 @@ function purchaseInlineMatches(q, limit=8){
 function silentSetCartQty(itemId,qty){
   const cs=catalogState(); const i=itemById(itemId); if(!i) return false;
   const stock=Number(i.stock||0); const allowOut=shopPolicyBool('allowOutOfStockOrders', false);
+  const helpers=window.hesabiCatalogHelpers||{};
   let q=Math.max(0,Number(qty||0));
-  if(stock<=0 && !allowOut){msg('هذا الصنف غير متوفر حاليًا','error'); return false;}
-  if(q>stock && !allowOut){q=stock; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error');}
+  if(typeof helpers.safeCartQty==='function'){
+    const result=helpers.safeCartQty({item:i,qty:q,allowOutOfStock:allowOut});
+    if(!result.ok && result.reason==='out-of-stock'){msg('هذا الصنف غير متوفر حاليًا','error'); return false;}
+    if(result.reason==='limited-by-stock'){q=result.qty; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error');}
+    else q=result.qty;
+  }else{
+    if(stock<=0 && !allowOut){msg('هذا الصنف غير متوفر حاليًا','error'); return false;}
+    if(q>stock && !allowOut){q=stock; msg(`الكمية المتاحة من ${i.name} هي ${stock} فقط`,'error');}
+  }
   if(q>0) cs.cart[itemId]=q; else delete cs.cart[itemId];
   saveCatalog(); return true;
 }
@@ -313,6 +353,8 @@ function renderSelectedCartTable(cart){
 
 function customerPurchaseRows(){
   const cs=catalogState();
+  const helpers=window.hesabiCatalogHelpers||{};
+  if(typeof helpers.customerPurchaseRows==='function') return helpers.customerPurchaseRows({catalogState:cs,items:visibleCustomerPurchaseItems(),itemCategory,searchMatch,effectiveItemPrice,itemSoldQty,pageSize:10});
   const pageSize=10;
   cs.page=Math.max(1,Number(cs.page||1));
   let data=visibleCustomerPurchaseItems();

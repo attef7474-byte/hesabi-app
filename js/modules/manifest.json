@@ -1,11 +1,11 @@
 {
-  "version": "1.0.67",
-  "buildCode": 67,
+  "version": "1.0.68",
+  "buildCode": 68,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
       "lines": 793,
-      "description": "丕賱賳賵丕丞 丕賱毓丕賲丞貙 丕賱廿氐丿丕乇丕鬲貙 丕賱丨賵丕乇丕鬲貙 丕賱鬲丨丿賷孬貙 丕賱賲氐丕丿賯丞 丕賱賲爻丕毓丿丞 賵丕賱鬲賳亘賷賴丕鬲"
+      "description": "النواة العامة، الإصدارات، التحديث، المصادقة والدوال المساعدة الأساسية"
     },
     {
       "file": "js/modules/07_utils_helpers.js",
@@ -23,6 +23,11 @@
       "description": "Safe item helpers for categories, duplicate checks, item lookup, code/OCR helpers and selected item utilities"
     },
     {
+      "file": "js/modules/04_catalog_helpers.js",
+      "lines": 259,
+      "description": "Safe customer catalog helpers for catalog state, cart totals, item visibility, search, sorting and pagination"
+    },
+    {
       "file": "js/modules/08_dialogs_toasts.js",
       "lines": 111,
       "description": "Safe dialogs, messages, toasts and confirmation wrappers"
@@ -35,37 +40,37 @@
     {
       "file": "js/modules/10_firebase_live_data.js",
       "lines": 242,
-      "description": "鬲賴賷卅丞 Firebase 賵丕賱賲爻鬲賲毓丕鬲 丕賱賱丨馗賷丞 賵丕賱亘賷丕賳丕鬲 丕賱毓丕賲丞"
+      "description": "تهيئة Firebase والمستمعات اللحظية والبيانات العامة"
     },
     {
       "file": "js/modules/20_router_setup_profile.js",
       "lines": 875,
-      "description": "賲丨乇賰 丕賱毓乇囟 賵丕賱鬲賳賯賱 賵鬲賴賷卅丞 丕賱丨爻丕亘 賵丕賱乇亘胤 賵丕賱氐賮丨丕鬲 丕賱毓丕賲丞"
+      "description": "محرك العرض والتنقل وتهيئة الحساب والربط والصفحات العامة"
     },
     {
       "file": "js/modules/30_purchase_catalog.js",
-      "lines": 404,
-      "description": "卮乇丕亍 丕賱毓賲賷賱 賵丕賱賰鬲丕賱賵噩 賵丕賱爻賱丞 賵賳賲賵匕噩 丕賱胤賱亘"
+      "lines": 446,
+      "description": "شراء العميل والكتالوج والسلة ونموذج الطلب مع تفويض آمن لوحدة الكتالوج"
     },
     {
       "file": "js/modules/40_pages_tables.js",
       "lines": 212,
-      "description": "氐賮丨丕鬲 丕賱兀氐賳丕賮 賵丕賱毓賲賱丕亍 賵丕賱胤賱亘丕鬲 賵丕賱賮賵丕鬲賷乇 賵丕賱噩丿丕賵賱 丕賱兀爻丕爻賷丞"
+      "description": "صفحات الأصناف والعملاء والطلبات والفواتير والجداول الأساسية"
     },
     {
       "file": "js/modules/50_auth_order_approval.js",
       "lines": 500,
-      "description": "丕爻鬲賯乇丕乇 鬲爻噩賷賱 丕賱丿禺賵賱 賵丕賱胤賱亘 賵丕毓鬲賲丕丿 丕賱鬲丕噩乇"
+      "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر"
     },
     {
       "file": "js/modules/60_payments_returns_policies.js",
       "lines": 502,
-      "description": "丕賱爻丿丕丿 賵丕賱賮賵丕鬲賷乇 賵丕賱賲乇鬲噩毓丕鬲 賵丕賱兀賯爻丕胤 賵丕賱爻賷丕爻丕鬲"
+      "description": "السداد والفواتير والمرتجعات والأقساط والسياسات"
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
       "lines": 673,
-      "description": "丕賱廿毓丿丕丿丕鬲 賵丕賱賲丕賱賰 賵丕賱兀氐賳丕賮 賵丕賱兀爻毓丕乇 賵丕賱賲禺夭賵賳 賵噩爻乇 兀賳丿乇賵賷丿 賵丕賱鬲卮睾賷賱"
+      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون وجسر أندرويد والتشغيل"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",
