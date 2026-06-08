@@ -73,8 +73,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.38';
-const APP_BUILD_CODE=38;
+const APP_VERSION='1.0.57';
+const APP_BUILD_CODE=57;
 
 function nativeAndroidAvailable(){
   return !!(window.HesabiAndroid && typeof window.HesabiAndroid.getPlatform==='function');

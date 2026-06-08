@@ -73,8 +73,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.55';
-const APP_BUILD_CODE=55;
+const APP_VERSION='1.0.57';
+const APP_BUILD_CODE=57;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -3760,13 +3760,90 @@ async function shareStatementText(customerId){
   try{const c=state.role==='customer'?customerDebtInfo().c:(cache.customers||[]).find(x=>x.id===customerId)||{}; const rows=ledgerRowsForCustomer(customerId||c.id||state.customerId); let running=0; const body=rows.map(r=>{running+=Number(r.amount||0); return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`;}).join('\n'); const text=`كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\n----------------\n${body||'لا توجد حركات.'}`; if(navigator.share) await navigator.share({title:'كشف حساب',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب.','success');}}catch(e){msg('تعذر مشاركة كشف الحساب: '+friendlyFirestoreError(e),'error');}
 }
 
+
+function extractItemNameFromOcrText(text){
+  const raw=String(text||'').replace(/\r/g,'\n');
+  const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const joined=lines.join(' ');
+  const model=(joined.match(/(?:Model|MODEL|الموديل)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9._-]{2,})/i)||[])[1]||'';
+  const brand=(joined.match(/\b(HUAWEI|SAMSUNG|APPLE|XIAOMI|OPPO|VIVO|TECNO|INFINIX|NOKIA|LENOVO|HP|DELL|LG|SONY)\b/i)||[])[1]||'';
+  if(model && brand) return `${brand.toUpperCase()} ${model}`;
+  if(model) return model;
+  return lines.find(l=>{const s=l.toUpperCase(); if(/IMEI|S\/N|SN:|SERIAL|MAC|WIFI|WI-FI|IP:|INPUT|PASSWORD|PASS/.test(s)) return false; return /[A-Za-z\u0600-\u06FF]/.test(l) && l.length>=3 && l.length<=60;})||'';
+}
+function normalizeItemCodeForLookup(code){return String(code||'').trim().toUpperCase().replace(/\s+/g,'')}
+function autoFillItemNameFromCode(code){
+  try{
+    const key=normalizeItemCodeForLookup(code); if(!key) return false;
+    const found=(cache.items||[]).find(i=>[i.barcode,i.code,i.sku,i.serial,i.imei,i.sn].map(normalizeItemCodeForLookup).includes(key));
+    if(!found) return false;
+    if($('itemName') && !$('itemName').value.trim()) $('itemName').value=found.name||'';
+    if($('itemCategory')) $('itemCategory').value=itemCategory(found)||found.category||'عام';
+    if($('itemUnit')) $('itemUnit').value=found.unit||'حبة';
+    if($('itemCashPrice') && !Number($('itemCashPrice').value||0)) $('itemCashPrice').value=Number(found.cashPrice||found.price||0)||'';
+    if($('itemCreditPrice') && !Number($('itemCreditPrice').value||0)) $('itemCreditPrice').value=Number(found.creditPrice||found.cashPrice||found.price||0)||'';
+    return true;
+  }catch(e){return false}
+}
 function stopItemBarcodeScanner(showMsg=true){try{const v=$('itemBarcodeVideo'); if(v && v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop()); v.srcObject=null;} if(v) v.classList.remove('active'); if(showMsg) msg('تم إيقاف الماسح.','notice');}catch(e){}}
-async function startItemBarcodeScanner(){msg('افتح الكاميرا/الماسح من التطبيق أو استخدم إدخال الباركود يدويًا.','notice');}
-async function scanItemBarcodeStillFrame(){msg('قراءة اللقطة غير متاحة في هذا الجهاز. أدخل الكود يدويًا أو استخدم الماسح الداخلي.','notice');}
-async function startEmbeddedItemBarcodeScanner(){try{if(window.AndroidBridge?.scanBarcode){window.AndroidBridge.scanBarcode('itemBarcode');return;} msg('الماسح الداخلي غير متاح في هذه النسخة. استخدم إدخال الباركود يدويًا.','notice');}catch(e){msg('تعذر فتح الماسح.','error');}}
-async function startExternalItemBarcodeScanner(){try{if(window.AndroidBridge?.scanBarcodeExternal){window.AndroidBridge.scanBarcodeExternal('itemBarcode');return;} msg('تطبيق الماسح الخارجي غير متاح.','notice');}catch(e){msg('تعذر فتح الماسح الخارجي.','error');}}
-async function startItemOcrNative(){try{if(window.AndroidBridge?.scanText){window.AndroidBridge.scanText('itemName');return;} msg('OCR غير متاح على هذا الجهاز.','notice');}catch(e){msg('تعذر تشغيل OCR.','error');}}
+async function startItemBarcodeScanner(){return startEmbeddedItemBarcodeScanner()}
+async function scanItemBarcodeStillFrame(){return startEmbeddedItemBarcodeScanner()}
+async function startEmbeddedItemBarcodeScanner(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemBarcodeEmbedded==='function'){
+      window.HesabiAndroid.scanItemBarcodeEmbedded();
+      const st=$('itemBarcodeScanStatus'); if(st) st.textContent='تم فتح الماسح الداخلي. وجّه الكاميرا نحو الباركود.';
+      return true;
+    }
+    msg('الماسح الداخلي غير متاح في هذه النسخة. استخدم إدخال الباركود يدويًا.','notice'); return false;
+  }catch(e){msg('تعذر فتح الماسح الداخلي: '+(e.message||e),'error');return false}
+}
+async function startExternalItemBarcodeScanner(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemBarcodeExternal==='function'){
+      window.HesabiAndroid.scanItemBarcodeExternal();
+      const st=$('itemBarcodeScanStatus'); if(st) st.textContent='محاولة فتح ماسح خارجي، وإذا لم يتوفر سيُستخدم الماسح الداخلي.';
+      return true;
+    }
+    return startEmbeddedItemBarcodeScanner();
+  }catch(e){msg('تعذر فتح الماسح الخارجي: '+(e.message||e),'error');return false}
+}
+async function startItemOcrNative(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemOcrNative==='function'){
+      window.HesabiAndroid.scanItemOcrNative();
+      const st=$('itemBarcodeScanStatus'); if(st) st.textContent='صوّر ملصق الصنف بوضوح لاستخراج الاسم أو الموديل.';
+      return true;
+    }
+    msg('OCR غير متاح على هذا الجهاز.','notice'); return false;
+  }catch(e){msg('تعذر تشغيل OCR: '+(e.message||e),'error');return false}
+}
 function usePendingItemBarcodeCandidate(){const code=state.pendingItemBarcode||''; if(code && $('itemBarcode')){$('itemBarcode').value=code; msg('تم اعتماد الكود المقروء.','success');} else msg('لا يوجد كود مقروء لاعتماده.','notice');}
+window.hesabiReceiveItemBarcode=function(code,message){
+  try{
+    const value=String(code||'').trim(); const input=$('itemBarcode'); const note=$('itemNotes'); const st=$('itemBarcodeScanStatus');
+    if(value){
+      if(/^\d{15}$/.test(value)){state.pendingItemBarcode=value; save(); if(note && !String(note.value||'').includes(value)) note.value=(note.value?note.value+' | ':'')+'IMEI: '+value; if(st) st.innerHTML='تمت قراءة رقم IMEI: <b dir="ltr">'+esc(value)+'</b>. إذا كان كود الصنف اضغط اعتماد، أو أعد المسح.'; msg('تمت قراءة IMEI؛ راجع هل هو كود الصنف المطلوب.','notice'); return;}
+      if(input) input.value=value;
+      const filled=autoFillItemNameFromCode(value);
+      if(st) st.textContent=filled?'تم قراءة الكود وتعبئة بيانات الصنف':'تم قراءة كود الصنف: '+value;
+      msg(filled?'تم قراءة الكود وتعبئة بيانات الصنف':'تم قراءة كود الصنف','success');
+    }else{ if(st) st.textContent=message||'تم إلغاء مسح كود الصنف.'; if(message) msg(message,'notice'); }
+  }catch(e){console.warn('hesabiReceiveItemBarcode failed',e)}
+};
+window.hesabiReceiveItemOcr=function(text,message){
+  try{
+    const raw=String(text||'').trim(); const st=$('itemBarcodeScanStatus');
+    if(!raw){ if(st) st.textContent=message||'لم يتم العثور على نص واضح.'; msg(message||'لم يتم العثور على نص واضح','error'); return; }
+    const name=extractItemNameFromOcrText(raw);
+    if(name && $('itemName') && !$('itemName').value.trim()){ $('itemName').value=name; msg('تم استخراج اسم الصنف: '+name,'success'); }
+    else if(name){ msg('تم قراءة نص، والاسم المقترح: '+name,'notice'); }
+    else msg('تمت قراءة النص، لكن لم يتم تحديد اسم صنف واضح.','notice');
+    const note=$('itemNotes'); if(note){ const shortText=raw.replace(/\s+/g,' ').slice(0,220); if(!String(note.value||'').includes(shortText)) note.value=(note.value?note.value+' | ':'')+'OCR: '+shortText; }
+    if(st) st.textContent=name?'تم اقتراح اسم الصنف من OCR: '+name:'تمت قراءة النص وإضافته للملاحظات.';
+  }catch(e){console.warn('hesabiReceiveItemOcr failed',e)}
+};
+
 function openItemsExcelImport(){const f=$('itemsExcelImportFile'); if(f) f.click(); else msg('حقل اختيار ملف Excel غير موجود في الصفحة.','error');}
 function exportItemsToExcel(){exportCsv('hesabi-items.csv',['name','barcode','category','unit','cashPrice','creditPrice','stock'],cache.items||[]);}
 function exportInvoicesCsv(){exportCsv('hesabi-invoices.csv',['invoiceNo','customerName','paymentType','total','createdMs'],cache.invoices||[]);}
