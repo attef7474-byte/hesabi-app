@@ -1,6 +1,6 @@
 {
-  "version": "1.0.74",
-  "buildCode": 74,
+  "version": "1.0.75",
+  "buildCode": 75,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 180,
+      "lines": 182,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -73,6 +73,11 @@
       "description": "Payments page stabilization helpers for safe payment normalization, status filters, summary stats, rows rendering, action binding and self-checks"
     },
     {
+      "file": "js/modules/14_invoices_helpers.js",
+      "lines": 262,
+      "description": "Invoices page stabilization helpers for safe invoice normalization, filters, summary stats, rows rendering, share button binding and self-checks"
+    },
+    {
       "file": "js/modules/20_router_setup_profile.js",
       "lines": 875,
       "description": "محرك العرض والتنقل وتهيئة الحساب والربط والصفحات العامة"
@@ -84,12 +89,12 @@
     },
     {
       "file": "js/modules/40_pages_tables.js",
-      "lines": 212,
+      "lines": 239,
       "description": "صفحات الأصناف والعملاء والطلبات والفواتير والجداول الأساسية"
     },
     {
       "file": "js/modules/50_auth_order_approval.js",
-      "lines": 525,
+      "lines": 553,
       "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر مع تفويض آمن لحسابات التقارير والسداد"
     },
     {

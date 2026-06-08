@@ -91,6 +91,33 @@ function renderOrders(){
   setTimeout(()=>{bindDemandTable('ordersList', renderOrders); document.querySelectorAll('[data-approve-order]').forEach(b=>b.onclick=()=>approveOrder(b.dataset.approveOrder));document.querySelectorAll('[data-reject-order]').forEach(b=>b.onclick=()=>rejectOrder(b.dataset.rejectOrder));document.querySelectorAll('[data-customer-approve]').forEach(b=>b.onclick=()=>customerApproveOrder(b.dataset.customerApprove));document.querySelectorAll('[data-customer-reject]').forEach(b=>b.onclick=()=>customerRejectOrder(b.dataset.customerReject));document.querySelectorAll('[data-edit-customer-order]').forEach(b=>b.onclick=()=>loadOrderForEdit(b.dataset.editCustomerOrder));document.querySelectorAll('[data-cancel-customer-order]').forEach(b=>b.onclick=()=>cancelCustomerOrder(b.dataset.cancelCustomerOrder));});
 }
 function renderInvoices(){
+  const helpers=window.hesabiInvoicesHelpers;
+  if(helpers && typeof helpers.renderPage==='function'){
+    try{
+      const selectedCustomer=state.invFilterCustomer||'', selectedPay=state.invFilterPay||'';
+      const result=helpers.renderPage({
+        invoices:cache.invoices||[],
+        customers:cache.customers||[],
+        role:state.role,
+        state,
+        selectedCustomer,
+        selectedPay,
+        customerId:state.customerId||''
+      });
+      $('page_invoices').innerHTML=result.html;
+      setTimeout(()=>helpers.bindActions({
+        state,
+        save,
+        renderInvoices,
+        bindDemandTable,
+        shareInvoiceText
+      }));
+      return;
+    }catch(error){
+      console.error('renderInvoices helpers failed', error);
+      try{ msg('تم فتح الفواتير بالوضع الآمن بسبب خطأ في عرض الفواتير.','notice'); }catch(_){}
+    }
+  }
   const selectedCustomer=state.invFilterCustomer||'', selectedPay=state.invFilterPay||'';
   let data=[...(cache.invoices||[])]; if(state.role==='trader'&&selectedCustomer) data=data.filter(i=>i.customerId===selectedCustomer); if(selectedPay) data=data.filter(i=>(i.paymentType||'cash')===selectedPay);
   const meta=demandFilter('invoicesList', data, inv=>`${inv.invoiceNo||''} ${inv.id||''} ${inv.customerName||''} ${inv.paymentType||''} ${inv.total||''} ${demandText(inv.items||inv.lines||[])}`);

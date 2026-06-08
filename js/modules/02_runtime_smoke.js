@@ -1,10 +1,10 @@
-/* Hesabi 1.0.74 - Full runtime smoke stabilization.
+/* Hesabi 1.0.75 - Full runtime smoke stabilization.
    Non-intrusive checks only: no Firestore writes, no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.74";
-  const BUILD_CODE = 74;
+  const VERSION = "1.0.75";
+  const BUILD_CODE = 75;
 
   const EXPECTED_MODULES = [
     "js/modules/00_core_update_auth.js",
@@ -21,6 +21,7 @@
     "js/modules/11_settings_helpers.js",
     "js/modules/12_messages_helpers.js",
     "js/modules/13_payments_helpers.js",
+    "js/modules/14_invoices_helpers.js",
     "js/modules/20_router_setup_profile.js",
     "js/modules/30_purchase_catalog.js",
     "js/modules/40_pages_tables.js",
@@ -35,6 +36,7 @@
     { name: "settings-helpers", fn: "hesabiSettingsHelpersSelfCheck", required: true },
     { name: "messages-helpers", fn: "hesabiMessagesHelpersSelfCheck", required: true },
     { name: "payments-helpers", fn: "hesabiPaymentsHelpersSelfCheck", required: true },
+    { name: "invoices-helpers", fn: "hesabiInvoicesHelpersSelfCheck", required: true },
     { name: "reports-helpers", fn: "hesabiReportsHelpersSelfCheck", required: true },
     { name: "catalog-helpers", fn: "hesabiCatalogHelpersSelfCheck", required: true },
     { name: "items-helpers", fn: "hesabiItemsHelpersSelfCheck", required: true },

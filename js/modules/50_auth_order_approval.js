@@ -17,6 +17,34 @@ renderOrders=function(){
 }
 
 renderInvoices=function(){
+  const invoicesHelper=window.hesabiInvoicesHelpers;
+  if(invoicesHelper && typeof invoicesHelper.renderPage==='function'){
+    try{
+      const tab=pageTabState('invoices','all');
+      const selectedCustomer=state.invFilterCustomer||'';
+      const selectedPay=(tab==='cash'||tab==='credit')?tab:(state.invFilterPay||'');
+      const rendered=invoicesHelper.renderPage({
+        invoices:cache.invoices||[],
+        customers:cache.customers||[],
+        role:state.role,
+        state,
+        selectedCustomer,
+        selectedPay,
+        customerId:state.customerId||''
+      });
+      const tabs=[['all','🧾','كل الفواتير'],['cash','💵','كاش'],['credit','📒','آجل'],['export','📤','تصدير']];
+      const exportBox=tab==='export'?`<div class="card"><h2>تصدير الفواتير</h2><div class="settings-compact-actions"><button class="btn secondary mini" id="exportInvoicesCsv">تصدير الفواتير CSV</button></div></div>`:'';
+      $('page_invoices').innerHTML=pageHead('الفواتير','الفواتير مقسمة إلى كاش وآجل مع بحث وفلاتر وتصدير.')+pageTabsBar('invoices',tab,tabs)+rendered.html+exportBox;
+      setTimeout(()=>{
+        bindPageTabs('invoices',renderInvoices);
+        invoicesHelper.bindActions({state,save,renderInvoices,bindDemandTable,shareInvoiceText});
+        if($('exportInvoicesCsv')) $('exportInvoicesCsv').onclick=exportInvoicesCsv;
+      });
+      return;
+    }catch(e){
+      console.warn('invoices helper render failed, fallback to legacy renderer',e);
+    }
+  }
   const tab=pageTabState('invoices','all');
   const tabs=[['all','🧾','كل الفواتير'],['cash','💵','كاش'],['credit','📒','آجل'],['export','📤','تصدير']];
   const selectedCustomer=state.invFilterCustomer||'';

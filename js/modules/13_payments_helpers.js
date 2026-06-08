@@ -1,10 +1,10 @@
-/* Hesabi 1.0.74 - Payments page stabilization.
+/* Hesabi 1.0.75 - Payments page stabilization.
    Safe helpers only: no Firestore writes and no change to payment approval/rejection persistence logic. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.74";
-  const BUILD_CODE = 74;
+  const VERSION = "1.0.75";
+  const BUILD_CODE = 75;
 
   function escSafe(value){
     if(typeof esc === "function") return esc(value == null ? "" : value);
