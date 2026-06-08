@@ -1,4 +1,3 @@
-
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,writeBatch, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, updatePhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -73,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.44';
-const APP_BUILD_CODE=44;
+const APP_VERSION='1.0.58';
+const APP_BUILD_CODE=58;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -406,10 +405,32 @@ function notifyAndroidSession(){
   }catch(e){console.warn('Android bridge session skipped',e)}
 }
 
+function notificationPermissionState(){
+  try{ return ('Notification' in window) ? Notification.permission : 'unsupported'; }catch(e){ return 'unsupported'; }
+}
+async function requestNotificationPermission(showResult=true){
+  try{
+    if(!('Notification' in window)){ if(showResult) msg('هذا الجهاز لا يدعم إشعارات Web داخل هذه النسخة. سيبقى عداد التطبيق الداخلي يعمل.', 'notice'); return false; }
+    let p=Notification.permission;
+    if(p==='default') p=await Notification.requestPermission();
+    state.notifyEnabled = p==='granted';
+    state.notifyPermission = p;
+    save();
+    if(showResult){
+      if(p==='granted') showAppDialog('تم تفعيل التنبيهات','تم تفعيل التنبيهات داخل التطبيق. ظهور الرقم فوق أيقونة التطبيق يعتمد على نوع الهاتف واللانشر.', 'success', [{text:'موافق',cls:'ok'}]);
+      else showAppDialog('التنبيهات غير مفعلة','لم يتم منح صلاحية التنبيهات. يمكنك تفعيلها من إعدادات الهاتف، وسيبقى عداد التنبيهات داخل التطبيق ظاهرًا.', 'warn', [{text:'موافق',cls:'ok'}]);
+    }
+    updateAndroidLauncherBadge();
+    return p==='granted';
+  }catch(e){ console.warn('notification permission failed',e); if(showResult) msg('تعذر طلب صلاحية التنبيهات: '+(e.message||e),'error'); return false; }
+}
+function appNotificationCounters(){
+  try{ return unreadCounters(); }catch(e){ return {orders:0,messages:0,payments:0,returns:0,schedules:0,notifications:0}; }
+}
 function updateAndroidLauncherBadge(){
   try{
-    if(!window.HesabiAndroid || !state.profileDone) return;
-    const c=unreadCounters();
+    if(!state.profileDone) return;
+    const c=appNotificationCounters();
     const total=Number(c.notifications||0);
     const parts=[];
     if(c.messages) parts.push('رسائل: '+c.messages);
@@ -418,8 +439,30 @@ function updateAndroidLauncherBadge(){
     if(c.returns) parts.push('مرتجعات: '+c.returns);
     if(c.schedules) parts.push('استحقاقات: '+c.schedules);
     const detail=parts.length?parts.join(' | '):'لا توجد مراجعات جديدة';
-    if(typeof window.HesabiAndroid.updateLauncherBadge==='function') window.HesabiAndroid.updateLauncherBadge(total, detail);
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.updateLauncherBadge==='function') window.HesabiAndroid.updateLauncherBadge(total, detail);
+    try{ document.querySelectorAll('[data-home-page="notifications"] .qbadge,[data-tab="notifications"] .nav-badge').forEach(el=>{el.textContent=total>99?'99+':String(total);}); }catch(e){}
   }catch(e){console.warn('Android badge update skipped',e)}
+}
+function clearAllNotificationCounters(){
+  markNotificationsRead();
+  try{ if(window.HesabiAndroid && typeof window.HesabiAndroid.updateLauncherBadge==='function') window.HesabiAndroid.updateLauncherBadge(0, 'لا توجد مراجعات جديدة'); }catch(e){}
+  renderNav();
+  if(active==='notifications') renderNotifications();
+}
+async function markMessagesReadForActiveUser(){
+  try{
+    if(!db || !state.shopId || !state.profileDone) return;
+    const updates=[];
+    const now=Date.now();
+    for(const m of (cache.messages||[])){
+      const other = state.role==='trader' ? m.fromRole==='customer' : m.fromRole==='trader';
+      if(!other) continue;
+      if(state.role==='trader' && !m.readByTrader) updates.push(updateDoc(doc(db,'shops',state.shopId,'messages',m.id),{readByTrader:true,readAt:serverTimestamp(),updatedAt:serverTimestamp(),readMs:now}).catch(e=>console.warn('mark trader read failed',e)));
+      if(state.role==='customer' && !m.readByCustomer) updates.push(updateDoc(doc(db,'shops',state.shopId,'messages',m.id),{readByCustomer:true,readAt:serverTimestamp(),updatedAt:serverTimestamp(),readMs:now}).catch(e=>console.warn('mark customer read failed',e)));
+    }
+    if(updates.length) await Promise.all(updates);
+    markPageNotificationsRead('messages');
+  }catch(e){ console.warn('mark messages read failed',e); }
 }
 window.hesabiReceiveFcmToken = async function(token){
   try{
@@ -612,10 +655,11 @@ function beep(kind='notification'){
   }catch(e){}
 }
 function notifyLocal(title,body){
-  beep();
+  try{ beep(); }catch(e){}
   if(state.notifyEnabled && 'Notification' in window && Notification.permission==='granted'){
-    try{new Notification(title,{body:body||'',tag:'hesabi-'+Date.now()})}catch(e){}
+    try{new Notification(title,{body:body||'',tag:'hesabi-'+Date.now(),renotify:false,dir:'rtl'})}catch(e){}
   }
+  updateAndroidLauncherBadge();
 }
 function ensureNotifyState(){
   if(!state.knownNotifyIds) state.knownNotifyIds={};
@@ -719,7 +763,10 @@ function markNotificationsRead(filterFn=null){
   updateAndroidLauncherBadge();
 }
 function openNotificationPage(page){
-  show(page||'notifications');
+  const p=page||'notifications';
+  show(p);
+  if(p!=='notifications') markPageNotificationsRead(p);
+  updateAndroidLauncherBadge();
 }
 
 async function initFirebase(){
@@ -931,62 +978,27 @@ function renderBasicListPage(pageId,title,description,rowsHtml='',headers=['ال
   const html = `<div class="card"><h2>${esc(title)}</h2>${description?`<p class="muted">${esc(description)}</p>`:''}</div><div class="table-wrap"><table class="compact-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
   const el=$('page_'+pageId); if(el) el.innerHTML=html;
 }
-function renderSettings(){
-  const tab=pageTabState('settings','security');
-  const tabs=[['security','🔐','الأمان'],['appearance','🎨','الشكل'],['shop','🏪','المتجر'],['permissions','🛡️','الصلاحيات'],['update','⬆️','التحديث'],['backup','💾','النسخ'],['account','👤','الحساب'],['notifications','🔔','التنبيهات']];
-  let content='';
-  if(tab==='update'){
-    content=`<div class="card"><h2>التحديث والكاش</h2><div class="grid"><div class="metric"><span class="muted">إصدار الواجهات</span><b>${APP_VERSION}</b></div><div class="metric"><span class="muted">إصدار APK</span><b>${nativeVersionName()} (${nativeVersionCode()})</b></div></div><div class="settings-compact-actions"><button class="btn ok" id="settingsRefreshUi">تحديث الواجهات</button><button class="btn warn" id="settingsCleanCache">تنظيف الكاش</button><button class="btn secondary" id="settingsUpdateApk">تحديث APK</button><button class="btn light" id="settingsCheckApk">فحص APK</button></div></div>`;
-  }else if(tab==='permissions'){
-    content=`<div class="card"><h2>الصلاحيات حسب الدور</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>الوظيفة</th><th>التاجر</th><th>العميل</th></tr></thead><tbody><tr><td>الأصناف والأسعار والمخزون</td><td>إدارة كاملة</td><td>عرض وطلب فقط</td></tr><tr><td>السياسات</td><td>تحكم كامل</td><td>بدون تعديل</td></tr><tr><td>الطلبات والسداد</td><td>مراجعة وقبول/رفض</td><td>إنشاء ومتابعة حسابه فقط</td></tr></tbody></table></div></div>`;
-  }else if(tab==='account'){
-    content=`<div class="card"><h2>الحساب</h2><p class="muted">إدارة الخروج واستعادة الجلسة.</p><div class="settings-compact-actions"><button class="btn danger" id="settingsLogout">تسجيل خروج</button><button class="btn light" id="settingsGoHome">الرئيسية</button></div></div>`;
-  }else if(tab==='security'){
-    content=`<div class="card"><h2>الأمان والحساب</h2><div class="notice">قفل التطبيق: ${state.appLockEnabled||state.lockEnabled?'مفعل':'ملغي'}</div><div class="settings-compact-actions"><button class="btn secondary" id="settingsDisableLock">إلغاء القفل مؤقتًا</button></div></div>`;
-  }else if(tab==='appearance'){
-    content=`<div class="card"><h2>الشكل</h2><p class="muted">إعدادات الشكل محفوظة داخل التطبيق.</p><div class="settings-compact-actions"><button class="btn light" id="settingsCompactOn">واجهة مدمجة</button><button class="btn light" id="settingsCompactOff">واجهة واسعة</button></div></div>`;
-  }else if(tab==='shop'){
-    content=`<div class="card"><h2>المتجر</h2><p>كود المتجر: <b>${esc(state.shopId||state.shopName||'-')}</b></p><div class="settings-compact-actions"><button class="btn secondary" id="settingsPolicies">السياسات</button><button class="btn secondary" id="settingsItems">الأصناف</button></div></div>`;
-  }else if(tab==='backup'){
-    content=`<div class="card"><h2>النسخ والاستيراد</h2><p class="muted">استخدم تصدير الأصناف والبيانات من الصفحات الخاصة بها.</p><div class="settings-compact-actions"><button class="btn secondary" id="settingsExportItems">الأصناف</button><button class="btn light" id="settingsExportReports">التقارير</button></div></div>`;
-  }else{
-    content=`<div class="card"><h2>التنبيهات</h2><p class="muted">عداد الرسائل والإشعارات يعمل حسب دعم الهاتف.</p><div class="settings-compact-actions"><button class="btn secondary" id="settingsOpenNotifications">فتح الإشعارات</button><button class="btn light" id="settingsOpenMessages">فتح الرسائل</button></div></div>`;
-  }
-  $('page_settings').innerHTML=pageTabsBar('settings',tab,tabs)+content;
+
+/* phase9: removed older duplicate renderSettings; final implementation appears later. */
+
+
+/* phase9: removed older duplicate renderPolicies; final implementation appears later. */
+
+function renderNotifications(){
+  const c=appNotificationCounters();
+  const notes=unreadNotifications();
+  const rows=notes.map(n=>`<tr><td class="name"><b>${esc(n.title||'تنبيه')}</b><div class="muted">${esc(n.body||'')}</div></td><td>${dt(n.createdMs)}</td><td><button class="btn light" data-notify-open="${esc(n.page||'home')}">فتح</button></td></tr>`).join('');
+  $('page_notifications').innerHTML=`<div class="card"><h2>الإشعارات</h2><div class="grid"><div class="metric"><span class="muted">الرسائل</span><b>${c.messages||0}</b></div><div class="metric"><span class="muted">الطلبات والمراجعات</span><b>${(c.orders||0)+(c.payments||0)+(c.returns||0)+(c.schedules||0)}</b></div></div><div class="actions"><button class="btn ok" id="enableNotifyBtn">تفعيل التنبيهات</button><button class="btn light" id="clearNotifyBtn">تصفير العدّاد</button><button class="btn secondary" id="testBadgeBtn">اختبار العدّاد</button></div><p class="muted">صلاحية التنبيهات: ${esc(notificationPermissionState())}</p></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>التنبيه</th><th>الوقت</th><th>إجراء</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد إشعارات غير مقروءة</td></tr>'}</tbody></table></div>`;
   setTimeout(()=>{
-    bindPageTabs('settings',renderSettings);
-    if($('settingsRefreshUi')) $('settingsRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())};
-    if($('settingsCleanCache')) $('settingsCleanCache').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?clean='+Date.now())};
-    if($('settingsUpdateApk')) $('settingsUpdateApk').onclick=()=>downloadApkUpdate();
-    if($('settingsCheckApk')) $('settingsCheckApk').onclick=()=>checkApkUpdateOnly(true);
-    if($('settingsLogout')) $('settingsLogout').onclick=()=>safeFullLogout('manual');
-    if($('settingsGoHome')) $('settingsGoHome').onclick=()=>show('home');
-    if($('settingsDisableLock')) $('settingsDisableLock').onclick=()=>{state.appLockEnabled=false;state.lockEnabled=false;save();msg('تم إلغاء القفل مؤقتًا','success');renderSettings()};
-    if($('settingsCompactOn')) $('settingsCompactOn').onclick=()=>{state.appearance=state.appearance||{};state.appearance.compact=true;save();applyAppearance();renderSettings()};
-    if($('settingsCompactOff')) $('settingsCompactOff').onclick=()=>{state.appearance=state.appearance||{};state.appearance.compact=false;save();applyAppearance();renderSettings()};
-    if($('settingsPolicies')) $('settingsPolicies').onclick=()=>show('policies');
-    if($('settingsItems')) $('settingsItems').onclick=()=>show('items');
-    if($('settingsExportItems')) $('settingsExportItems').onclick=()=>show('items');
-    if($('settingsExportReports')) $('settingsExportReports').onclick=()=>show('reports');
-    if($('settingsOpenNotifications')) $('settingsOpenNotifications').onclick=()=>show('notifications');
-    if($('settingsOpenMessages')) $('settingsOpenMessages').onclick=()=>show('messages');
+    if($('enableNotifyBtn')) $('enableNotifyBtn').onclick=()=>requestNotificationPermission(true);
+    if($('clearNotifyBtn')) $('clearNotifyBtn').onclick=()=>{clearAllNotificationCounters(); msg('تم تصفير عداد الإشعارات.','success');};
+    if($('testBadgeBtn')) $('testBadgeBtn').onclick=()=>{try{ if(window.HesabiAndroid&&window.HesabiAndroid.updateLauncherBadge) window.HesabiAndroid.updateLauncherBadge(1,'اختبار عداد حسابي التجاري'); msg('تم إرسال اختبار للعداد. قد يظهر رقم أو نقطة حسب نوع الهاتف.','success'); }catch(e){msg('تعذر اختبار العداد: '+(e.message||e),'error')}};
+    document.querySelectorAll('[data-notify-open]').forEach(b=>b.onclick=()=>openNotificationPage(b.dataset.notifyOpen));
   });
 }
-function renderPolicies(){
-  const policies=(state.shopPolicies||cache.shop?.policies||{});
-  $('page_policies').innerHTML=pageHead('السياسات','إعدادات ظهور الأسعار والكميات والطلبات.')+`<div class="card"><h2>سياسات المتجر</h2><div class="grid"><div class="metric"><span class="muted">إظهار الأسعار</span><b>${policies.showPrices===false?'مخفي':'ظاهر'}</b></div><div class="metric"><span class="muted">إظهار الكميات</span><b>${policies.showStock===false?'مخفي':'ظاهر'}</b></div><div class="metric"><span class="muted">طلب غير المتوفر</span><b>${policies.allowOutOfStockOrders?'مسموح':'ممنوع'}</b></div></div><p class="muted">تعديل السياسات التفصيلي للتاجر فقط.</p></div>`;
-}
-function renderNotifications(){
-  const c=unreadCounters();
-  const rows=`<tr><td class="name">الرسائل</td><td>${c.messages||0}</td></tr><tr><td class="name">الإشعارات</td><td>${c.notifications||0}</td></tr>`;
-  renderBasicListPage('notifications','الإشعارات','ملخص الإشعارات الحالية.',rows,['النوع','العدد']);
-}
-function renderMessages(){
-  const msgs=(cache.messages||[]).slice(-30).reverse();
-  const rows=msgs.map(m=>`<tr><td class="name">${esc(m.senderName||m.fromName||m.actorName||'رسالة')}</td><td>${esc(m.text||m.body||m.message||'')}</td><td>${dt(m.createdMs)}</td></tr>`).join('');
-  $('page_messages').innerHTML=`<div class="card"><h2>الرسائل</h2><div class="field"><label>نص الرسالة</label><textarea id="messageText" placeholder="اكتب رسالتك هنا"></textarea></div><button class="btn ok" id="sendMessageBtn">إرسال</button></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>المرسل</th><th>الرسالة</th><th>التاريخ</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد رسائل</td></tr>'}</tbody></table></div>`;
-  setTimeout(()=>{ if($('sendMessageBtn')) $('sendMessageBtn').onclick=()=>msg('سيتم إرسال الرسائل حسب صلاحيات المتجر.','notice'); });
-}
+
+/* phase9: removed older duplicate renderMessages; final implementation appears later. */
+
 function renderShops(){
   const links=state.customerLinks||[];
   const rows=links.map(x=>`<tr><td class="name">${esc(x.shopName||x.shopId)}</td><td>${esc(x.shopId||'')}</td></tr>`).join('');
@@ -995,10 +1007,9 @@ function renderShops(){
 function renderShopCode(){
   $('page_shopcode').innerHTML=`<div class="card"><h2>كود التاجر</h2><p>كود المحل: <b>${esc(state.shopId||'-')}</b></p><div class="field"><label>رابط الدعوة</label><input readonly value="${esc(shopJoinLink(state.shopId||''))}"></div></div>`;
 }
-function renderOwnerConsole(){
-  if(!isAppOwner()){ show('home'); return; }
-  renderBasicListPage('owner','لوحة المالك','مؤشرات وتحكم مالك التطبيق.',['<tr><td class="name">المتاجر</td><td>'+esc(String((cache.ownerShops||[]).length||'-'))+'</td></tr>'].join(''),['المؤشر','القيمة']);
-}
+
+/* phase9: removed older duplicate renderOwnerConsole; final implementation appears later. */
+
 
 function render(){
   applyAppearance();
@@ -1567,15 +1578,49 @@ function goBack(){
   show(target);
 }
 function renderPageLoadFallback(pageName){
+  // 1.0.54: لا نعرض للمستخدم صفحة "غير جاهز" إلا إذا كانت الصفحة غير معروفة فعلاً.
+  // إذا حدث نقص في محرك العرض، نعيد بناء سجل الصفحات ثم نحاول مرة واحدة قبل إظهار شاشة استرداد.
+  try{
+    buildPageRendererRegistry();
+    const fn = globalThis.__hesabiRenderers && globalThis.__hesabiRenderers[pageName];
+    if(typeof fn==='function') { fn(); return; }
+  }catch(e){ console.warn('fallback retry failed', pageName, e); }
   const el=$('page_'+pageName)||$('page_home');
   if(el){
-    el.innerHTML='<div class="card"><h2>القسم غير جاهز</h2><p class="muted">هذا القسم لا يحتوي شاشة كاملة في هذه النسخة، ويمكنك الرجوع للرئيسية أو تحديث الواجهات عند الحاجة.</p><div class="actions"><button class="btn ok" id="fallbackGoHome">الرئيسية</button><button class="btn secondary" id="fallbackRefreshUi">تحديث الواجهات</button></div></div>';
+    el.innerHTML='<div class="card"><h2>تعذر فتح القسم</h2><p class="muted">لم يتم العثور على شاشة هذا القسم داخل الواجهة الحالية. جرّب تحديث الواجهات أو الرجوع للرئيسية.</p><div class="actions"><button class="btn ok" id="fallbackGoHome">الرئيسية</button><button class="btn secondary" id="fallbackRefreshUi">تحديث الواجهات</button></div></div>';
   }
   setTimeout(()=>{if($('fallbackGoHome')) $('fallbackGoHome').onclick=()=>show('home'); if($('fallbackRefreshUi')) $('fallbackRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())};});
 }
+function buildPageRendererRegistry(){
+  globalThis.__hesabiRenderers={
+    home:typeof renderHome==='function'?renderHome:null,
+    search:typeof renderSearch==='function'?renderSearch:null,
+    tasks:typeof renderTasks==='function'?renderTasks:null,
+    items:typeof renderItems==='function'?renderItems:null,
+    orders:typeof renderOrders==='function'?renderOrders:null,
+    customers:typeof renderCustomers==='function'?renderCustomers:null,
+    shops:typeof renderShops==='function'?renderShops:null,
+    messages:typeof renderMessages==='function'?renderMessages:null,
+    payments:typeof renderPayments==='function'?renderPayments:null,
+    invoices:typeof renderInvoices==='function'?renderInvoices:null,
+    statement:typeof renderStatement==='function'?renderStatement:null,
+    audit:typeof renderAudit==='function'?renderAudit:null,
+    stock:typeof renderStock==='function'?renderStock:null,
+    returns:typeof renderReturns==='function'?renderReturns:null,
+    schedules:typeof renderSchedules==='function'?renderSchedules:null,
+    collections:typeof renderCollections==='function'?renderCollections:null,
+    reports:typeof renderReports==='function'?renderReports:null,
+    policies:typeof renderPolicies==='function'?renderPolicies:null,
+    notifications:typeof renderNotifications==='function'?renderNotifications:null,
+    shopcode:typeof renderShopCode==='function'?renderShopCode:null,
+    settings:typeof renderSettings==='function'?renderSettings:null,
+    owner:typeof renderOwnerConsole==='function'?renderOwnerConsole:null
+  };
+  return globalThis.__hesabiRenderers;
+}
 function safeRendererForPage(p){
-  const map={home:(typeof renderHome==='function'?renderHome:null),search:(typeof renderSearch==='function'?renderSearch:null),tasks:(typeof renderTasks==='function'?renderTasks:null),items:(typeof renderItems==='function'?renderItems:null),orders:(typeof renderOrders==='function'?renderOrders:null),customers:(typeof renderCustomers==='function'?renderCustomers:null),shops:(typeof renderShops==='function'?renderShops:null),messages:(typeof renderMessages==='function'?renderMessages:null),payments:(typeof renderPayments==='function'?renderPayments:null),invoices:(typeof renderInvoices==='function'?renderInvoices:null),statement:(typeof renderStatement==='function'?renderStatement:null),audit:(typeof renderAudit==='function'?renderAudit:null),stock:(typeof renderStock==='function'?renderStock:null),returns:(typeof renderReturns==='function'?renderReturns:null),schedules:(typeof renderSchedules==='function'?renderSchedules:null),collections:(typeof renderCollections==='function'?renderCollections:null),reports:(typeof renderReports==='function'?renderReports:null),policies:(typeof renderPolicies==='function'?renderPolicies:null),notifications:(typeof renderNotifications==='function'?renderNotifications:null),shopcode:(typeof renderShopCode==='function'?renderShopCode:null),settings:(typeof renderSettings==='function'?renderSettings:null),owner:(typeof renderOwnerConsole==='function'?renderOwnerConsole:null)};
-  return typeof map[p]==='function'?map[p]:(()=>renderPageLoadFallback(p));
+  const reg = (globalThis.__hesabiRenderers && Object.keys(globalThis.__hesabiRenderers).length) ? globalThis.__hesabiRenderers : buildPageRendererRegistry();
+  return typeof reg[p]==='function'?reg[p]:null;
 }
 function show(p){
   try{stopItemBarcodeScanner(false)}catch(e){}
@@ -1586,13 +1631,20 @@ function show(p){
   active=p;
   ['home','search','tasks','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'].forEach(x=>{const el=$('page_'+x); if(el) el.classList.toggle('hidden',x!==p)});
   renderNav();
-  const renderer=safeRendererForPage(p) || renderHome;
-  try{ renderer(); }catch(e){ console.error('page render failed',p,e); renderPageLoadFallback(p); }
-  if(['orders','messages','payments','returns','schedules'].includes(p) && markPageNotificationsRead(p)){
+  const renderer=safeRendererForPage(p);
+  try{
+    if(typeof renderer==='function') renderer();
+    else { console.warn('missing renderer for page',p); renderPageLoadFallback(p); }
+  }catch(e){
+    console.error('page render failed',p,e);
+    showAppDialog('تعذر تشغيل الصفحة','حدث خطأ داخل هذا القسم: '+String(e.message||e),'warn',[{text:'الرئيسية',cls:'ok',fn:()=>show('home')},{text:'تحديث الواجهات',cls:'secondary',fn:async()=>{try{await refreshWebUiNow()}catch(x){} location.replace(location.pathname+'?v='+Date.now())}}]);
+  }
+  if(['orders','payments','returns','schedules'].includes(p) && markPageNotificationsRead(p)){
     renderNav();
     updateAndroidLauncherBadge();
     if(active==='home') renderHome();
   }
+  updateAndroidLauncherBadge();
 }
 
 
@@ -1849,10 +1901,9 @@ function renderCustomerLimitBox(){const d=customerDebtInfo(); return `<div class
 
 function itemCategory(i){return String(i.category||i.group||i.type||'عام').trim()||'عام'}
 
-function shopPolicyBool(key, def=true){
-  const sh=cache.shop||{};
-  return sh[key]===undefined ? def : sh[key]!==false;
-}
+
+/* phase9: removed older duplicate shopPolicyBool; final implementation appears later. */
+
 function customerCanSeeItem(i){return i && i.isActive!==false && i.customerVisible!==false;}
 function shopIsOpenNow(){
   const sh=cache.shop||{};
@@ -2512,7 +2563,7 @@ renderReturns=function(){
   const meta=demandFilter('returnsList23', data, r=>`${r.customerName||state.customerName||''} ${r.itemName||''} ${r.qty||''} ${r.total||r.amount||''} ${r.status||''}`);
   const rows=meta.visible.map(r=>`<tr><td class="name">${esc(r.customerName||state.customerName||'')}</td><td>${esc(r.itemName||'')}</td><td>${Number(r.qty||0)}</td><td><b>${money(r.total||r.amount||0)}</b></td><td><span class="status ${r.status}">${statusText(r.status)}</span></td><td>${compactActionButtons(`${state.role==='trader'&&r.status==='pending'?`<button class="btn ok mini" data-approve-return="${r.id}">قبول</button><button class="btn danger mini" data-reject-return="${r.id}">رفض</button>`:''}`)}</td></tr>`);
   $('page_returns').innerHTML=pageHead('المرتجعات','المرتجعات منظمة بين طلب جديد، معلقة، ومنتهية.')+pageTabsBar('returns',tab,tabs)+(tab==='request'?requestBox:demandTableCard('returnsList23','جدول المرتجعات',['العميل','الصنف','الكمية','المبلغ','الحالة','إجراء'],rows,meta,'لا توجد مرتجعات مطابقة'));
-  setTimeout(()=>{bindPageTabs('returns',renderReturns); bindDemandTable('returnsList23', renderReturns); if($('sendReturnRequest')) $('sendReturnRequest').onclick=sendReturnRequest; document.querySelectorAll('[data-approve-return]').forEach(b=>b.onclick=()=>approveReturn(b.dataset.approveReturn));document.querySelectorAll('[data-reject-return]').forEach(b=>b.onclick=()=>rejectReturn(b.dataset.rejectReturn));});
+  setTimeout(()=>{bindPageTabs('returns',renderReturns); bindDemandTable('returnsList23', renderReturns); phase6BindReturnForm(); if($('sendReturnRequest')) $('sendReturnRequest').onclick=sendReturnRequest; document.querySelectorAll('[data-approve-return]').forEach(b=>b.onclick=()=>approveReturn(b.dataset.approveReturn));document.querySelectorAll('[data-reject-return]').forEach(b=>b.onclick=()=>rejectReturn(b.dataset.rejectReturn));});
 }
 
 renderSchedules=function(){
@@ -2723,6 +2774,1314 @@ sendCustomerOrder = async function(){
   await ensureCustomerPurchaseAccess();
   return __hesabiSendCustomerOrderBase();
 };
+
+
+
+/* === PHASE 3 CUSTOMER PURCHASE ORDER FINAL STABILITY PATCH 1.0.46 ===
+   Scope: customer purchase invoice, item selection, cart validation, Firestore-safe order creation.
+*/
+function phase3PurchaseReadyCheck(){
+  if(state.role!=='customer') return {ok:false,msg:'طلب الشراء متاح للعميل فقط.'};
+  if(!uid()) return {ok:false,msg:'يجب تسجيل الدخول أولًا.'};
+  if(!state.shopId) return {ok:false,msg:'لم يتم اختيار متجر.'};
+  if(!state.customerId) return {ok:false,msg:'لم يتم ربط حساب العميل بهذا المتجر.'};
+  if(cache.shop?.subscriptionStatus==='suspended') return {ok:false,msg:'هذا المتجر موقوف مؤقتًا.'};
+  if(cache.shop?.allowCustomerOrders===false) return {ok:false,msg:'المتجر لا يستقبل طلبات جديدة حاليًا.'};
+  if(!shopIsOpenNow()) return {ok:false,msg:cache.shop?.workingClosedMessage||cache.shop?.closedMessage||'المتجر مغلق حاليًا حسب أوقات الدوام.'};
+  return {ok:true};
+}
+async function phase3EnsureCustomerOrderLink(){
+  await ensureCustomerPurchaseAccess();
+  try{
+    const snap=await getDoc(doc(db,'shops',state.shopId,'customerUidLinks',uid()));
+    if(!snap.exists() || snap.data().customerId!==state.customerId){
+      throw new Error('لم يتم تثبيت رابط العميل بالمتجر. سجّل خروج ثم ادخل من جديد.');
+    }
+  }catch(e){
+    console.warn('phase3 customer link check failed',e);
+    throw e;
+  }
+}
+function phase3BuildOrderLines(){
+  const cart=catalogCartTotal();
+  const allowOut=shopPolicyBool('allowOutOfStockOrders', false);
+  const lines=[];
+  for(const l of cart.lines||[]){
+    const item=itemById(l.itemId);
+    if(!item || !customerCanSeeItem(item)) continue;
+    const stock=Number(item.stock||0);
+    const qty=Number(l.qty||0);
+    if(qty<=0) continue;
+    if(!allowOut && qty>stock){ throw new Error(`الكمية المتاحة من ${item.name||'الصنف'} هي ${stock} فقط.`); }
+    const price=Number(effectiveItemPrice(item, $('payType')?.value||'credit')||0);
+    lines.push({
+      itemId:l.itemId,
+      name:item.name||l.name||'',
+      unit:item.unit||l.unit||'حبة',
+      category:itemCategory(item),
+      barcode:item.barcode||item.code||'',
+      qty,
+      price,
+      total:price*qty
+    });
+  }
+  return {lines,count:lines.reduce((a,x)=>a+x.qty,0),items:lines.length,total:lines.reduce((a,x)=>a+Number(x.total||0),0)};
+}
+function phase3CheckCreditLimit(orderTotal, editingId=''){
+  const payType=$('payType')?.value||'credit';
+  if(payType!=='credit') return {ok:true};
+  const d=customerDebtInfo();
+  const limit=Number(d.limit||0);
+  if(!limit) return {ok:true};
+  const pending=pendingCreditForCustomer(state.customerId, editingId);
+  const after=Number(d.balance||0)+pending+Number(orderTotal||0);
+  if(after>limit) return {ok:false,msg:`تجاوز الطلب سقف الآجل. السقف ${money(limit)}، الدين الحالي ${money(d.balance)}، المعلق ${money(pending)}.`};
+  return {ok:true};
+}
+async function phase3SendCustomerOrderFinal(){
+  try{
+    const ready=phase3PurchaseReadyCheck();
+    if(!ready.ok){ msg(ready.msg,'error'); return; }
+    if(!db){ msg('لم يتم الاتصال بقاعدة البيانات بعد. أعد المحاولة.','error'); return; }
+    await phase3EnsureCustomerOrderLink();
+    const built=phase3BuildOrderLines();
+    if(!built.lines.length){ msg('أضف صنفًا واحدًا على الأقل قبل إرسال الطلب.','error'); return; }
+    const editingId=catalogState().editingOrderId||'';
+    const credit=phase3CheckCreditLimit(built.total, editingId);
+    if(!credit.ok){ msg(credit.msg,'error'); return; }
+    const payType=$('payType')?.value||'credit';
+    const note=String($('orderNote')?.value||'').trim();
+    const now=Date.now();
+    const customerDoc=cache.customers?.[0]||{};
+    const payload={
+      shopId:state.shopId,
+      shopName:cache.shop?.name||state.shopName||'',
+      customerId:state.customerId,
+      customerUid:uid(),
+      customerName:state.customerName||customerDoc.name||'عميل',
+      customerPhone:state.customerPhone||customerDoc.phone||'',
+      items:built.lines,
+      lines:built.lines,
+      itemCount:built.items,
+      qtyCount:built.count,
+      total:Number(built.total||0),
+      paymentType:payType,
+      note,
+      status:'pending_trader',
+      source:'customer_purchase_invoice_v3',
+      createdBy:uid(),
+      createdByRole:'customer',
+      updatedAt:serverTimestamp(),
+      updatedMs:now
+    };
+    if(editingId){
+      await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',editingId),{
+        ...payload,
+        editedBy:uid(),
+        editedAt:serverTimestamp(),
+        editCount:increment(1)
+      });
+      clearOrderEditing();
+      showAppDialog('تم حفظ الطلب','تم حفظ تعديل طلب الشراء وإرساله للتاجر للمراجعة.','success',[{text:'عرض طلباتي',cls:'ok',fn:()=>show('orders')}]);
+    }else{
+      await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{
+        ...payload,
+        createdAt:serverTimestamp(),
+        createdMs:now
+      });
+      showAppDialog('تم إرسال الطلب','تم إرسال طلب الشراء للتاجر بنجاح. يمكنك متابعته من صفحة طلباتي.','success',[{text:'عرض طلباتي',cls:'ok',fn:()=>show('orders')},{text:'طلب جديد',cls:'secondary',fn:()=>show('items')}]);
+    }
+    const cs=catalogState(); cs.cart={}; cs.inlineQ=''; cs.purchaseMode='invoice'; saveCatalog();
+    try{ renderPurchaseInvoiceOnly(); }catch{}
+    checkNotifications(); updateAndroidLauncherBadge();
+  }catch(e){
+    console.error('phase3 send customer order failed', e);
+    if(e?.code==='permission-denied' || /permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إرسال طلب الشراء', e); return;}
+    msg('تعذر إرسال طلب الشراء: '+friendlyFirestoreError(e),'error');
+  }
+}
+sendCustomerOrder = phase3SendCustomerOrderFinal;
+function phase3ValidatePurchaseUiHooks(){
+  return typeof renderCustomerItemsReadonly==='function' && typeof renderCustomerAddItemsPage==='function' && typeof addItemToPurchaseInvoice==='function' && typeof sendCustomerOrder==='function';
+}
+
+
+/* Phase 4: trader order review, invoices, stock, and ledger stability */
+function orderLineName(line){ return line?.name || line?.itemName || line?.title || 'صنف'; }
+function orderLineQty(line){ return Math.max(0, Number(line?.qty ?? line?.quantity ?? line?.count ?? 0)); }
+function orderPaymentType(order){ return order?.paymentType || order?.payType || 'credit'; }
+function phase4CanApproveOrder(order){
+  if(!order) return {ok:false,msg:'لم يتم العثور على الطلب.'};
+  if(state.role!=='trader') return {ok:false,msg:'الموافقة على الطلبات خاصة بالتاجر فقط.'};
+  if(!state.shopId) return {ok:false,msg:'لا يوجد متجر محدد.'};
+  if(!['pending','pending_trader'].includes(String(order.status||'pending'))) return {ok:false,msg:'هذا الطلب تمت مراجعته مسبقًا ولا يمكن اعتماده مرة أخرى.'};
+  const lines = Array.isArray(order.items) ? order.items : (Array.isArray(order.lines)?order.lines:[]);
+  if(!lines.length) return {ok:false,msg:'الطلب لا يحتوي على أصناف.'};
+  return {ok:true};
+}
+function phase4BuildApprovalLines(order, itemDocs){
+  const payType=orderPaymentType(order);
+  const raw=Array.isArray(order.items)?order.items:(Array.isArray(order.lines)?order.lines:[]);
+  const allowOut=shopPolicyBool('allowOutOfStockOrders', false);
+  const built=[]; let total=0; let qtyCount=0;
+  for(const line of raw){
+    const itemId=String(line.itemId||line.id||'').trim();
+    const qty=orderLineQty(line);
+    if(!itemId || qty<=0) continue;
+    const snap=itemDocs[itemId];
+    const item=snap?.exists()?{id:itemId,...snap.data()}:(itemById(itemId)||{});
+    if(!item || !item.name) throw new Error(`الصنف ${orderLineName(line)} غير موجود في المخزون.`);
+    if(item.isActive===false) throw new Error(`الصنف ${item.name} غير نشط ولا يمكن اعتماده.`);
+    const stock=Number(item.stock||0);
+    if(!allowOut && qty>stock) throw new Error(`الكمية المتاحة من ${item.name} هي ${stock} فقط، والطلب يحتوي ${qty}.`);
+    const price=Number(line.price||line.unitPrice||effectiveItemPrice(item,payType)||0);
+    const row={
+      itemId,
+      name:item.name||orderLineName(line),
+      unit:item.unit||line.unit||'حبة',
+      category:itemCategory(item),
+      barcode:item.barcode||item.code||line.barcode||'',
+      qty,
+      price,
+      total:price*qty
+    };
+    built.push(row); total+=row.total; qtyCount+=qty;
+  }
+  if(!built.length) throw new Error('لا توجد أصناف صالحة داخل الطلب.');
+  return {lines:built,total,qtyCount,itemCount:built.length};
+}
+function phase4CustomerForOrder(order){
+  return (cache.customers||[]).find(c=>String(c.customerId||'')===String(order.customerId||'')) || {};
+}
+async function approveOrder(orderId){
+  try{
+    const order=(cache.orders||[]).find(o=>o.id===orderId);
+    const chk=phase4CanApproveOrder(order);
+    if(!chk.ok){ msg(chk.msg,'error'); return; }
+    const ok=await confirmDialog('اعتماد الطلب','سيتم إنشاء فاتورة، وتحديث المخزون، وتسجيل كشف الحساب. هل تريد المتابعة؟','اعتماد');
+    if(!ok) return;
+    const orderRef=doc(db,'shops',state.shopId,'purchaseRequests',orderId);
+    const invoiceRef=doc(collection(db,'shops',state.shopId,'invoices'));
+    const now=Date.now();
+    let finalTotal=0, invoiceNo='';
+    await runTransaction(db, async(tx)=>{
+      const orderSnap=await tx.get(orderRef);
+      if(!orderSnap.exists()) throw new Error('لم يتم العثور على الطلب في قاعدة البيانات.');
+      const fresh={id:orderId,...orderSnap.data()};
+      const chk2=phase4CanApproveOrder(fresh);
+      if(!chk2.ok) throw new Error(chk2.msg);
+      const raw=Array.isArray(fresh.items)?fresh.items:(Array.isArray(fresh.lines)?fresh.lines:[]);
+      const itemRefs={}; for(const l of raw){ const id=String(l.itemId||l.id||'').trim(); if(id) itemRefs[id]=doc(db,'shops',state.shopId,'items',id); }
+      const itemDocs={}; for(const [id,ref] of Object.entries(itemRefs)){ itemDocs[id]=await tx.get(ref); }
+      const built=phase4BuildApprovalLines(fresh,itemDocs);
+      finalTotal=Number(built.total||0);
+      invoiceNo=invoiceNumber();
+      const customerId=fresh.customerId||'';
+      const customerUid=fresh.customerUid||'';
+      const customerRef=customerId?doc(db,'shops',state.shopId,'customers',customerId):null;
+      const payType=orderPaymentType(fresh);
+      const invoicePayload={
+        shopId:state.shopId,
+        invoiceNo,
+        sourceOrderId:orderId,
+        customerId,
+        customerUid,
+        customerName:fresh.customerName||phase4CustomerForOrder(fresh).name||'عميل',
+        customerPhone:fresh.customerPhone||phase4CustomerForOrder(fresh).phone||'',
+        paymentType:payType,
+        status: payType==='cash'?'paid':'unpaid',
+        items:built.lines,
+        lines:built.lines,
+        itemCount:built.itemCount,
+        qtyCount:built.qtyCount,
+        subtotal:finalTotal,
+        discount:0,
+        total:finalTotal,
+        createdFrom:'purchase_request_approval',
+        createdBy:uid(),
+        createdAt:serverTimestamp(),
+        createdMs:now
+      };
+      tx.set(invoiceRef, invoicePayload);
+      tx.update(orderRef,{
+        status:'approved',
+        invoiceId:invoiceRef.id,
+        invoiceNo,
+        items:built.lines,
+        lines:built.lines,
+        itemCount:built.itemCount,
+        qtyCount:built.qtyCount,
+        total:finalTotal,
+        reviewedBy:uid(),
+        reviewedByName:cache.shop?.name||'التاجر',
+        reviewedAt:serverTimestamp(),
+        reviewedMs:now,
+        updatedAt:serverTimestamp(),
+        updatedMs:now
+      });
+      for(const line of built.lines){
+        const ref=itemRefs[line.itemId];
+        const snap=itemDocs[line.itemId];
+        const before=Number(snap.data().stock||0);
+        const after=before-Number(line.qty||0);
+        tx.update(ref,{stock: after, updatedAt:serverTimestamp(), updatedMs:now});
+        const ledgerRef=doc(collection(db,'shops',state.shopId,'stockLedger'));
+        tx.set(ledgerRef,{shopId:state.shopId,itemId:line.itemId,itemName:line.name,type:'sale',sourceType:'order_approval',sourceOrderId:orderId,invoiceId:invoiceRef.id,invoiceNo,qty:Number(line.qty||0),qtyChange:-Number(line.qty||0),beforeQty:before,afterQty:after,reason:'اعتماد طلب شراء وإنشاء فاتورة',customerId,customerUid,customerName:invoicePayload.customerName,createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      }
+      if(payType==='credit'){
+        if(customerRef){ tx.update(customerRef,{balance: increment(finalTotal), updatedAt:serverTimestamp(), updatedMs:now}); }
+        const ledRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
+        tx.set(ledRef,{shopId:state.shopId,customerId,customerUid,customerName:invoicePayload.customerName,type:'invoice_credit',direction:'debit',amount:finalTotal,invoiceId:invoiceRef.id,invoiceNo,sourceOrderId:orderId,note:'فاتورة آجل من طلب شراء معتمد',createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      }else{
+        const ledRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
+        tx.set(ledRef,{shopId:state.shopId,customerId,customerUid,customerName:invoicePayload.customerName,type:'invoice_cash',direction:'neutral',amount:finalTotal,invoiceId:invoiceRef.id,invoiceNo,sourceOrderId:orderId,note:'فاتورة كاش من طلب شراء معتمد',createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      }
+      const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
+      tx.set(auditRef,{shopId:state.shopId,action:'approve_order_create_invoice',actorRole:'trader',actorName:actorName(),details:{orderId,invoiceId:invoiceRef.id,invoiceNo,total:finalTotal},createdAt:serverTimestamp(),createdMs:now});
+    });
+    showAppDialog('تم اعتماد الطلب',`تم إنشاء الفاتورة ${invoiceNo} بإجمالي ${money(finalTotal)} وتحديث المخزون وكشف الحساب.`,'success',[{text:'الفواتير',cls:'ok',fn:()=>show('invoices')},{text:'الطلبات',cls:'secondary',fn:()=>show('orders')}]);
+  }catch(e){
+    console.error('approveOrder failed',e);
+    if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){ showPermissionDeniedLogoutDialog('اعتماد الطلب',e); return; }
+    msg('تعذر اعتماد الطلب: '+friendlyFirestoreError(e),'error');
+  }
+}
+async function rejectOrder(orderId){
+  try{
+    if(state.role!=='trader'){ msg('رفض الطلب خاص بالتاجر فقط.','error'); return; }
+    const order=(cache.orders||[]).find(o=>o.id===orderId);
+    if(!order){ msg('لم يتم العثور على الطلب.','error'); return; }
+    if(!['pending','pending_trader'].includes(String(order.status||'pending'))){ msg('هذا الطلب تمت مراجعته مسبقًا.','error'); return; }
+    const reason=prompt('سبب رفض الطلب للعميل؟','');
+    if(reason===null) return;
+    await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'rejected',traderNote:String(reason||'').trim(),reviewedBy:uid(),reviewedByName:cache.shop?.name||'التاجر',reviewedAt:serverTimestamp(),reviewedMs:Date.now(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    await addAudit('reject_order',{orderId,reason:String(reason||'').trim()});
+    showAppDialog('تم رفض الطلب','تم رفض الطلب وإرسال الحالة للعميل.','success',[{text:'موافق',cls:'ok',fn:()=>show('orders')}]);
+  }catch(e){
+    console.error('rejectOrder failed',e);
+    if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){ showPermissionDeniedLogoutDialog('رفض الطلب',e); return; }
+    msg('تعذر رفض الطلب: '+friendlyFirestoreError(e),'error');
+  }
+}
+async function customerApproveOrder(orderId){
+  try{
+    if(state.role!=='customer'){ msg('هذه العملية خاصة بالعميل.','error'); return; }
+    const order=(cache.orders||[]).find(o=>o.id===orderId);
+    if(!order||order.status!=='pending_customer'){ msg('لا يوجد طلب بانتظار موافقتك.','error'); return; }
+    await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'pending_trader',customerAck:true,customerAckAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    msg('تم إرسال موافقتك للتاجر.','success');
+  }catch(e){ msg('تعذر إرسال موافقتك: '+friendlyFirestoreError(e),'error'); }
+}
+async function customerRejectOrder(orderId){
+  try{
+    if(state.role!=='customer'){ msg('هذه العملية خاصة بالعميل.','error'); return; }
+    const order=(cache.orders||[]).find(o=>o.id===orderId);
+    if(!order||order.status!=='pending_customer'){ msg('لا يوجد طلب بانتظار ردك.','error'); return; }
+    await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'cancelled',customerNote:'رفض العميل الطلب',customerRejectedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    msg('تم إلغاء الطلب.','success');
+  }catch(e){ msg('تعذر إلغاء الطلب: '+friendlyFirestoreError(e),'error'); }
+}
+function phase4ValidateTraderOrderFlow(){
+  return typeof approveOrder==='function' && typeof rejectOrder==='function' && typeof customerApproveOrder==='function' && typeof customerRejectOrder==='function' && typeof orderActions==='function' && typeof renderOrders==='function';
+}
+
+
+/* Phase 5: invoices, statement, payments, duplicate references, receipt, and debt stability */
+function phase5PaymentStatusText(s){ return ({pending:'معلّق',approved:'مقبول',rejected:'مرفوض',cancelled:'ملغي'}[s]||statusText(s)); }
+function phase5PaymentById(id){ return (cache.payments||[]).find(p=>String(p.id)===String(id)); }
+function phase5CustomerById(customerId){ return (cache.customers||[]).find(c=>String(c.customerId||'')===String(customerId||'')) || {}; }
+function phase5CustomerDebtFromCache(customerId=state.customerId){
+  const c=phase5CustomerById(customerId);
+  if(c && (c.balance!==undefined && c.balance!==null)) return Number(c.balance||0);
+  return (cache.customerLedger||[]).filter(l=>!customerId || String(l.customerId||'')===String(customerId)).reduce((sum,l)=>{
+    const amount=Number(l.amount||0);
+    const dir=String(l.direction||'');
+    const type=String(l.type||'');
+    if(dir==='credit' || type==='payment_approved' || type==='payment') return sum-amount;
+    if(dir==='neutral') return sum;
+    return sum+amount;
+  },0);
+}
+function phase5PaymentReferenceExists(ref, excludeId=''){
+  const r=String(ref||'').trim().toLowerCase();
+  if(!r) return false;
+  return (cache.payments||[]).some(p=>String(p.id)!==String(excludeId) && String(p.referenceNo||'').trim().toLowerCase()===r && String(p.status||'pending')!=='rejected');
+}
+function phase5BuildInvoiceText(inv){
+  if(!inv) return 'لم يتم العثور على الفاتورة.';
+  const lines=Array.isArray(inv.items)?inv.items:(Array.isArray(inv.lines)?inv.lines:[]);
+  const rows=lines.map((l,i)=>`${i+1}. ${l.name||l.itemName||'صنف'} × ${Number(l.qty||l.quantity||0)} = ${money(l.total||Number(l.qty||0)*Number(l.price||0))}`).join('\n');
+  return `فاتورة ${inv.invoiceNo||inv.id}\nالعميل: ${inv.customerName||''}\nنوع الدفع: ${payTypeText(inv.paymentType||'cash')}\nالتاريخ: ${dt(inv.createdMs)}\n----------------------\n${rows||'لا توجد أصناف'}\n----------------------\nالإجمالي: ${money(inv.total||0)}`;
+}
+async function confirmDialog(title, body, okText='موافق'){
+  return new Promise(resolve=>{
+    showAppDialog(title, body, 'warn', [
+      {text:okText, cls:'ok', fn:()=>resolve(true)},
+      {text:'إلغاء', cls:'light', fn:()=>resolve(false)}
+    ]);
+  });
+}
+async function shareInvoiceText(invoiceId){
+  try{
+    const inv=(cache.invoices||[]).find(i=>String(i.id)===String(invoiceId));
+    const text=phase5BuildInvoiceText(inv);
+    if(navigator.share){ await navigator.share({title:'فاتورة حسابي التجاري', text}); }
+    else if(navigator.clipboard){ await navigator.clipboard.writeText(text); msg('تم نسخ الفاتورة للحافظة.','success'); }
+    else { showAppDialog('مشاركة الفاتورة', text, 'notice'); }
+  }catch(e){ msg('تعذر مشاركة الفاتورة: '+friendlyFirestoreError(e),'error'); }
+}
+function openReceipt(paymentId){
+  const p=phase5PaymentById(paymentId) || (cache.payments||[]).find(x=>x.id===paymentId);
+  const data=p?.receiptData?.dataUrl || p?.receiptData || p?.receiptUrl || '';
+  if(!data){ msg('لا يوجد إيصال مرفق لهذا السداد.','notice'); return; }
+  try{
+    const w=window.open('','_blank');
+    if(w){ w.document.write(`<html dir="rtl"><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${String(data).replace(/"/g,'&quot;')}" style="max-width:100%;height:auto"></body></html>`); return; }
+  }catch{}
+  showAppDialog('إيصال السداد','تعذر فتح الصورة في نافذة مستقلة. جرّب من المتصفح أو أعد رفع صورة أصغر.','notice');
+}
+async function sendPayment(){
+  try{
+    if(state.role!=='customer'){ msg('إرسال السداد خاص بالعميل.','error'); return; }
+    if(!db||!state.shopId||!state.customerId){ msg('لا يوجد متجر أو عميل مرتبط لإرسال السداد. أعد تسجيل الدخول والربط.','error'); return; }
+    const amount=Number($('payAmount')?.value||0);
+    const method=String($('payMethod')?.value||'').trim() || 'غير محدد';
+    const referenceNo=String($('payRef')?.value||'').trim();
+    const note=String($('payNote')?.value||'').trim();
+    if(!amount || amount<=0){ msg('أدخل مبلغ سداد صحيح.','error'); return; }
+    const debt=phase5CustomerDebtFromCache(state.customerId);
+    if(debt>0 && amount>debt){
+      const ok=await confirmDialog('المبلغ أكبر من الدين',`الدين الحالي ${money(debt)} والمبلغ المدخل ${money(amount)}. هل تريد إرسال السداد للمراجعة؟`,'إرسال');
+      if(!ok) return;
+    }
+    if(referenceNo && phase5PaymentReferenceExists(referenceNo)){ msg('رقم المرجع مستخدم في طلب سداد سابق. لا يمكن تكرار نفس المرجع.','error'); return; }
+    const file=$('payReceipt')?.files?.[0]||null;
+    const receiptData=await fileToDataUrl(file, 700000);
+    const now=Date.now();
+    const payload={
+      shopId:state.shopId,
+      customerId:state.customerId,
+      customerUid:uid(),
+      customerName:state.customerName||'عميل',
+      customerPhone:state.customerPhone||'',
+      amount, method, referenceNo, note,
+      receiptData: receiptData||null,
+      status:'pending',
+      createdBy:uid(),
+      createdByRole:'customer',
+      createdAt:serverTimestamp(),
+      createdMs:now,
+      updatedAt:serverTimestamp(),
+      updatedMs:now
+    };
+    await addDoc(collection(db,'shops',state.shopId,'paymentRequests'), payload);
+    showAppDialog('تم إرسال السداد','تم إرسال طلب السداد للتاجر للمراجعة. ستظهر النتيجة في صفحة السداد وكشف الحساب بعد الاعتماد.','success',[{text:'سداداتي',cls:'ok',fn:()=>show('payments')},{text:'كشف الحساب',cls:'secondary',fn:()=>show('statement')}]);
+    ['payAmount','payMethod','payRef','payNote'].forEach(id=>{const el=$(id); if(el) el.value='';});
+    const f=$('payReceipt'); if(f) f.value='';
+  }catch(e){
+    console.error('sendPayment failed',e);
+    if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){ showPermissionDeniedLogoutDialog('إرسال السداد',e); return; }
+    msg('تعذر إرسال السداد: '+friendlyFirestoreError(e),'error');
+  }
+}
+async function approvePayment(paymentId){
+  try{
+    if(state.role!=='trader'){ msg('اعتماد السداد خاص بالتاجر.','error'); return; }
+    const pay=phase5PaymentById(paymentId);
+    if(!pay){ msg('لم يتم العثور على طلب السداد.','error'); return; }
+    if(String(pay.status||'pending')!=='pending'){ msg('طلب السداد تمت مراجعته مسبقًا.','error'); return; }
+    const ok=await confirmDialog('اعتماد السداد',`سيتم اعتماد مبلغ ${money(pay.amount)} وتحديث رصيد العميل وكشف الحساب. هل تريد المتابعة؟`,'اعتماد');
+    if(!ok) return;
+    const now=Date.now();
+    const payRef=doc(db,'shops',state.shopId,'paymentRequests',paymentId);
+    await runTransaction(db, async(tx)=>{
+      const snap=await tx.get(payRef);
+      if(!snap.exists()) throw new Error('لم يتم العثور على السداد في قاعدة البيانات.');
+      const fresh={id:paymentId,...snap.data()};
+      if(String(fresh.status||'pending')!=='pending') throw new Error('طلب السداد تمت مراجعته مسبقًا.');
+      const amount=Number(fresh.amount||0);
+      if(!amount || amount<=0) throw new Error('مبلغ السداد غير صحيح.');
+      const customerId=fresh.customerId||'';
+      const customerUid=fresh.customerUid||'';
+      const customerName=fresh.customerName||phase5CustomerById(customerId).name||'عميل';
+      const customerRef=customerId?doc(db,'shops',state.shopId,'customers',customerId):null;
+      tx.update(payRef,{status:'approved',approvedBy:uid(),approvedByName:actorName(),approvedAt:serverTimestamp(),approvedMs:now,updatedAt:serverTimestamp(),updatedMs:now});
+      if(customerRef){ tx.update(customerRef,{balance: increment(-amount), updatedAt:serverTimestamp(), updatedMs:now}); }
+      if(fresh.scheduleId){ tx.update(doc(db,'shops',state.shopId,'paymentSchedules',fresh.scheduleId),{status:'paid',paymentId,paidAt:serverTimestamp(),paidMs:now,updatedAt:serverTimestamp(),updatedMs:now}); }
+      const ledRef=doc(collection(db,'shops',state.shopId,'customerLedger'));
+      tx.set(ledRef,{shopId:state.shopId,customerId,customerUid,customerName,type:'payment_approved',direction:'credit',amount,paymentId,method:fresh.method||'',referenceNo:fresh.referenceNo||'',note:'سداد معتمد من التاجر',createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      const auditRef=doc(collection(db,'shops',state.shopId,'auditLogs'));
+      tx.set(auditRef,{shopId:state.shopId,action:'approve_payment',actorRole:'trader',actorName:actorName(),details:{paymentId,customerId,amount,referenceNo:fresh.referenceNo||''},createdAt:serverTimestamp(),createdMs:now});
+    });
+    showAppDialog('تم اعتماد السداد','تم تحديث رصيد العميل وكشف الحساب بنجاح.','success',[{text:'السداد',cls:'ok',fn:()=>show('payments')},{text:'كشف الحساب',cls:'secondary',fn:()=>show('statement')}]);
+  }catch(e){
+    console.error('approvePayment failed',e);
+    if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){ showPermissionDeniedLogoutDialog('اعتماد السداد',e); return; }
+    msg('تعذر اعتماد السداد: '+friendlyFirestoreError(e),'error');
+  }
+}
+async function rejectPayment(paymentId){
+  try{
+    if(state.role!=='trader'){ msg('رفض السداد خاص بالتاجر.','error'); return; }
+    const pay=phase5PaymentById(paymentId);
+    if(!pay){ msg('لم يتم العثور على طلب السداد.','error'); return; }
+    if(String(pay.status||'pending')!=='pending'){ msg('طلب السداد تمت مراجعته مسبقًا.','error'); return; }
+    const reason=prompt('سبب رفض السداد؟','');
+    if(reason===null) return;
+    await updateDoc(doc(db,'shops',state.shopId,'paymentRequests',paymentId),{status:'rejected',traderNote:String(reason||'').trim(),rejectedBy:uid(),rejectedByName:actorName(),rejectedAt:serverTimestamp(),rejectedMs:Date.now(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    await addAudit('reject_payment',{paymentId,reason:String(reason||'').trim(),amount:pay.amount||0});
+    showAppDialog('تم رفض السداد','تم رفض طلب السداد وإرسال الحالة للعميل.','success',[{text:'موافق',cls:'ok',fn:()=>show('payments')}]);
+  }catch(e){
+    console.error('rejectPayment failed',e);
+    if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){ showPermissionDeniedLogoutDialog('رفض السداد',e); return; }
+    msg('تعذر رفض السداد: '+friendlyFirestoreError(e),'error');
+  }
+}
+
+// ===== Phase 6: returns, schedules, collections stability =====
+function phase6InvoiceLines(inv){ return Array.isArray(inv?.lines)?inv.lines:(Array.isArray(inv?.items)?inv.items:[]); }
+function phase6CustomerInvoices(){
+  const list=(cache.invoices||[]).filter(inv=>state.role==='trader' || String(inv.customerId||'')===String(state.customerId||'') || String(inv.customerUid||'')===String(uid()));
+  return list.sort((a,b)=>(b.createdMs||0)-(a.createdMs||0));
+}
+function phase6ReturnAlreadyQty(invoiceId,itemId){
+  return (cache.returns||[]).filter(r=>String(r.invoiceId||'')===String(invoiceId||'') && String(r.itemId||'')===String(itemId||'') && !['rejected','cancelled'].includes(String(r.status||'pending'))).reduce((a,r)=>a+Number(r.qty||0),0);
+}
+function renderReturnLines(){
+  const invoices=phase6CustomerInvoices();
+  if(!invoices.length) return '<div class="safe-placeholder">لا توجد فواتير متاحة لطلب مرتجع. عند اعتماد طلب شراء ستظهر الفاتورة هنا.</div>';
+  const selected=state.returnInvoiceId && invoices.some(i=>String(i.id)===String(state.returnInvoiceId)) ? state.returnInvoiceId : invoices[0].id;
+  state.returnInvoiceId=selected; save();
+  const inv=invoices.find(i=>String(i.id)===String(selected))||invoices[0];
+  const lines=phase6InvoiceLines(inv).filter(l=>Number(l.qty||0)>phase6ReturnAlreadyQty(inv.id,l.itemId||l.id||l.name));
+  const invOpts=invoices.map(i=>`<option value="${esc(i.id)}" ${String(i.id)===String(inv.id)?'selected':''}>${esc(i.invoiceNo||i.id)} - ${money(i.total||0)} - ${dt(i.createdMs)}</option>`).join('');
+  const lineOpts=lines.map(l=>{const itemId=l.itemId||l.id||l.name; const remain=Math.max(0,Number(l.qty||0)-phase6ReturnAlreadyQty(inv.id,itemId)); return `<option value="${esc(itemId)}" data-name="${esc(l.name||l.itemName||'')}" data-price="${Number(l.price||l.unitPrice||0)}" data-max="${remain}">${esc(l.name||l.itemName||'صنف')} - المتاح للمرتجع ${remain}</option>`;}).join('');
+  if(!lines.length) return `<div class="grid compact-form"><div class="field"><label>الفاتورة</label><select id="returnInvoice">${invOpts}</select></div></div><div class="safe-placeholder">كل أصناف هذه الفاتورة لديها طلبات مرتجع معلقة أو معتمدة.</div>`;
+  return `<div class="grid compact-form"><div class="field"><label>الفاتورة</label><select id="returnInvoice">${invOpts}</select></div><div class="field"><label>الصنف</label><select id="returnItem">${lineOpts}</select></div><div class="field"><label>الكمية</label><input id="returnQty" type="number" min="1" value="1"></div></div>`;
+}
+function phase6BindReturnForm(){
+  if($('returnInvoice')) $('returnInvoice').onchange=e=>{state.returnInvoiceId=e.target.value; save(); renderReturns();};
+  if($('returnItem')) $('returnItem').onchange=()=>{ const opt=$('returnItem').selectedOptions?.[0]; const max=Number(opt?.dataset?.max||1); if($('returnQty')) $('returnQty').value=Math.max(1,Math.min(Number($('returnQty').value||1),max)); };
+}
+async function sendReturnRequest(){
+  try{
+    if(state.role!=='customer'){ msg('طلب المرتجع خاص بالعميل.','error'); return; }
+    if(!db||!state.shopId||!state.customerId){ showPermissionDeniedLogoutDialog('طلب المرتجع',{message:'لا يوجد ربط عميل صالح.'}); return; }
+    const invId=$('returnInvoice')?.value||state.returnInvoiceId||'';
+    const itemId=$('returnItem')?.value||'';
+    const qty=Number($('returnQty')?.value||0);
+    const reason=String($('returnReason')?.value||'').trim();
+    if(!invId||!itemId){ msg('اختر الفاتورة والصنف أولًا.','error'); return; }
+    const inv=(cache.invoices||[]).find(i=>String(i.id)===String(invId));
+    if(!inv){ msg('الفاتورة غير موجودة أو غير مسموح بقراءتها.','error'); return; }
+    const line=phase6InvoiceLines(inv).find(l=>String(l.itemId||l.id||l.name)===String(itemId));
+    if(!line){ msg('الصنف غير موجود داخل الفاتورة.','error'); return; }
+    const soldQty=Number(line.qty||0), already=phase6ReturnAlreadyQty(invId,itemId), max=Math.max(0,soldQty-already);
+    if(!qty||qty<=0||qty>max){ msg(`الكمية غير صحيحة. الكمية المتاحة للمرتجع: ${max}`,'error'); return; }
+    if(!reason){ msg('اكتب سبب المرتجع.','error'); return; }
+    const unitPrice=Number(line.price||line.unitPrice||0);
+    const total=qty*unitPrice;
+    const payload={shopId:state.shopId, invoiceId:inv.id, invoiceNo:inv.invoiceNo||'', invoicePaymentType:inv.paymentType||'cash', customerId:state.customerId, customerUid:uid(), customerName:state.customerName||inv.customerName||'عميل', customerPhone:state.customerPhone||inv.customerPhone||'', itemId, itemName:line.name||line.itemName||'صنف', unitPrice, qty, total, amount:total, reason, status:'pending', createdBy:uid(), createdByRole:'customer', createdAt:serverTimestamp(), createdMs:Date.now(), updatedAt:serverTimestamp(), updatedMs:Date.now()};
+    await addDoc(collection(db,'shops',state.shopId,'returnRequests'),payload);
+    showAppDialog('تم إرسال طلب المرتجع','تم إرسال طلب المرتجع للتاجر للمراجعة. عند الاعتماد سيتم تحديث المخزون وكشف الحساب حسب نوع الفاتورة.','success',[{text:'مرتجعاتي',cls:'ok',fn:()=>{setPageTab('returns','list');show('returns')}}]);
+  }catch(e){ console.error('sendReturnRequest failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('طلب المرتجع',e);return;} msg('تعذر إرسال طلب المرتجع: '+friendlyFirestoreError(e),'error'); }
+}
+async function approveReturn(returnId){
+  try{
+    if(state.role!=='trader'){ msg('اعتماد المرتجع خاص بالتاجر.','error'); return; }
+    const ret=(cache.returns||[]).find(r=>String(r.id)===String(returnId));
+    if(!ret){ msg('طلب المرتجع غير موجود.','error'); return; }
+    if(String(ret.status||'pending')!=='pending'){ msg('طلب المرتجع تمت مراجعته مسبقًا.','error'); return; }
+    const ok=await confirmDialog('اعتماد المرتجع',`سيتم اعتماد مرتجع ${ret.itemName||'صنف'} بكمية ${Number(ret.qty||0)} ومبلغ ${money(ret.total||ret.amount||0)}. هل تريد المتابعة؟`,'اعتماد');
+    if(!ok) return;
+    const now=Date.now();
+    const returnRef=doc(db,'shops',state.shopId,'returnRequests',returnId);
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(returnRef); if(!snap.exists()) throw new Error('طلب المرتجع غير موجود في قاعدة البيانات.');
+      const fresh={id:returnId,...snap.data()}; if(String(fresh.status||'pending')!=='pending') throw new Error('طلب المرتجع تمت مراجعته مسبقًا.');
+      const qty=Number(fresh.qty||0), amount=Number(fresh.total||fresh.amount||0), itemId=fresh.itemId||'', customerId=fresh.customerId||'', customerUid=fresh.customerUid||'';
+      tx.update(returnRef,{status:'approved',approvedBy:uid(),approvedByName:actorName(),reviewedAt:serverTimestamp(),reviewedMs:now,updatedAt:serverTimestamp(),updatedMs:now});
+      if(itemId){ tx.update(doc(db,'shops',state.shopId,'items',itemId),{stock:increment(qty),updatedAt:serverTimestamp(),updatedMs:now}); }
+      tx.set(doc(collection(db,'shops',state.shopId,'stockLedger')),{shopId:state.shopId,itemId,itemName:fresh.itemName||'',type:'return_in',sourceType:'return',sourceId:returnId,qty,note:'مرتجع معتمد من التاجر',createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      if(String(fresh.invoicePaymentType||'cash')==='credit' && amount>0 && customerId){
+        tx.update(doc(db,'shops',state.shopId,'customers',customerId),{balance:increment(-amount),updatedAt:serverTimestamp(),updatedMs:now});
+        tx.set(doc(collection(db,'shops',state.shopId,'customerLedger')),{shopId:state.shopId,customerId,customerUid,customerName:fresh.customerName||'',type:'return_credit',direction:'credit',amount,returnId,invoiceId:fresh.invoiceId||'',note:'مرتجع آجل معتمد - خصم من الدين',createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      } else if(amount>0 && customerId){
+        tx.set(doc(collection(db,'shops',state.shopId,'customerLedger')),{shopId:state.shopId,customerId,customerUid,customerName:fresh.customerName||'',type:'return_cash',direction:'info',amount,returnId,invoiceId:fresh.invoiceId||'',note:'مرتجع كاش معتمد - لا يغير الدين',createdBy:uid(),createdAt:serverTimestamp(),createdMs:now});
+      }
+      tx.set(doc(collection(db,'shops',state.shopId,'auditLogs')),{shopId:state.shopId,action:'approve_return',actorRole:'trader',actorName:actorName(),details:{returnId,customerId,itemId,qty,amount},createdAt:serverTimestamp(),createdMs:now});
+    });
+    showAppDialog('تم اعتماد المرتجع','تم تحديث حالة المرتجع والمخزون وكشف الحساب حسب نوع الفاتورة.','success',[{text:'المرتجعات',cls:'ok',fn:()=>show('returns')},{text:'كشف الحساب',cls:'secondary',fn:()=>show('statement')}]);
+  }catch(e){ console.error('approveReturn failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('اعتماد المرتجع',e);return;} msg('تعذر اعتماد المرتجع: '+friendlyFirestoreError(e),'error'); }
+}
+async function rejectReturn(returnId){
+  try{
+    if(state.role!=='trader'){ msg('رفض المرتجع خاص بالتاجر.','error'); return; }
+    const ret=(cache.returns||[]).find(r=>String(r.id)===String(returnId)); if(!ret){ msg('طلب المرتجع غير موجود.','error'); return; }
+    if(String(ret.status||'pending')!=='pending'){ msg('طلب المرتجع تمت مراجعته مسبقًا.','error'); return; }
+    const reason=prompt('سبب رفض المرتجع؟',''); if(reason===null) return;
+    await updateDoc(doc(db,'shops',state.shopId,'returnRequests',returnId),{status:'rejected',traderNote:String(reason||'').trim(),rejectedBy:uid(),rejectedByName:actorName(),reviewedAt:serverTimestamp(),reviewedMs:Date.now(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    await addAudit('reject_return',{returnId,reason:String(reason||'').trim()});
+    showAppDialog('تم رفض المرتجع','تم رفض طلب المرتجع وإظهار الحالة للعميل.','success',[{text:'موافق',cls:'ok',fn:()=>show('returns')}]);
+  }catch(e){ console.error('rejectReturn failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('رفض المرتجع',e);return;} msg('تعذر رفض المرتجع: '+friendlyFirestoreError(e),'error'); }
+}
+function scheduleStatus(s){ const st=String(s?.status||'pending'); if(st==='paid'||st==='approved') return {text:'مدفوع',cls:'approved'}; if(st==='cancelled') return {text:'ملغي',cls:'rejected'}; if(st==='payment_pending') return {text:'سداد قيد المراجعة',cls:'pending'}; if(st==='pending' && String(s?.dueDate||'')<todayIso()) return {text:'متأخر',cls:'rejected'}; if(st==='pending' && String(s?.dueDate||'')===todayIso()) return {text:'مستحق اليوم',cls:'pending'}; return {text:statusText(st),cls:st}; }
+function phase6ScheduleById(id){ return (cache.schedules||[]).find(s=>String(s.id)===String(id)); }
+function fillScheduleFromInvoice(){ const invId=$('schedInvoice')?.value||''; if(!invId) return; const inv=(cache.invoices||[]).find(i=>String(i.id)===String(invId)); if(!inv) return; if($('schedCustomer')) $('schedCustomer').value=inv.customerId||''; if($('schedTotal')) $('schedTotal').value=Number(inv.balanceDue||inv.total||0); }
+async function createSchedule(){
+  try{
+    if(state.role!=='trader'){ msg('إنشاء الجداول خاص بالتاجر.','error'); return; }
+    const customerId=$('schedCustomer')?.value||''; const customer=(cache.customers||[]).find(c=>String(c.customerId)===String(customerId)); const invoiceId=$('schedInvoice')?.value||''; const invoice=(cache.invoices||[]).find(i=>String(i.id)===String(invoiceId));
+    const total=Number($('schedTotal')?.value||0), count=Math.max(1,Number($('schedCount')?.value||1)), start=String($('schedStart')?.value||''), interval=Math.max(1,Number($('schedInterval')?.value||7)); const note=String($('schedNote')?.value||'').trim();
+    if(!customer){ msg('اختر العميل.','error'); return; } if(!total||total<=0){ msg('أدخل إجمالي مبلغ صحيح.','error'); return; } if(!start){ msg('حدد تاريخ أول استحقاق.','error'); return; }
+    const ok=await confirmDialog('إنشاء جدول سداد',`سيتم إنشاء ${count} دفعة بإجمالي ${money(total)} للعميل ${customer.name||''}. هل تريد المتابعة؟`,'إنشاء'); if(!ok) return;
+    const batch=writeBatch(db); const now=Date.now(); let remaining=total;
+    for(let n=1;n<=count;n++){ const due=new Date(start+'T00:00:00'); due.setDate(due.getDate()+((n-1)*interval)); const amount=n===count?Number(remaining.toFixed(2)):Number((total/count).toFixed(2)); remaining-=amount; const ref=doc(collection(db,'shops',state.shopId,'paymentSchedules')); batch.set(ref,{shopId:state.shopId,customerId,customerUid:customer.customerUid||'',customerName:customer.name||'',customerPhone:customer.phone||'',invoiceId:invoice?.id||'',invoiceNo:invoice?.invoiceNo||'',amount,totalAmount:total,installmentNo:n,installmentCount:count,dueDate:due.toISOString().slice(0,10),intervalDays:interval,status:'pending',note,createdBy:uid(),createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now}); }
+    batch.set(doc(collection(db,'shops',state.shopId,'auditLogs')),{shopId:state.shopId,action:'create_payment_schedule',actorRole:'trader',actorName:actorName(),details:{customerId,total,count,invoiceId},createdAt:serverTimestamp(),createdMs:now});
+    await batch.commit(); showAppDialog('تم إنشاء الجدولة','تم إنشاء جدول السداد بنجاح وسيظهر للعميل في الاستحقاقات.','success',[{text:'الاستحقاقات',cls:'ok',fn:()=>{setPageTab('schedules','due');show('schedules')}}]);
+  }catch(e){ console.error('createSchedule failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إنشاء الجدولة',e);return;} msg('تعذر إنشاء الجدولة: '+friendlyFirestoreError(e),'error'); }
+}
+async function paySchedule(scheduleId){
+  try{
+    if(state.role!=='customer'){ msg('سداد القسط خاص بالعميل.','error'); return; } const sch=phase6ScheduleById(scheduleId); if(!sch){ msg('الاستحقاق غير موجود.','error'); return; } if(String(sch.status||'pending')!=='pending'){ msg('هذا الاستحقاق ليس متاحًا للسداد.','error'); return; }
+    const ok=await confirmDialog('سداد استحقاق',`سيتم إرسال طلب سداد بمبلغ ${money(sch.amount)} للتاجر للمراجعة. هل تريد المتابعة؟`,'إرسال السداد'); if(!ok) return;
+    await addDoc(collection(db,'shops',state.shopId,'paymentRequests'),{shopId:state.shopId,customerId:state.customerId,customerUid:uid(),customerName:state.customerName||sch.customerName||'عميل',customerPhone:state.customerPhone||sch.customerPhone||'',amount:Number(sch.amount||0),method:'سداد قسط',referenceNo:`SCH-${scheduleId}`,note:`سداد قسط رقم ${sch.installmentNo||1} من ${sch.installmentCount||1}`,scheduleId,invoiceId:sch.invoiceId||'',status:'pending',createdBy:uid(),createdByRole:'customer',createdAt:serverTimestamp(),createdMs:Date.now(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    showAppDialog('تم إرسال سداد القسط','تم إرسال طلب السداد للتاجر للمراجعة. عند اعتماد التاجر سيتم تحديث كشف الحساب وحالة القسط.','success',[{text:'السداد',cls:'ok',fn:()=>show('payments')}]);
+  }catch(e){ console.error('paySchedule failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('سداد القسط',e);return;} msg('تعذر إرسال سداد القسط: '+friendlyFirestoreError(e),'error'); }
+}
+async function cancelSchedule(scheduleId){
+  try{ if(state.role!=='trader'){ msg('إلغاء الاستحقاق خاص بالتاجر.','error'); return; } const ok=await confirmDialog('إلغاء الاستحقاق','سيتم إلغاء هذا الاستحقاق ولن يظهر كقسط مستحق. هل تريد المتابعة؟','إلغاء الاستحقاق'); if(!ok) return; await updateDoc(doc(db,'shops',state.shopId,'paymentSchedules',scheduleId),{status:'cancelled',cancelledBy:uid(),cancelledByName:actorName(),updatedAt:serverTimestamp(),updatedMs:Date.now()}); await addAudit('cancel_schedule',{scheduleId}); msg('تم إلغاء الاستحقاق.','success'); }
+  catch(e){ console.error('cancelSchedule failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إلغاء الاستحقاق',e);return;} msg('تعذر إلغاء الاستحقاق: '+friendlyFirestoreError(e),'error'); }
+}
+function shareCollectionReport(){ const selectedDate=state.collectionDate||todayIso(); const rows=(cache.payments||[]).filter(p=>String(p.createdMs?new Date(p.createdMs).toISOString().slice(0,10):'')===selectedDate || !state.collectionDate); const approved=rows.filter(p=>p.status==='approved').reduce((a,p)=>a+Number(p.amount||0),0); const pending=rows.filter(p=>p.status==='pending').reduce((a,p)=>a+Number(p.amount||0),0); const text=`تقرير التحصيل - حسابي التجاري\nالتاريخ: ${selectedDate}\nعدد العمليات: ${rows.length}\nالمقبول: ${money(approved)}\nالمعلق: ${money(pending)}\n\n`+rows.map(p=>`- ${p.customerName||''}: ${money(p.amount)} | ${p.method||''} | ${statusText(p.status)} | ${p.referenceNo||''}`).join('\n'); if(navigator.share) navigator.share({title:'تقرير التحصيل',text}).catch(()=>{}); else if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>msg('تم نسخ تقرير التحصيل.','success')); else showAppDialog('تقرير التحصيل',text,'notice'); }
+function phase6ValidateReturnsSchedulesCollections(){ const missing=['renderReturnLines','sendReturnRequest','approveReturn','rejectReturn','scheduleStatus','createSchedule','paySchedule','cancelSchedule','fillScheduleFromInvoice','shareCollectionReport'].filter(n=>typeof window[n]!=='function' && typeof eval(n)!=='function'); return {ok:missing.length===0,missing}; }
+
+function phase5ValidatePaymentInvoiceFlow(){
+  return typeof sendPayment==='function' && typeof approvePayment==='function' && typeof rejectPayment==='function' && typeof openReceipt==='function' && typeof shareInvoiceText==='function' && typeof confirmDialog==='function';
+}
+
+
+/* Phase 8: policies, settings, permissions, owner console, subscriptions, messaging stability */
+function phase8RawPolicy(key, def){
+  const sh=cache.shop||{};
+  const p=(sh.policies&&typeof sh.policies==='object')?sh.policies:{};
+  const aliases={
+    showPrices:['showCustomerPrices','showPrices'],
+    showStock:['showCustomerStock','showStock','showQuantities'],
+    showQuantities:['showCustomerStock','showStock','showQuantities'],
+    allowOutOfStock:['allowOutOfStockOrders','allowOutOfStock'],
+    allowOrders:['allowCustomerOrders','allowOrders'],
+    allowReturns:['allowReturns'],
+    messaging:['customerMessagingMode','messagingMode'],
+    hoursEnabled:['workingHoursEnabled','hoursEnabled'],
+    openTime:['workingOpenTime','openTime'],
+    closeTime:['workingCloseTime','closeTime'],
+    closedMessage:['workingClosedMessage','closedMessage'],
+    invoicePrefix:['invoicePrefix'],
+    defaultCreditLimit:['defaultCreditLimit'],
+    defaultCustomerStatus:['defaultCustomerStatus'],
+    requireCustomerApproval:['requireCustomerApproval']
+  };
+  const keys=[key].concat(aliases[key]||[]).filter((v,i,a)=>v&&a.indexOf(v)===i);
+  for(const k of keys){ if(sh[k]!==undefined) return sh[k]; if(p[k]!==undefined) return p[k]; }
+  return def;
+}
+function shopPolicyBool(key, def=true){
+  const v=phase8RawPolicy(key, def);
+  if(typeof v==='string') return !['false','0','no','off','مخفي','ممنوع','disabled'].includes(v.trim().toLowerCase());
+  return v===undefined ? !!def : v!==false;
+}
+function phase8PolicyTextBool(v, yes='نعم', no='لا'){return v?yes:no;}
+function phase8Select(id, val, opts){return `<select id="${id}">${opts.map(o=>`<option value="${esc(String(o[0]))}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;}
+function phase8Input(id, val, type='text', extra=''){return `<input id="${id}" type="${type}" value="${esc(String(val??''))}" ${extra}>`;}
+function phase8GuardTrader(action='هذه العملية'){
+  if(state.role!=='trader'){showAppDialog('صلاحية غير متاحة', action+' خاصة بالتاجر فقط.','error',[{text:'موافق',cls:'ok'}]); return false;}
+  if(!state.shopId){msg('لا يوجد متجر نشط.','error'); return false;}
+  return true;
+}
+async function saveShopPoliciesPhase8(){
+  try{
+    if(!phase8GuardTrader('تعديل السياسات')) return;
+    const fields={
+      allowCustomerOrders: $('polAllowOrders')?.value==='true',
+      allowReturns: $('polAllowReturns')?.value==='true',
+      allowOutOfStockOrders: $('polAllowOut')?.value==='true',
+      showCustomerPrices: $('polShowPrices')?.value==='true',
+      showCustomerStock: $('polShowStock')?.value==='true',
+      customerMessagingMode: $('polMessaging')?.value||'linked_only',
+      workingHoursEnabled: $('polHoursEnabled')?.value==='true',
+      workingOpenTime: $('polOpenTime')?.value||'08:00',
+      workingCloseTime: $('polCloseTime')?.value||'22:00',
+      workingClosedMessage: ($('polClosedMsg')?.value||'المتجر مغلق حاليًا. سيتم استقبال طلبك عند وقت الدوام.').trim(),
+      defaultCreditLimit: Math.max(0,Number($('polCreditLimit')?.value||0)),
+      defaultCustomerStatus: $('polCustomerStatus')?.value||'active',
+      requireCustomerApproval: $('polRequireCustomerApproval')?.value==='true',
+      invoicePrefix: (($('polInvoicePrefix')?.value||'INV').trim()||'INV').slice(0,12),
+      updatedAt: serverTimestamp(),
+      updatedMs: Date.now()
+    };
+    fields.policies={
+      allowCustomerOrders:fields.allowCustomerOrders,
+      allowReturns:fields.allowReturns,
+      allowOutOfStockOrders:fields.allowOutOfStockOrders,
+      showCustomerPrices:fields.showCustomerPrices,
+      showCustomerStock:fields.showCustomerStock,
+      customerMessagingMode:fields.customerMessagingMode,
+      workingHoursEnabled:fields.workingHoursEnabled,
+      workingOpenTime:fields.workingOpenTime,
+      workingCloseTime:fields.workingCloseTime,
+      workingClosedMessage:fields.workingClosedMessage,
+      defaultCreditLimit:fields.defaultCreditLimit,
+      defaultCustomerStatus:fields.defaultCustomerStatus,
+      requireCustomerApproval:fields.requireCustomerApproval,
+      invoicePrefix:fields.invoicePrefix
+    };
+    await setDoc(doc(db,'shops',state.shopId),fields,{merge:true});
+    cache.shop={...(cache.shop||{}),...fields};
+    await addAudit('update_shop_policies',{fields:Object.keys(fields.policies)});
+    showAppDialog('تم حفظ السياسات','تم حفظ إعدادات المتجر وتطبيقها على العملاء والطلبات والرسائل.','success',[{text:'موافق',cls:'ok',fn:()=>renderPolicies()}]);
+  }catch(e){console.error('save policies failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('حفظ السياسات',e);return;} msg('تعذر حفظ السياسات: '+friendlyFirestoreError(e),'error');}
+}
+function renderPolicies(){
+  const tab=pageTabState('policies','orders');
+  const sh=cache.shop||{};
+  const p=(sh.policies&&typeof sh.policies==='object')?sh.policies:{};
+  const canEdit=state.role==='trader';
+  const readonlyNote=canEdit?'':'<div class="notice warn">هذه الصفحة للعرض فقط. تعديل السياسات خاص بالتاجر.</div>';
+  const tabs=[['orders','🧾','الطلبات'],['visibility','👁️','الظهور'],['messages','💬','المراسلة'],['hours','🕒','الدوام'],['customers','👥','العملاء'],['summary','✅','ملخص']];
+  const top=pageHead('السياسات','كل تاجر له إعدادات مستقلة تطبق على عملائه ومتجره فقط.')+pageTabsBar('policies',tab,tabs)+readonlyNote;
+  const disabled=canEdit?'':'disabled';
+  let content='';
+  if(tab==='orders'){
+    content=`<div class="card"><h2>البيع والطلبات</h2><div class="grid">
+      <div class="field"><label>استقبال طلبات العملاء</label>${phase8Select('polAllowOrders', String(phase8RawPolicy('allowOrders', true)), [['true','مفعل'],['false','موقوف']])}</div>
+      <div class="field"><label>المرتجعات</label>${phase8Select('polAllowReturns', String(phase8RawPolicy('allowReturns', true)), [['true','مسموحة'],['false','موقوفة']])}</div>
+      <div class="field"><label>طلب كمية غير متوفرة</label>${phase8Select('polAllowOut', String(phase8RawPolicy('allowOutOfStockOrders', false)), [['false','ممنوع'],['true','مسموح للمراجعة']])}</div>
+      <div class="field"><label>بادئة الفاتورة</label>${phase8Input('polInvoicePrefix', phase8RawPolicy('invoicePrefix','INV'))}</div>
+      <div class="field"><label>طلب موافقة العميل قبل اعتماد تعديلات التاجر</label>${phase8Select('polRequireCustomerApproval', String(phase8RawPolicy('requireCustomerApproval', true)), [['true','نعم'],['false','لا']])}</div>
+    </div></div>`;
+  }else if(tab==='visibility'){
+    content=`<div class="card"><h2>ظهور الأصناف والأسعار للعميل</h2><div class="grid">
+      <div class="field"><label>إظهار الأسعار للعميل</label>${phase8Select('polShowPrices', String(phase8RawPolicy('showCustomerPrices', true)), [['true','إظهار الأسعار'],['false','إخفاء الأسعار']])}</div>
+      <div class="field"><label>إظهار الكميات للعميل</label>${phase8Select('polShowStock', String(phase8RawPolicy('showCustomerStock', true)), [['true','إظهار الكمية'],['false','إخفاء الكمية']])}</div>
+    </div><div class="notice">إخفاء صنف محدد يتم من صفحة الأصناف ← تعديل الأسعار/الظهور. الصنف المخفي لا يظهر للعميل في الشراء.</div></div>`;
+  }else if(tab==='messages'){
+    content=`<div class="card"><h2>المراسلة</h2><div class="field"><label>من يستطيع مراسلة المتجر؟</label>${phase8Select('polMessaging', phase8RawPolicy('messaging','linked_only'), [['linked_only','العملاء المرتبطون والتاجر'],['trader_only','التاجر فقط يرسل'],['disabled','إغلاق المراسلة مؤقتًا']])}</div><div class="notice">هذه السياسة تطبق على زر إرسال الرسالة، وليس فقط على الواجهة.</div></div>`;
+  }else if(tab==='hours'){
+    content=`<div class="card"><h2>أوقات الدوام والإغلاق</h2><div class="grid">
+      <div class="field"><label>تفعيل وقت الدوام</label>${phase8Select('polHoursEnabled', String(phase8RawPolicy('hoursEnabled', false)), [['false','غير مفعل'],['true','مفعل']])}</div>
+      <div class="field"><label>وقت الفتح</label>${phase8Input('polOpenTime', phase8RawPolicy('openTime','08:00'), 'time')}</div>
+      <div class="field"><label>وقت الإغلاق</label>${phase8Input('polCloseTime', phase8RawPolicy('closeTime','22:00'), 'time')}</div>
+      <div class="field"><label>رسالة الإغلاق</label><textarea id="polClosedMsg">${esc(phase8RawPolicy('closedMessage','المتجر مغلق حاليًا. سيتم استقبال طلبك عند وقت الدوام.'))}</textarea></div>
+    </div></div>`;
+  }else if(tab==='customers'){
+    content=`<div class="card"><h2>العملاء والائتمان</h2><div class="grid">
+      <div class="field"><label>سقف الدين الافتراضي للعميل الجديد</label>${phase8Input('polCreditLimit', phase8RawPolicy('defaultCreditLimit',0), 'number', 'min="0" step="1"')}</div>
+      <div class="field"><label>حالة العميل الجديد</label>${phase8Select('polCustomerStatus', phase8RawPolicy('defaultCustomerStatus','active'), [['active','نشط'],['blocked','موقوف حتى مراجعة التاجر']])}</div>
+    </div><div class="notice">يمكن تعديل سقف عميل محدد من صفحة العملاء.</div></div>`;
+  }else{
+    const rows=[
+      ['استقبال الطلبات', phase8PolicyTextBool(shopPolicyBool('allowCustomerOrders',true),'مفعل','موقوف')],
+      ['إظهار الأسعار', phase8PolicyTextBool(shopPolicyBool('showCustomerPrices',true),'ظاهر','مخفي')],
+      ['إظهار الكميات', phase8PolicyTextBool(shopPolicyBool('showCustomerStock',true),'ظاهر','مخفي')],
+      ['طلب غير المتوفر', phase8PolicyTextBool(shopPolicyBool('allowOutOfStockOrders',false),'مسموح','ممنوع')],
+      ['المراسلة', String(phase8RawPolicy('messaging','linked_only'))],
+      ['الدوام', shopIsOpenNow()?'مفتوح الآن':'مغلق الآن']
+    ];
+    content=`<div class="card"><h2>ملخص السياسات الحالية</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>السياسة</th><th>الحالة</th></tr></thead><tbody>${rows.map(r=>`<tr><td class="name">${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join('')}</tbody></table></div></div>`;
+  }
+  const saveBar=canEdit&&tab!=='summary'?`<div class="card"><button class="btn ok" id="savePoliciesPhase8">حفظ السياسات</button></div>`:'';
+  $('page_policies').innerHTML=top+content+saveBar;
+  setTimeout(()=>{bindPageTabs('policies',renderPolicies); if($('savePoliciesPhase8')) $('savePoliciesPhase8').onclick=saveShopPoliciesPhase8; if(!canEdit){document.querySelectorAll('#page_policies input,#page_policies select,#page_policies textarea').forEach(x=>x.disabled=true);}});
+}
+function canSendMessageNow(){
+  const mode=String(phase8RawPolicy('messaging','linked_only'));
+  if(mode==='disabled') return {ok:false,msg:'المراسلة مغلقة مؤقتًا من سياسات المتجر.'};
+  if(mode==='trader_only' && state.role==='customer') return {ok:false,msg:'سياسة المتجر تسمح للتاجر فقط بإرسال الرسائل حاليًا.'};
+  if(state.role==='customer' && !state.customerId) return {ok:false,msg:'يجب ربط حسابك بالمتجر قبل المراسلة.'};
+  return {ok:true,msg:''};
+}
+async function sendMessage(){
+  try{
+    if(!state.shopId){msg('لا يوجد متجر نشط.','error'); return;}
+    const chk=canSendMessageNow(); if(!chk.ok){showAppDialog('تعذر إرسال الرسالة',chk.msg,'error',[{text:'موافق',cls:'ok'}]); return;}
+    const txt=String($('messageText')?.value||'').trim(); if(!txt){msg('اكتب نص الرسالة.','error'); return;}
+    let customerId=state.customerId||'', customerName=state.customerName||'', customerUid=state.role==='customer'?uid():'';
+    if(state.role==='trader'){
+      customerId=$('messageCustomer')?.value||'';
+      const c=(cache.customers||[]).find(x=>String(x.customerId||x.id)===String(customerId));
+      if(!c){msg('اختر العميل لإرسال الرسالة.','error'); return;}
+      customerName=c.name||'عميل'; customerUid=c.customerUid||'';
+    }
+    await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId,customerUid,customerName,fromRole:state.role,fromUid:uid(),fromName:actorName(),text:txt,type:'chat',createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:state.role==='trader',readByCustomer:state.role==='customer',updatedAt:serverTimestamp()});
+    if($('messageText')) $('messageText').value='';
+    msg('تم إرسال الرسالة.','success');
+  }catch(e){console.error('send message failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إرسال الرسالة',e);return;} msg('تعذر إرسال الرسالة: '+friendlyFirestoreError(e),'error');}
+}
+function renderMessages(){
+  const msgs=(cache.messages||[]).slice(-80).reverse();
+  setTimeout(()=>markMessagesReadForActiveUser(), 150);
+  const customerOptions=state.role==='trader'?`<div class="field"><label>العميل</label><select id="messageCustomer"><option value="">اختر العميل</option>${(cache.customers||[]).map(c=>`<option value="${esc(c.customerId||c.id||'')}">${esc(c.name||'عميل')} - ${esc(c.phone||'')}</option>`).join('')}</select></div>`:'';
+  const chk=canSendMessageNow();
+  const rows=msgs.map(m=>`<tr><td class="name"><b>${esc(m.fromName||m.senderName||'رسالة')}</b><div class="muted">${esc(m.fromRole==='trader'?'تاجر':m.fromRole==='customer'?'عميل':'النظام')}</div></td><td>${esc(m.text||m.body||m.message||'')}</td><td>${dt(m.createdMs)}</td></tr>`).join('');
+  $('page_messages').innerHTML=`<div class="card"><h2>الرسائل</h2>${chk.ok?'':`<div class="notice warn">${esc(chk.msg)}</div>`}${customerOptions}<div class="field"><label>نص الرسالة</label><textarea id="messageText" placeholder="اكتب رسالتك هنا"></textarea></div><button class="btn ok" id="sendMessageBtn" ${chk.ok?'':'disabled'}>إرسال</button></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>المرسل</th><th>الرسالة</th><th>التاريخ</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد رسائل</td></tr>'}</tbody></table></div>`;
+  setTimeout(()=>{ if($('sendMessageBtn')) $('sendMessageBtn').onclick=sendMessage; });
+}
+function renderSettings(){
+  const tab=pageTabState('settings','security');
+  const tabs=[['security','🔐','الأمان'],['appearance','🎨','الشكل'],['shop','🏪','المتجر'],['permissions','🛡️','الصلاحيات'],['update','⬆️','التحديث'],['backup','💾','النسخ'],['account','👤','الحساب'],['notifications','🔔','التنبيهات']];
+  let content='';
+  if(tab==='security') content=`<div class="card"><h2>الأمان</h2><div class="notice">قفل التطبيق: ${state.appLockEnabled||state.lockEnabled?'مفعل':'ملغي'}</div><div class="settings-compact-actions"><button class="btn secondary" id="settingsDisableLock">إلغاء القفل مؤقتًا</button><button class="btn light" id="settingsGoAccount">الحساب</button></div></div>`;
+  else if(tab==='appearance') content=`<div class="card"><h2>الشكل</h2><div class="settings-compact-actions"><button class="btn light" id="settingsCompactOn">واجهة مدمجة</button><button class="btn light" id="settingsCompactOff">واجهة واسعة</button></div></div>`;
+  else if(tab==='shop') content=`<div class="card"><h2>المتجر</h2><p>كود المتجر: <b>${esc(state.shopId||'-')}</b></p><div class="settings-compact-actions"><button class="btn secondary" id="settingsPolicies">السياسات</button><button class="btn secondary" id="settingsItems">الأصناف</button><button class="btn light" id="settingsShopCode">كود التاجر</button><button class="btn light" id="settingsCustomers">العملاء</button></div></div>`;
+  else if(tab==='permissions') content=`<div class="card"><h2>الصلاحيات حسب الدور</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>الوظيفة</th><th>التاجر</th><th>العميل</th></tr></thead><tbody><tr><td>الأصناف والأسعار والمخزون</td><td>إضافة/تعديل/حذف وتسوية</td><td>عرض وطلب فقط حسب سياسة التاجر</td></tr><tr><td>السياسات والظهور والدوام</td><td>تحكم كامل</td><td>عرض فقط</td></tr><tr><td>الطلبات</td><td>مراجعة/قبول/رفض وإنشاء فاتورة</td><td>إنشاء ومتابعة طلباته فقط</td></tr><tr><td>السداد والفواتير وكشف الحساب</td><td>اعتماد/رفض ومراجعة</td><td>حسابه فقط</td></tr><tr><td>المالك والاشتراكات</td><td>مالك التطبيق فقط</td><td>لا يظهر</td></tr></tbody></table></div></div>`;
+  else if(tab==='update') content=`<div class="card"><h2>التحديث والكاش</h2><div class="grid"><div class="metric"><span class="muted">إصدار الواجهات</span><b>${APP_VERSION}</b></div><div class="metric"><span class="muted">إصدار APK</span><b>${nativeVersionName()} (${nativeVersionCode()})</b></div></div><div class="settings-compact-actions"><button class="btn ok" id="settingsRefreshUi">تحديث الواجهات</button><button class="btn warn" id="settingsCleanCache">تنظيف الكاش</button><button class="btn secondary" id="settingsUpdateApk">تحديث APK</button><button class="btn light" id="settingsCheckApk">فحص APK</button></div></div>`;
+  else if(tab==='backup') content=`<div class="card"><h2>النسخ والاستيراد</h2><div class="settings-compact-actions"><button class="btn secondary" id="settingsExportItems">الأصناف</button><button class="btn light" id="settingsExportReports">التقارير</button><button class="btn light" id="settingsStatement">كشف الحساب</button><button class="btn light" id="settingsInvoices">الفواتير</button></div></div>`;
+  else if(tab==='account') content=`<div class="card"><h2>الحساب</h2><p class="muted">الخروج وإعادة الدخول تحل مشاكل الجلسات والصلاحيات القديمة.</p><div class="settings-compact-actions"><button class="btn danger" id="settingsLogout">تسجيل خروج</button><button class="btn light" id="settingsGoHome">الرئيسية</button></div></div>`;
+  else { const c=appNotificationCounters(); content=`<div class="card"><h2>التنبيهات</h2><div class="grid"><div class="metric"><span class="muted">الإجمالي غير المقروء</span><b>${c.notifications||0}</b></div><div class="metric"><span class="muted">صلاحية التنبيهات</span><b>${esc(notificationPermissionState())}</b></div></div><p class="muted">العداد يظهر داخل التطبيق دائمًا، وعلى أيقونة التطبيق حسب دعم الهاتف واللانشر.</p><div class="settings-compact-actions"><button class="btn ok" id="settingsEnableNotifications">تفعيل التنبيهات</button><button class="btn secondary" id="settingsOpenNotifications">فتح الإشعارات</button><button class="btn light" id="settingsOpenMessages">فتح الرسائل</button><button class="btn warn" id="settingsClearBadge">تصفير العدّاد</button></div></div>`; }
+  $('page_settings').innerHTML=pageTabsBar('settings',tab,tabs)+content;
+  setTimeout(()=>{bindPageTabs('settings',renderSettings); const go=(id,page)=>{if($(id)) $(id).onclick=()=>show(page)}; if($('settingsRefreshUi')) $('settingsRefreshUi').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?v='+Date.now())}; if($('settingsCleanCache')) $('settingsCleanCache').onclick=async()=>{try{await refreshWebUiNow()}catch(e){} location.replace(location.pathname+'?clean='+Date.now())}; if($('settingsUpdateApk')) $('settingsUpdateApk').onclick=()=>downloadApkUpdate(); if($('settingsCheckApk')) $('settingsCheckApk').onclick=()=>checkApkUpdateOnly(true); if($('settingsEnableNotifications')) $('settingsEnableNotifications').onclick=()=>requestNotificationPermission(true); if($('settingsClearBadge')) $('settingsClearBadge').onclick=()=>{clearAllNotificationCounters();msg('تم تصفير العدّاد.','success')}; if($('settingsLogout')) $('settingsLogout').onclick=()=>safeFullLogout('manual'); if($('settingsDisableLock')) $('settingsDisableLock').onclick=()=>{state.appLockEnabled=false;state.lockEnabled=false;save();msg('تم إلغاء القفل مؤقتًا','success');renderSettings()}; if($('settingsCompactOn')) $('settingsCompactOn').onclick=()=>{state.appearance=state.appearance||{};state.appearance.compact=true;save();applyAppearance();renderSettings()}; if($('settingsCompactOff')) $('settingsCompactOff').onclick=()=>{state.appearance=state.appearance||{};state.appearance.compact=false;save();applyAppearance();renderSettings()}; go('settingsGoAccount','settings'); go('settingsPolicies','policies'); go('settingsItems','items'); go('settingsShopCode','shopcode'); go('settingsCustomers','customers'); go('settingsExportItems','items'); go('settingsExportReports','reports'); go('settingsStatement','statement'); go('settingsInvoices','invoices'); go('settingsGoHome','home'); go('settingsOpenNotifications','notifications'); go('settingsOpenMessages','messages');});
+}
+async function loadOwnerConsoleDataPhase8(force=false){
+  if(!isAppOwner()||!db) return;
+  if(!force && cache.ownerLoadedAt && Date.now()-cache.ownerLoadedAt<60000) return;
+  try{
+    const [shopsSnap, usersSnap]=await Promise.all([getDocs(collection(db,'shops')), getDocs(collection(db,'users')).catch(()=>({docs:[]}))]);
+    cache.ownerShops=shopsSnap.docs.map(d=>({id:d.id,shopId:d.id,...d.data()})).sort((a,b)=>(a.name||a.shopId||'').localeCompare(b.name||b.shopId||''));
+    cache.ownerUsers=(usersSnap.docs||[]).map(d=>({id:d.id,...d.data()}));
+    cache.ownerLoadedAt=Date.now();
+  }catch(e){console.error('owner load failed',e); msg('تعذر تحميل بيانات المالك: '+friendlyFirestoreError(e),'error');}
+}
+function ownerShopStatusText(s){return ({active:'نشط',trial:'تجريبي',warning:'إنذار',suspended:'موقوف',expired:'منتهي'}[s]||s||'غير محدد');}
+function renderOwnerConsole(){
+  if(!isAppOwner()){show('home');return;}
+  const tab=pageTabState('owner','metrics');
+  const tabs=[['metrics','📊','المؤشرات'],['users','👤','المستخدمون'],['shops','🏪','المتاجر'],['message','💬','مراسلة'],['control','⛔','التحكم'],['subs','💳','الاشتراكات'],['logs','🗂️','السجل']];
+  const shops=cache.ownerShops||[], users=cache.ownerUsers||[];
+  const suspended=shops.filter(s=>s.subscriptionStatus==='suspended').length, warning=shops.filter(s=>s.subscriptionStatus==='warning'||s.ownerWarning).length;
+  let content='';
+  if(tab==='metrics') content=`<div class="card owner-console-head"><h2>لوحة مالك التطبيق</h2><p class="muted">الاشتراك على المتجر فقط، ولا يوجد اشتراك على العميل.</p></div><div class="grid"><div class="owner-metric"><span>المستخدمون</span><b>${users.length}</b></div><div class="owner-metric"><span>المتاجر</span><b>${shops.length}</b></div><div class="owner-metric owner-suspended"><span>موقوفة</span><b>${suspended}</b></div><div class="owner-metric owner-warn"><span>إنذارات</span><b>${warning}</b></div></div><div class="card"><button class="btn secondary" id="ownerReload">تحديث بيانات المالك</button></div>`;
+  else if(tab==='users') content=`<div class="card"><h2>المستخدمون</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>الحساب</th><th>الدور</th><th>آخر دخول</th></tr></thead><tbody>${users.map(u=>`<tr><td class="name">${esc(u.email||u.phone||u.id)}</td><td>${esc(u.role||u.lastRole||'-')}</td><td>${dt(u.lastSeenMs||u.updatedMs||u.createdMs)}</td></tr>`).join('')||'<tr><td colspan="3">لا توجد بيانات</td></tr>'}</tbody></table></div></div>`;
+  else if(tab==='shops') content=`<div class="card"><h2>المتاجر</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>المتجر</th><th>الهاتف</th><th>الاشتراك</th><th>الاستحقاق</th></tr></thead><tbody>${shops.map(s=>`<tr><td class="name">${esc(s.name||s.shopId||s.id)}</td><td>${esc(s.phone||'')}</td><td>${esc(ownerShopStatusText(s.subscriptionStatus))}</td><td>${esc(s.subscriptionDueDate||'')}</td></tr>`).join('')||'<tr><td colspan="4">اضغط تحديث بيانات المالك</td></tr>'}</tbody></table></div></div>`;
+  else if(tab==='message') content=`<div class="card"><h2>مراسلة متجر</h2><div class="field"><label>المتجر</label><select id="ownerMsgShop"><option value="">اختر متجر</option>${shops.map(s=>`<option value="${esc(s.shopId||s.id)}">${esc(s.name||s.shopId||s.id)}</option>`).join('')}</select></div><div class="field"><label>نص الرسالة</label><textarea id="ownerMsgText" placeholder="اكتب رسالة للمتجر"></textarea></div><button class="btn ok" id="ownerSendMsg">إرسال</button></div>`;
+  else if(tab==='control') content=`<div class="card"><h2>التحكم بالمتاجر</h2><div class="field"><label>المتجر</label><select id="ownerCtrlShop"><option value="">اختر متجر</option>${shops.map(s=>`<option value="${esc(s.shopId||s.id)}">${esc(s.name||s.shopId||s.id)}</option>`).join('')}</select></div><div class="field"><label>سبب/رسالة</label><textarea id="ownerCtrlNote" placeholder="سبب الإنذار أو الإيقاف"></textarea></div><div class="owner-actions-grid"><button class="btn warn" id="ownerWarnShop">إنذار</button><button class="btn danger" id="ownerSuspendShop">إيقاف</button><button class="btn ok" id="ownerActivateShop">تفعيل</button><button class="btn secondary" id="ownerExpireShop">اشتراك منتهي</button></div></div>`;
+  else if(tab==='subs') content=`<div class="card"><h2>الاشتراكات</h2><div class="field"><label>المتجر</label><select id="ownerSubShop"><option value="">اختر متجر</option>${shops.map(s=>`<option value="${esc(s.shopId||s.id)}">${esc(s.name||s.shopId||s.id)}</option>`).join('')}</select></div><div class="grid"><div class="field"><label>الخطة</label><input id="ownerSubPlan" value="monthly"></div><div class="field"><label>المبلغ</label><input id="ownerSubAmount" type="number" min="0" value="0"></div><div class="field"><label>تاريخ الاستحقاق</label><input id="ownerSubDue" type="date"></div><div class="field"><label>الحالة</label>${phase8Select('ownerSubStatus','active',[['active','نشط'],['trial','تجريبي'],['warning','إنذار'],['expired','منتهي'],['suspended','موقوف']])}</div></div><div class="field"><label>ملاحظات</label><textarea id="ownerSubNote"></textarea></div><button class="btn ok" id="ownerSaveSub">حفظ الاشتراك</button></div>`;
+  else content=`<div class="card"><h2>سجل المالك</h2><p class="muted">يتم حفظ إجراءات المالك داخل ownerLogs لكل متجر عند تنفيذ التحكم أو الاشتراك.</p></div>`;
+  $('page_owner').innerHTML=pageTabsBar('owner',tab,tabs)+content;
+  setTimeout(()=>{bindPageTabs('owner',renderOwnerConsole); if($('ownerReload')) $('ownerReload').onclick=async()=>{await loadOwnerConsoleDataPhase8(true); renderOwnerConsole();}; if($('ownerSendMsg')) $('ownerSendMsg').onclick=ownerSendMessagePhase8; ['ownerWarnShop','ownerSuspendShop','ownerActivateShop','ownerExpireShop'].forEach(id=>{if($(id)) $(id).onclick=()=>ownerSetShopStatusPhase8(id)}); if($('ownerSaveSub')) $('ownerSaveSub').onclick=ownerSaveSubscriptionPhase8;});
+  if(!cache.ownerLoadedAt) setTimeout(async()=>{await loadOwnerConsoleDataPhase8(); if((state.page||'')==='owner') renderOwnerConsole();},50);
+}
+async function ownerLogPhase8(shopId,action,details={}){try{await addDoc(collection(db,'shops',shopId,'ownerLogs'),{shopId,action,details,ownerUid:uid(),ownerEmail:currentUser?.email||'',createdAt:serverTimestamp(),createdMs:Date.now()});}catch(e){console.warn('owner log failed',e)}}
+async function ownerSendMessagePhase8(){try{const shopId=$('ownerMsgShop')?.value||''; const text=String($('ownerMsgText')?.value||'').trim(); if(!shopId||!text){msg('اختر المتجر واكتب الرسالة.','error');return;} await addDoc(collection(db,'shops',shopId,'messages'),{shopId,customerId:'__app_owner__',customerUid:'__app_owner__',customerName:'مالك التطبيق',fromRole:'owner',fromUid:uid(),fromName:'مالك التطبيق',text,type:'owner_notice',createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:false,readByCustomer:true}); await ownerLogPhase8(shopId,'owner_message',{text}); msg('تم إرسال الرسالة للمتجر.','success'); if($('ownerMsgText')) $('ownerMsgText').value='';}catch(e){msg('تعذر إرسال رسالة المالك: '+friendlyFirestoreError(e),'error');}}
+async function ownerSetShopStatusPhase8(btnId){try{const shopId=$('ownerCtrlShop')?.value||''; if(!shopId){msg('اختر المتجر.','error');return;} const note=String($('ownerCtrlNote')?.value||'').trim(); const map={ownerWarnShop:['warning','إنذار من مالك التطبيق'],ownerSuspendShop:['suspended','تم إيقاف المتجر مؤقتًا'],ownerActivateShop:['active','تم تفعيل المتجر'],ownerExpireShop:['expired','انتهى الاشتراك']}; const [status,msgTxt]=map[btnId]||['active','تحديث']; await setDoc(doc(db,'shops',shopId),{subscriptionStatus:status,ownerWarning:note,updatedAt:serverTimestamp(),updatedMs:Date.now()},{merge:true}); await ownerLogPhase8(shopId,'set_shop_status',{status,note}); await loadOwnerConsoleDataPhase8(true); showAppDialog('تم تحديث المتجر',msgTxt,'success',[{text:'موافق',cls:'ok',fn:()=>renderOwnerConsole()}]);}catch(e){msg('تعذر تحديث المتجر: '+friendlyFirestoreError(e),'error');}}
+async function ownerSaveSubscriptionPhase8(){try{const shopId=$('ownerSubShop')?.value||''; if(!shopId){msg('اختر المتجر.','error');return;} const payload={subscriptionPlan:($('ownerSubPlan')?.value||'monthly').trim(),subscriptionAmount:Number($('ownerSubAmount')?.value||0),subscriptionDueDate:$('ownerSubDue')?.value||'',subscriptionStatus:$('ownerSubStatus')?.value||'active',subscriptionNote:($('ownerSubNote')?.value||'').trim(),updatedAt:serverTimestamp(),updatedMs:Date.now()}; await setDoc(doc(db,'shops',shopId),payload,{merge:true}); await ownerLogPhase8(shopId,'save_subscription',payload); await loadOwnerConsoleDataPhase8(true); showAppDialog('تم حفظ الاشتراك','تم تحديث بيانات اشتراك المتجر.','success',[{text:'موافق',cls:'ok',fn:()=>renderOwnerConsole()}]);}catch(e){msg('تعذر حفظ الاشتراك: '+friendlyFirestoreError(e),'error');}}
+function phase8ValidatePoliciesSettingsOwner(){
+  const missing=['renderPolicies','saveShopPoliciesPhase8','renderSettings','renderOwnerConsole','sendMessage','ownerSaveSubscriptionPhase8','shopPolicyBool'].filter(n=>typeof window[n]!=='function' && typeof eval(n)!=='function');
+  return {ok:missing.length===0,missing,version:APP_VERSION,build:APP_BUILD_CODE};
+}
+
+
+
+
+/* 1.0.54 FULL PAGE + BUTTON AUDIT HOTFIX
+   الهدف: لا يوجد زر داخل الصفحات يستدعي دالة غير موجودة، ولا تظهر صفحة "القسم غير جاهز" للصفحات المكتملة.
+   هذه الدوال تعيد ربط ما فُقد أثناء تجميع المراحل السابقة وتمنع تخريب صفحة كانت تعمل سابقًا. */
+let selectedItemIdsForDelete = globalThis.__selectedItemIdsForDelete || new Set();
+globalThis.__selectedItemIdsForDelete = selectedItemIdsForDelete;
+function fieldValue(id){return String($(id)?.value||'').trim();}
+function numericValue(id, fallback=0){const n=Number($(id)?.value); return Number.isFinite(n)?n:Number(fallback||0);}
+function normalizeItemKey(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ');}
+function selectedItemsArray(){return [...selectedItemIdsForDelete].filter(Boolean);}
+function clearSelectedItems(){selectedItemIdsForDelete.clear();}
+function itemDuplicateExists({name='',barcode='',excludeId=''}={}){
+  const n=normalizeItemKey(name), b=normalizeItemKey(barcode);
+  return (cache.items||[]).some(i=>i && i.id!==excludeId && i.isDeleted!==true && ((b && normalizeItemKey(i.barcode||i.code)===b) || (n && normalizeItemKey(i.name)===n)));
+}
+function currentItemDoc(itemId){return doc(db,'shops',state.shopId,'items',itemId);}
+function safeItemById(itemId){return (cache.items||[]).find(i=>i.id===itemId)||null;}
+function ensureTraderOrStop(action){return requireTraderAction(action||'هذه العملية');}
+
+async function addItem(){
+  try{
+    if(!ensureTraderOrStop('إضافة صنف')) return;
+    const name=fieldValue('itemName');
+    const category=fieldValue('itemCategory')||'عام';
+    const unit=fieldValue('itemUnit')||'حبة';
+    const barcode=fieldValue('itemBarcode');
+    const notes=fieldValue('itemNotes');
+    if(!name){msg('اكتب اسم الصنف قبل الحفظ.','error');return;}
+    if(itemDuplicateExists({name,barcode})){msg('لا يمكن حفظ صنف مكرر بنفس الاسم أو نفس الباركود.','error');return;}
+    const cashPrice=numericValue('itemCashPrice',0);
+    const creditPrice=numericValue('itemCreditPrice',cashPrice);
+    const stock=numericValue('itemStock',0);
+    const minStock=numericValue('itemMinStock',0);
+    const now=Date.now();
+    const ref=doc(collection(db,'shops',state.shopId,'items'));
+    await setDoc(ref,{id:ref.id,shopId:state.shopId,name,category,unit,barcode,code:barcode,notes,cashPrice,creditPrice,price:cashPrice,stock,minStock,isActive:true,customerVisible:true,createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now,createdBy:uid(),createdByName:actorName()});
+    if(stock!==0){await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId:ref.id,itemName:name,type:'opening',qty:stock,qtyChange:stock,beforeQty:0,afterQty:stock,reason:'رصيد افتتاحي عند إضافة الصنف',createdAt:serverTimestamp(),createdMs:now,actorUid:uid(),actorName:actorName()});}
+    await addAudit('add_item',{itemId:ref.id,name,stock,cashPrice,creditPrice});
+    ['itemName','itemBarcode','itemNotes'].forEach(id=>{const el=$(id); if(el) el.value='';});
+    if($('itemStock')) $('itemStock').value='0';
+    state.itemsTab='list'; save(); msg('تم حفظ الصنف بنجاح.','success'); renderItems();
+  }catch(e){console.error('addItem failed',e); msg('تعذر حفظ الصنف: '+friendlyFirestoreError(e),'error');}
+}
+function selectItemForEdit(itemId){
+  if(!ensureTraderOrStop('تعديل صنف')) return;
+  state.editItemId=itemId; state.itemsTab='edit'; save(); renderItems();
+}
+async function saveSelectedItemEdit(){
+  try{
+    if(!ensureTraderOrStop('تعديل صنف')) return;
+    const itemId=state.editItemId; const old=safeItemById(itemId); if(!old){msg('اختر الصنف أولًا.','error');return;}
+    const name=fieldValue('editItemName'); const barcode=fieldValue('editItemBarcode');
+    if(!name){msg('اسم الصنف مطلوب.','error');return;}
+    if(itemDuplicateExists({name,barcode,excludeId:itemId})){msg('لا يمكن تكرار الاسم أو الباركود مع صنف آخر.','error');return;}
+    const beforeQty=Number(old.stock||0), afterQty=numericValue('editItemStock',beforeQty), diff=afterQty-beforeQty;
+    const payload={name,category:fieldValue('editItemCategory')||'عام',unit:fieldValue('editItemUnit')||'حبة',barcode,code:barcode,notes:fieldValue('editItemNotes'),cashPrice:numericValue('editItemCashPrice',0),creditPrice:numericValue('editItemCreditPrice',numericValue('editItemCashPrice',0)),price:numericValue('editItemCashPrice',0),stock:afterQty,minStock:numericValue('editItemMinStock',0),customerVisible:String($('editItemCustomerVisible')?.value||'true')!=='false',updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()};
+    await updateDoc(currentItemDoc(itemId),payload);
+    if(diff!==0){await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId,itemName:name,type:diff>0?'adjustment_add':'adjustment_remove',qty:Math.abs(diff),qtyChange:diff,beforeQty,afterQty,reason:'تعديل كمية من نموذج الصنف',createdAt:serverTimestamp(),createdMs:Date.now(),actorUid:uid(),actorName:actorName()});}
+    await addAudit('edit_item',{itemId,name,diff});
+    state.editItemId=''; state.itemsTab='list'; save(); msg('تم حفظ تعديل الصنف.','success'); renderItems();
+  }catch(e){console.error('saveSelectedItemEdit failed',e); msg('تعذر تعديل الصنف: '+friendlyFirestoreError(e),'error');}
+}
+async function saveItemPriceQuick(itemId){
+  try{
+    if(!ensureTraderOrStop('تعديل سعر صنف')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const cashPrice=Number($('priceCash_'+itemId)?.value||0), creditPrice=Number($('priceCredit_'+itemId)?.value||cashPrice);
+    if(cashPrice<0 || creditPrice<0 || !Number.isFinite(cashPrice) || !Number.isFinite(creditPrice)){msg('السعر غير صحيح.','error');return;}
+    await updateDoc(currentItemDoc(itemId),{cashPrice,creditPrice,price:cashPrice,updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()});
+    await addAudit('quick_price_update',{itemId,itemName:item.name,cashPrice,creditPrice});
+    msg('تم حفظ السعر.','success');
+  }catch(e){console.error('saveItemPriceQuick failed',e); msg('تعذر حفظ السعر: '+friendlyFirestoreError(e),'error');}
+}
+async function toggleItemCustomerVisible(itemId){
+  try{
+    if(!ensureTraderOrStop('إظهار أو إخفاء صنف')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const customerVisible=item.customerVisible===false;
+    await updateDoc(currentItemDoc(itemId),{customerVisible,updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()});
+    await addAudit('toggle_item_customer_visible',{itemId,itemName:item.name,customerVisible});
+    msg(customerVisible?'تم إظهار الصنف للعملاء.':'تم إخفاء الصنف عن العملاء.','success'); renderItems();
+  }catch(e){console.error('toggleItemCustomerVisible failed',e); msg('تعذر تحديث ظهور الصنف: '+friendlyFirestoreError(e),'error');}
+}
+async function deleteSingleItem(itemId){
+  try{
+    if(!ensureTraderOrStop('حذف صنف')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const ok=await confirmDialog('حذف صنف','سيتم حذف الصنف من قائمة الأصناف. هل تريد المتابعة؟','حذف'); if(!ok) return;
+    await deleteDoc(currentItemDoc(itemId)); selectedItemIdsForDelete.delete(itemId); await addAudit('delete_item',{itemId,itemName:item.name}); msg('تم حذف الصنف.','success'); renderItems();
+  }catch(e){console.error('deleteSingleItem failed',e); msg('تعذر حذف الصنف: '+friendlyFirestoreError(e),'error');}
+}
+async function deleteItemsByIds(ids){
+  try{
+    if(!ensureTraderOrStop('حذف عدة أصناف')) return;
+    ids=(ids||[]).filter(Boolean); if(!ids.length){msg('حدد أصنافًا للحذف.','error');return;}
+    const ok=await confirmDialog('حذف الأصناف المحددة','سيتم حذف '+ids.length+' صنف. هل تريد المتابعة؟','حذف المحدد'); if(!ok) return;
+    const batch=writeBatch(db); ids.forEach(id=>batch.delete(currentItemDoc(id))); await batch.commit(); clearSelectedItems(); await addAudit('delete_items_bulk',{count:ids.length,ids}); msg('تم حذف الأصناف المحددة.','success'); renderItems();
+  }catch(e){console.error('deleteItemsByIds failed',e); msg('تعذر حذف الأصناف: '+friendlyFirestoreError(e),'error');}
+}
+async function adjustStockItem(itemId,newQty,reason='تسوية مخزون'){
+  try{
+    if(!ensureTraderOrStop('تسوية المخزون')) return;
+    const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+    const beforeQty=Number(item.stock||0), afterQty=Number(newQty);
+    if(!Number.isFinite(afterQty) || afterQty<0){msg('الكمية غير صحيحة.','error');return;}
+    const diff=afterQty-beforeQty; if(diff===0){msg('لم تتغير الكمية.','notice');return;}
+    await updateDoc(currentItemDoc(itemId),{stock:afterQty,updatedAt:serverTimestamp(),updatedMs:Date.now(),updatedBy:uid(),updatedByName:actorName()});
+    await addDoc(collection(db,'shops',state.shopId,'stockLedger'),{shopId:state.shopId,itemId,itemName:item.name,type:'adjustment_set',qty:Math.abs(diff),qtyChange:diff,beforeQty,afterQty,reason,createdAt:serverTimestamp(),createdMs:Date.now(),actorUid:uid(),actorName:actorName()});
+    await addAudit('stock_adjustment',{itemId,itemName:item.name,beforeQty,afterQty,diff,reason});
+    msg('تمت تسوية المخزون.','success'); renderStock();
+  }catch(e){console.error('adjustStockItem failed',e); msg('تعذر تسوية المخزون: '+friendlyFirestoreError(e),'error');}
+}
+function openStockAdjustmentDialog(itemId){
+  const item=safeItemById(itemId); if(!item){msg('الصنف غير موجود.','error');return;}
+  const v=prompt('الكمية الجديدة للصنف: '+item.name, Number(item.stock||0)); if(v===null) return;
+  const r=prompt('سبب التسوية:', 'تسوية مخزون يدوية') || 'تسوية مخزون يدوية';
+  adjustStockItem(itemId,Number(v),r);
+}
+function editStock(itemId){openStockAdjustmentDialog(itemId);}
+
+function editableCustomerOrder(order){return state.role==='customer' && order && order.source==='customer' && order.customerId===state.customerId && (order.status==='pending'||order.status==='pending_trader');}
+function clearOrderEditing(){const cs=catalogState(); delete cs.editingOrderId; delete cs.editingOrderNo; saveCatalog();}
+function loadOrderForEdit(orderId){
+  const o=(cache.orders||[]).find(x=>x.id===orderId); if(!editableCustomerOrder(o)){msg('لا يمكن تعديل هذا الطلب لأنه لم يعد بانتظار موافقة التاجر.','error');return;}
+  const cs=catalogState(); cs.cart={};
+  for(const l of (o.items||o.lines||[])){const item=safeItemById(l.itemId); const qty=Math.max(0,Number(l.qty||l.quantity||0)); if(item && qty>0) cs.cart[l.itemId]=qty;}
+  cs.editingOrderId=orderId; cs.editingOrderNo=o.id; cs.purchaseMode='invoice'; saveCatalog(); show('items'); setTimeout(()=>{if($('payType')) $('payType').value=o.paymentType||'credit'; if($('orderNote')) $('orderNote').value=o.note||'';},80); msg('تم فتح الطلب للتعديل.','success');
+}
+async function cancelCustomerOrder(orderId){
+  try{
+    const o=(cache.orders||[]).find(x=>x.id===orderId); if(!editableCustomerOrder(o)){msg('لا يمكن إلغاء هذا الطلب.','error');return;}
+    const ok=await confirmDialog('إلغاء الطلب','هل تريد إلغاء طلب الشراء قبل مراجعته من التاجر؟','إلغاء الطلب'); if(!ok)return;
+    await updateDoc(doc(db,'shops',state.shopId,'purchaseRequests',orderId),{status:'cancelled',customerNote:'إلغاء من العميل',cancelledBy:uid(),cancelledAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedMs:Date.now()});
+    await addAudit('cancel_customer_order',{orderId}); msg('تم إلغاء الطلب.','success'); renderOrders();
+  }catch(e){console.error('cancelCustomerOrder failed',e); msg('تعذر إلغاء الطلب: '+friendlyFirestoreError(e),'error');}
+}
+async function addManualCustomer(){
+  try{
+    if(!ensureTraderOrStop('إضافة عميل')) return;
+    const name=fieldValue('newCustomerName'), phoneRaw=fieldValue('newCustomerPhone'), phone=normalizePhone(phoneRaw);
+    if(!name || !phone){msg('اسم العميل ورقم الهاتف مطلوبان.','error');return;}
+    const exists=(cache.customers||[]).find(c=>normalizePhone(c.phone)===phone); if(exists){msg('هذا العميل موجود مسبقًا.','error');return;}
+    const now=Date.now(); const ref=doc(collection(db,'shops',state.shopId,'customers'));
+    const opening=numericValue('newCustomerOpening',0), limit=numericValue('newCustomerLimit',0), status=fieldValue('newCustomerStatus')||'active';
+    await setDoc(ref,{id:ref.id,shopId:state.shopId,name,phone,phoneRaw,creditLimit:limit,balance:opening,status,note:fieldValue('newCustomerNote'),createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now,createdBy:uid()});
+    if(opening){await addDoc(collection(db,'shops',state.shopId,'customerLedger'),{shopId:state.shopId,customerId:ref.id,customerName:name,type:'opening_balance',amount:opening,note:'رصيد افتتاحي',createdAt:serverTimestamp(),createdMs:now,actorUid:uid(),actorName:actorName()});}
+    await addAudit('add_customer',{customerId:ref.id,name,phone,opening,limit,status}); msg('تم حفظ العميل.','success'); renderCustomers();
+  }catch(e){console.error('addManualCustomer failed',e); msg('تعذر حفظ العميل: '+friendlyFirestoreError(e),'error');}
+}
+async function setCreditLimit(customerId){
+  try{if(!ensureTraderOrStop('تعديل سقف العميل')) return; const c=(cache.customers||[]).find(x=>x.id===customerId); if(!c){msg('العميل غير موجود.','error');return;} const v=prompt('سقف الدين للعميل '+(c.name||''), Number(c.creditLimit||0)); if(v===null)return; const limit=Number(v); if(!Number.isFinite(limit)||limit<0){msg('السقف غير صحيح.','error');return;} await updateDoc(doc(db,'shops',state.shopId,'customers',customerId),{creditLimit:limit,updatedAt:serverTimestamp(),updatedMs:Date.now()}); await addAudit('set_credit_limit',{customerId,limit}); msg('تم تحديث سقف الدين.','success'); renderCustomers();}catch(e){msg('تعذر تحديث السقف: '+friendlyFirestoreError(e),'error');}
+}
+async function setCustomerStatus(customerId,status){
+  try{if(!ensureTraderOrStop('تعديل حالة العميل')) return; await updateDoc(doc(db,'shops',state.shopId,'customers',customerId),{status,updatedAt:serverTimestamp(),updatedMs:Date.now()}); await addAudit('set_customer_status',{customerId,status}); msg('تم تحديث حالة العميل.','success'); renderCustomers();}catch(e){msg('تعذر تحديث حالة العميل: '+friendlyFirestoreError(e),'error');}
+}
+async function sendTraderSale(){
+  try{
+    if(!ensureTraderOrStop('إنشاء طلب بيع للعميل')) return;
+    const customerId=$('saleCustomer')?.value; const c=(cache.customers||[]).find(x=>x.id===customerId); if(!c){msg('اختر العميل.','error');return;}
+    const lines=[]; for(const inp of document.querySelectorAll('[data-sale-qty]')){const qty=Number(inp.value||0); if(qty>0){const item=safeItemById(inp.dataset.itemId); if(item){const price=effectiveItemPrice(item,$('salePayType')?.value||'credit'); lines.push({itemId:item.id,name:item.name,qty,price,total:qty*price,unit:item.unit||'حبة'});}}}
+    if(!lines.length){msg('اختر صنفًا واحدًا على الأقل.','error');return;}
+    const total=lines.reduce((a,l)=>a+Number(l.total||0),0); const now=Date.now();
+    await addDoc(collection(db,'shops',state.shopId,'purchaseRequests'),{shopId:state.shopId,source:'trader',customerId:c.id,customerUid:c.customerUid||'',customerName:c.name,customerPhone:c.phone,items:lines,lines,total,paymentType:$('salePayType')?.value||'credit',dueDate:$('saleDueDate')?.value||'',priority:$('salePriority')?.value||'normal',note:fieldValue('saleNote'),status:'pending_customer',createdBy:uid(),createdByRole:'trader',createdAt:serverTimestamp(),createdMs:now,updatedAt:serverTimestamp(),updatedMs:now});
+    await addAudit('send_trader_sale',{customerId:c.id,total,count:lines.length}); msg('تم إرسال الطلب للعميل.','success'); renderOrders(); show('orders');
+  }catch(e){console.error('sendTraderSale failed',e); msg('تعذر إرسال الطلب للعميل: '+friendlyFirestoreError(e),'error');}
+}
+function ledgerRowsForCustomer(customerId){
+  let rows=(cache.customerLedger||[]).filter(x=>x.customerId===customerId);
+  if(rows.length) return rows.sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+  const invs=(cache.invoices||[]).filter(x=>x.customerId===customerId).map(x=>({type:x.paymentType==='credit'?'debit_invoice':'cash_invoice',amount:Number(x.total||0),note:'فاتورة '+(x.invoiceNo||x.id),createdMs:x.createdMs||0}));
+  const pays=(cache.payments||[]).filter(x=>x.customerId===customerId&&x.status==='approved').map(x=>({type:'payment',amount:-Number(x.amount||0),note:'سداد مقبول '+(x.method||''),createdMs:x.createdMs||0}));
+  return [...invs,...pays].sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+}
+async function shareStatementText(customerId){
+  try{const c=state.role==='customer'?customerDebtInfo().c:(cache.customers||[]).find(x=>x.id===customerId)||{}; const rows=ledgerRowsForCustomer(customerId||c.id||state.customerId); let running=0; const body=rows.map(r=>{running+=Number(r.amount||0); return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`;}).join('\n'); const text=`كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\n----------------\n${body||'لا توجد حركات.'}`; if(navigator.share) await navigator.share({title:'كشف حساب',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب.','success');}}catch(e){msg('تعذر مشاركة كشف الحساب: '+friendlyFirestoreError(e),'error');}
+}
+
+
+function extractItemNameFromOcrText(text){
+  const raw=String(text||'').replace(/\r/g,'\n');
+  const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const joined=lines.join(' ');
+  const model=(joined.match(/(?:Model|MODEL|الموديل)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9._-]{2,})/i)||[])[1]||'';
+  const brand=(joined.match(/\b(HUAWEI|SAMSUNG|APPLE|XIAOMI|OPPO|VIVO|TECNO|INFINIX|NOKIA|LENOVO|HP|DELL|LG|SONY)\b/i)||[])[1]||'';
+  if(model && brand) return `${brand.toUpperCase()} ${model}`;
+  if(model) return model;
+  return lines.find(l=>{const s=l.toUpperCase(); if(/IMEI|S\/N|SN:|SERIAL|MAC|WIFI|WI-FI|IP:|INPUT|PASSWORD|PASS/.test(s)) return false; return /[A-Za-z\u0600-\u06FF]/.test(l) && l.length>=3 && l.length<=60;})||'';
+}
+function normalizeItemCodeForLookup(code){return String(code||'').trim().toUpperCase().replace(/\s+/g,'')}
+function autoFillItemNameFromCode(code){
+  try{
+    const key=normalizeItemCodeForLookup(code); if(!key) return false;
+    const found=(cache.items||[]).find(i=>[i.barcode,i.code,i.sku,i.serial,i.imei,i.sn].map(normalizeItemCodeForLookup).includes(key));
+    if(!found) return false;
+    if($('itemName') && !$('itemName').value.trim()) $('itemName').value=found.name||'';
+    if($('itemCategory')) $('itemCategory').value=itemCategory(found)||found.category||'عام';
+    if($('itemUnit')) $('itemUnit').value=found.unit||'حبة';
+    if($('itemCashPrice') && !Number($('itemCashPrice').value||0)) $('itemCashPrice').value=Number(found.cashPrice||found.price||0)||'';
+    if($('itemCreditPrice') && !Number($('itemCreditPrice').value||0)) $('itemCreditPrice').value=Number(found.creditPrice||found.cashPrice||found.price||0)||'';
+    return true;
+  }catch(e){return false}
+}
+function stopItemBarcodeScanner(showMsg=true){try{const v=$('itemBarcodeVideo'); if(v && v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop()); v.srcObject=null;} if(v) v.classList.remove('active'); if(showMsg) msg('تم إيقاف الماسح.','notice');}catch(e){}}
+async function startItemBarcodeScanner(){return startEmbeddedItemBarcodeScanner()}
+async function scanItemBarcodeStillFrame(){return startEmbeddedItemBarcodeScanner()}
+async function startEmbeddedItemBarcodeScanner(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemBarcodeEmbedded==='function'){
+      window.HesabiAndroid.scanItemBarcodeEmbedded();
+      const st=$('itemBarcodeScanStatus'); if(st) st.textContent='تم فتح الماسح الداخلي. وجّه الكاميرا نحو الباركود.';
+      return true;
+    }
+    msg('الماسح الداخلي غير متاح في هذه النسخة. استخدم إدخال الباركود يدويًا.','notice'); return false;
+  }catch(e){msg('تعذر فتح الماسح الداخلي: '+(e.message||e),'error');return false}
+}
+async function startExternalItemBarcodeScanner(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemBarcodeExternal==='function'){
+      window.HesabiAndroid.scanItemBarcodeExternal();
+      const st=$('itemBarcodeScanStatus'); if(st) st.textContent='محاولة فتح ماسح خارجي، وإذا لم يتوفر سيُستخدم الماسح الداخلي.';
+      return true;
+    }
+    return startEmbeddedItemBarcodeScanner();
+  }catch(e){msg('تعذر فتح الماسح الخارجي: '+(e.message||e),'error');return false}
+}
+async function startItemOcrNative(){
+  try{
+    if(window.HesabiAndroid && typeof window.HesabiAndroid.scanItemOcrNative==='function'){
+      window.HesabiAndroid.scanItemOcrNative();
+      const st=$('itemBarcodeScanStatus'); if(st) st.textContent='صوّر ملصق الصنف بوضوح لاستخراج الاسم أو الموديل.';
+      return true;
+    }
+    msg('OCR غير متاح على هذا الجهاز.','notice'); return false;
+  }catch(e){msg('تعذر تشغيل OCR: '+(e.message||e),'error');return false}
+}
+function usePendingItemBarcodeCandidate(){const code=state.pendingItemBarcode||''; if(code && $('itemBarcode')){$('itemBarcode').value=code; msg('تم اعتماد الكود المقروء.','success');} else msg('لا يوجد كود مقروء لاعتماده.','notice');}
+window.hesabiReceiveItemBarcode=function(code,message){
+  try{
+    const value=String(code||'').trim(); const input=$('itemBarcode'); const note=$('itemNotes'); const st=$('itemBarcodeScanStatus');
+    if(value){
+      if(/^\d{15}$/.test(value)){state.pendingItemBarcode=value; save(); if(note && !String(note.value||'').includes(value)) note.value=(note.value?note.value+' | ':'')+'IMEI: '+value; if(st) st.innerHTML='تمت قراءة رقم IMEI: <b dir="ltr">'+esc(value)+'</b>. إذا كان كود الصنف اضغط اعتماد، أو أعد المسح.'; msg('تمت قراءة IMEI؛ راجع هل هو كود الصنف المطلوب.','notice'); return;}
+      if(input) input.value=value;
+      const filled=autoFillItemNameFromCode(value);
+      if(st) st.textContent=filled?'تم قراءة الكود وتعبئة بيانات الصنف':'تم قراءة كود الصنف: '+value;
+      msg(filled?'تم قراءة الكود وتعبئة بيانات الصنف':'تم قراءة كود الصنف','success');
+    }else{ if(st) st.textContent=message||'تم إلغاء مسح كود الصنف.'; if(message) msg(message,'notice'); }
+  }catch(e){console.warn('hesabiReceiveItemBarcode failed',e)}
+};
+window.hesabiReceiveItemOcr=function(text,message){
+  try{
+    const raw=String(text||'').trim(); const st=$('itemBarcodeScanStatus');
+    if(!raw){ if(st) st.textContent=message||'لم يتم العثور على نص واضح.'; msg(message||'لم يتم العثور على نص واضح','error'); return; }
+    const name=extractItemNameFromOcrText(raw);
+    if(name && $('itemName') && !$('itemName').value.trim()){ $('itemName').value=name; msg('تم استخراج اسم الصنف: '+name,'success'); }
+    else if(name){ msg('تم قراءة نص، والاسم المقترح: '+name,'notice'); }
+    else msg('تمت قراءة النص، لكن لم يتم تحديد اسم صنف واضح.','notice');
+    const note=$('itemNotes'); if(note){ const shortText=raw.replace(/\s+/g,' ').slice(0,220); if(!String(note.value||'').includes(shortText)) note.value=(note.value?note.value+' | ':'')+'OCR: '+shortText; }
+    if(st) st.textContent=name?'تم اقتراح اسم الصنف من OCR: '+name:'تمت قراءة النص وإضافته للملاحظات.';
+  }catch(e){console.warn('hesabiReceiveItemOcr failed',e)}
+};
+
+function openItemsExcelImport(){const f=$('itemsExcelImportFile'); if(f) f.click(); else msg('حقل اختيار ملف Excel غير موجود في الصفحة.','error');}
+function exportItemsToExcel(){exportCsv('hesabi-items.csv',['name','barcode','category','unit','cashPrice','creditPrice','stock'],cache.items||[]);}
+function exportInvoicesCsv(){exportCsv('hesabi-invoices.csv',['invoiceNo','customerName','paymentType','total','createdMs'],cache.invoices||[]);}
+function exportPaymentsCsv(){exportCsv('hesabi-payments.csv',['customerName','amount','method','reference','status','createdMs'],cache.payments||[]);}
+function exportCustomersCsv(){exportCsv('hesabi-customers.csv',['name','phone','balance','creditLimit','status'],cache.customers||[]);}
+function exportCsv(filename, cols, rows){try{const escCsv=v=>'"'+String(v??'').replace(/"/g,'""')+'"'; const csv='\ufeff'+cols.join(',')+'\n'+(rows||[]).map(r=>cols.map(c=>escCsv(c==='createdMs'&&r[c]?new Date(Number(r[c])).toLocaleString('ar-YE'):r[c])).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); msg('تم تجهيز ملف التصدير.','success');}catch(e){msg('تعذر التصدير: '+String(e.message||e),'error');}}
+async function deleteAllItemsAndStock(){try{if(!ensureTraderOrStop('حذف كل الأصناف')) return; const ok=await confirmDialog('حذف كل الأصناف','سيتم حذف كل الأصناف وحركات المخزون المرتبطة. تأكد أنك صدّرت نسخة احتياطية. هل تريد المتابعة؟','حذف الكل'); if(!ok)return; const batch=writeBatch(db); (cache.items||[]).forEach(i=>batch.delete(doc(db,'shops',state.shopId,'items',i.id))); (cache.stockLedger||[]).forEach(x=>batch.delete(doc(db,'shops',state.shopId,'stockLedger',x.id))); await batch.commit(); clearSelectedItems(); await addAudit('delete_all_items',{count:(cache.items||[]).length}); msg('تم حذف كل الأصناف.','success'); renderItems();}catch(e){msg('تعذر حذف كل الأصناف: '+friendlyFirestoreError(e),'error');}}
+async function shareBusinessReport(){try{const text=`تقرير حسابي التجاري\nالمتجر: ${cache.shop?.name||state.shopName||''}\nالفواتير: ${(cache.invoices||[]).length}\nالسداد: ${(cache.payments||[]).length}\nالعملاء: ${(cache.customers||[]).length}\nالأصناف: ${(cache.items||[]).length}`; if(navigator.share) await navigator.share({title:'تقرير حسابي التجاري',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير.','success');}}catch(e){msg('تعذر مشاركة التقرير.','error');}}
+
+function fullPageButtonAudit(){
+  const renderers=buildPageRendererRegistry();
+  const pages=['home','search','tasks','items','orders','customers','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'];
+  const missingRenderers=pages.filter(p=>typeof renderers[p]!=='function');
+  const must=['addItem','saveSelectedItemEdit','saveItemPriceQuick','toggleItemCustomerVisible','deleteSingleItem','deleteItemsByIds','adjustStockItem','editStock','loadOrderForEdit','cancelCustomerOrder','addManualCustomer','setCreditLimit','setCustomerStatus','sendTraderSale','shareStatementText','stopItemBarcodeScanner','startItemBarcodeScanner','scanItemBarcodeStillFrame','startEmbeddedItemBarcodeScanner','startExternalItemBarcodeScanner','startItemOcrNative','usePendingItemBarcodeCandidate','openItemsExcelImport','exportItemsToExcel','exportInvoicesCsv','exportPaymentsCsv','exportCustomersCsv','deleteAllItemsAndStock','shareBusinessReport'];
+  const missingFunctions=must.filter(n=>{try{return typeof eval(n)!=='function'}catch(e){return true}});
+  return {ok:!missingRenderers.length&&!missingFunctions.length,version:APP_VERSION,build:APP_BUILD_CODE,missingRenderers,missingFunctions};
+}
+window.hesabiPageButtonAudit=fullPageButtonAudit;
+
+
+/* Phase 10 final audit: non-intrusive runtime self-check helpers. */
+function phase10FinalSelfCheck(){
+  const requiredFunctions=[
+    'render','show','renderProfileSetup','ensureLiveDataListeners','renderCustomerItemsReadonly','renderCustomerAddItemsPage','addItemToPurchaseInvoice','sendCustomerOrder','approveOrder','rejectOrder','sendPayment','approvePayment','rejectPayment','sendReturnRequest','approveReturn','rejectReturn','createSchedule','paySchedule','renderItems','addItem','saveSelectedItemEdit','saveItemPriceQuick','toggleItemCustomerVisible','deleteSingleItem','deleteItemsByIds','adjustStockItem','editStock','loadOrderForEdit','cancelCustomerOrder','addManualCustomer','setCreditLimit','setCustomerStatus','sendTraderSale','shareStatementText','renderPolicies','saveShopPoliciesPhase8','renderSettings','renderMessages','renderNotifications','renderOwnerConsole','downloadApkUpdate','refreshWebUiNow','showPermissionDeniedLogoutDialog','safeFullLogout'
+  ];
+  const missing=[];
+  for(const n of requiredFunctions){ try{ if(typeof eval(n)!=='function') missing.push(n); }catch(e){ missing.push(n); } }
+  const requiredPages=['home','items','orders','customers','messages','payments','invoices','statement','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'];
+  const missingPages=requiredPages.filter(p=>!document.getElementById('page_'+p));
+  return {ok:missing.length===0 && missingPages.length===0, version:APP_VERSION, build:APP_BUILD_CODE, missingFunctions:missing, missingPages};
+}
+window.hesabiFinalSelfCheck=function(){ try{return phase10FinalSelfCheck();}catch(e){return {ok:false,error:String(e&&e.message||e),version:APP_VERSION,build:APP_BUILD_CODE};} };
+
+
+
+
+/* 1.0.56: Full isolated page/form/button audit helpers.
+   These helpers restore shared table/page functions that were referenced by pages
+   after phased merges, so a missing helper cannot collapse finished pages into fallback screens. */
+function dt(v){
+  try{
+    if(!v) return '-';
+    const n=Number(v);
+    const d=Number.isFinite(n)?new Date(n):(v&&v.toDate?v.toDate():new Date(v));
+    if(String(d)==='Invalid Date') return '-';
+    return d.toLocaleString('ar-YE');
+  }catch(e){return '-'}
+}
+function paymentDate(p){
+  try{
+    const v=p?.createdMs||p?.paidMs||p?.reviewedMs||p?.dateMs||0;
+    const d=v?new Date(Number(v)) : new Date();
+    return d.toISOString().slice(0,10);
+  }catch(e){return new Date().toISOString().slice(0,10)}
+}
+function demandText(lines){
+  return (lines||[]).map(x=>`${x.name||x.itemName||''} ${x.qty||''} ${x.total||''}`).join(' ');
+}
+function compactActionButtons(html){
+  return `<div class="compact-actions">${html||''}</div>`;
+}
+function compactLineRows(lines){
+  const arr=Array.isArray(lines)?lines:[];
+  if(!arr.length) return '<div class="muted">لا توجد تفاصيل.</div>';
+  return `<div class="mini-lines">${arr.map(l=>`<div class="mini-line"><span>${esc(l.name||l.itemName||'صنف')}</span><b>${money(l.qty||0)}</b><small>${money(l.total||0)}</small></div>`).join('')}</div>`;
+}
+function customerStatusLabel(s){
+  return ({active:'نشط',blocked:'موقوف',pending:'معلق',inactive:'غير نشط'}[s]||s||'نشط');
+}
+function customerStatusClass(s){
+  return s==='blocked'?'bad':(s==='pending'?'warn':'ok');
+}
+function demandFilter(key, data, textFn){
+  const all=Array.isArray(data)?data:[];
+  const q=String(state[key+'Q']||'').trim().toLowerCase();
+  const page=Math.max(1, Number(state[key+'Page']||1));
+  const pageSize=Math.max(5, Number(state[key+'PageSize']||50));
+  const filtered=q?all.filter(row=>String((textFn?textFn(row):JSON.stringify(row))||'').toLowerCase().includes(q)):all.slice();
+  const pages=Math.max(1, Math.ceil(filtered.length/pageSize));
+  const fixedPage=Math.min(page,pages);
+  if(fixedPage!==page){ state[key+'Page']=fixedPage; try{save()}catch{} }
+  const start=(fixedPage-1)*pageSize;
+  return {key,q,page:fixedPage,pageSize,total:all.length,filteredCount:filtered.length,pages,filtered,visible:filtered.slice(start,start+pageSize)};
+}
+function demandTableCard(key,title,headers,rows,meta,emptyText,extraControls=''){
+  meta=meta||{key,page:1,pages:1,filteredCount:0,total:0,visible:[]};
+  return `<div class="card demand-card" data-demand-card="${esc(key)}">
+    <div class="row"><h2>${esc(title||'بيانات')}</h2><span class="badge">${money(meta.filteredCount||0)} / ${money(meta.total||0)}</span></div>
+    <div class="toolbar">
+      <input id="${key}Search" value="${esc(state[key+'Q']||'')}" placeholder="بحث..." autocomplete="off">
+      ${extraControls||''}
+      <button class="btn secondary" id="${key}Prev" ${meta.page<=1?'disabled':''}>السابق</button>
+      <span class="muted">صفحة ${money(meta.page)} من ${money(meta.pages)}</span>
+      <button class="btn secondary" id="${key}Next" ${meta.page>=meta.pages?'disabled':''}>التالي</button>
+    </div>
+    <div class="tablewrap"><table><thead><tr>${(headers||[]).map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${(rows&&rows.length)?rows.join(''):`<tr><td colspan="${Math.max(1,(headers||[]).length)}" class="muted">${esc(emptyText||'لا توجد بيانات')}</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function bindDemandTable(key, rerender){
+  const input=$(key+'Search');
+  if(input){
+    input.oninput=()=>{state[key+'Q']=input.value||'';state[key+'Page']=1;save(); if(typeof rerender==='function') rerender();};
+  }
+  const prev=$(key+'Prev'), next=$(key+'Next');
+  if(prev) prev.onclick=()=>{state[key+'Page']=Math.max(1,Number(state[key+'Page']||1)-1);save(); if(typeof rerender==='function') rerender();};
+  if(next) next.onclick=()=>{state[key+'Page']=Number(state[key+'Page']||1)+1;save(); if(typeof rerender==='function') rerender();};
+}
+function getItemsTab(){
+  const allowed=['list','add','edit','prices','import'];
+  if(!allowed.includes(state.itemsTab)) state.itemsTab='list';
+  return state.itemsTab;
+}
+function itemsTabsBar(){
+  const tabs=[['list','📦','الأصناف'],['add','➕','إضافة'],['edit','✏️','تعديل'],['prices','💵','الأسعار'],['import','⬆️','استيراد/تصدير']];
+  const active=getItemsTab();
+  return `<div class="workspace-tabs items-top-tabs">${tabs.map(t=>`<button class="workspace-tab ${active===t[0]?'active':''}" data-items-tab="${t[0]}"><span>${t[1]}</span><b>${t[2]}</b></button>`).join('')}</div>`;
+}
+function itemCategoryOptions(selected='الكل'){
+  const cats=['الكل',...Array.from(new Set((cache.items||[]).map(i=>itemCategory(i)).filter(Boolean))).sort((a,b)=>a.localeCompare(b))];
+  return cats.map(c=>`<option value="${esc(c)}" ${c===selected?'selected':''}>${esc(c)}</option>`).join('');
+}
+function filteredItemsByCategory(category='الكل'){
+  const cat=category||'الكل';
+  const arr=cache.items||[];
+  return cat==='الكل'?arr.slice():arr.filter(i=>itemCategory(i)===cat);
+}
+function itemsCategoryFilterHtml(key, selected){
+  return `<select id="${key}Category">${itemCategoryOptions(selected||'الكل')}</select>`;
+}
+function itemsBulkActionsHtml(){
+  return `<button class="btn light mini" id="selectVisibleItemsBtn">تحديد المعروض</button><button class="btn light mini" id="clearSelectedItemsBtn">إلغاء التحديد</button><button class="btn danger mini" id="deleteSelectedItemsBtn">حذف المحدد</button>`;
+}
+function buildItemRows(meta){
+  const selected=state.selectedItemIds||{};
+  return (meta.visible||[]).map(i=>`<tr>
+    <td><input type="checkbox" data-item-select="${esc(i.id)}" ${selected[i.id]?'checked':''}></td>
+    <td class="name"><b>${esc(i.name||'')}</b><div class="subcell">${esc(i.barcode||i.code||'')}</div></td>
+    <td>${esc(itemCategory(i))}</td><td>${esc(i.unit||'حبة')}</td>
+    <td>${money(i.cashPrice||i.price||0)} / ${money(i.creditPrice||i.cashPrice||i.price||0)}</td>
+    <td>${money(i.stock||0)}<div class="subcell">حد ${money(i.minStock||0)}</div></td>
+    <td><span class="status ${i.customerVisible===false?'warn':'ok'}">${i.customerVisible===false?'مخفي':'ظاهر'}</span></td>
+    <td>${compactActionButtons(`<button class="btn secondary mini" data-edit-item="${esc(i.id)}">تعديل</button><button class="btn light mini" data-price-item="${esc(i.id)}">سعر</button><button class="btn light mini" data-toggle-visible="${esc(i.id)}">${i.customerVisible===false?'إظهار':'إخفاء'}</button><button class="btn danger mini" data-delete-item="${esc(i.id)}">حذف</button>`)}</td>
+  </tr>`);
+}
+function priceEditorRows(meta){
+  return (meta.visible||[]).map(i=>`<tr>
+    <td class="name"><b>${esc(i.name||'')}</b><div class="subcell">${esc(i.barcode||'')}</div></td>
+    <td><input id="cash_${i.id}" type="number" value="${Number(i.cashPrice||i.price||0)}"></td>
+    <td><input id="credit_${i.id}" type="number" value="${Number(i.creditPrice||i.cashPrice||i.price||0)}"></td>
+    <td><button class="btn ok mini" data-save-price="${esc(i.id)}">حفظ</button></td>
+  </tr>`);
+}
+function renderEditItemPane(rows,meta,category){
+  const it=state.editItemId?safeItemById(state.editItemId):null;
+  return `<div class="grid2">
+    ${demandTableCard('itemsEditList','اختيار صنف للتعديل',['تحديد','الصنف','التصنيف','الوحدة','كاش/آجل','المخزون','الحالة','إجراء'],rows,meta,'ابحث أو اختر صنفًا للتعديل',itemsCategoryFilterHtml('itemsEditList',category))}
+    <div class="card"><h2>نموذج تعديل الصنف</h2>${it?`
+      <div class="grid2">
+        <div class="field"><label>اسم الصنف</label><input id="editItemName" value="${esc(it.name||'')}"></div>
+        <div class="field"><label>الباركود</label><input id="editItemBarcode" value="${esc(it.barcode||it.code||'')}"></div>
+        <div class="field"><label>التصنيف</label><input id="editItemCategory" value="${esc(itemCategory(it))}"></div>
+        <div class="field"><label>الوحدة</label><input id="editItemUnit" value="${esc(it.unit||'حبة')}"></div>
+        <div class="field"><label>سعر الكاش</label><input id="editItemCashPrice" type="number" value="${Number(it.cashPrice||it.price||0)}"></div>
+        <div class="field"><label>سعر الآجل</label><input id="editItemCreditPrice" type="number" value="${Number(it.creditPrice||it.cashPrice||it.price||0)}"></div>
+        <div class="field"><label>المخزون</label><input id="editItemStock" type="number" value="${Number(it.stock||0)}"></div>
+        <div class="field"><label>حد التنبيه</label><input id="editItemMinStock" type="number" value="${Number(it.minStock||0)}"></div>
+        <div class="field"><label>الظهور للعميل</label><select id="editItemCustomerVisible"><option value="true" ${it.customerVisible!==false?'selected':''}>ظاهر</option><option value="false" ${it.customerVisible===false?'selected':''}>مخفي</option></select></div>
+        <div class="field"><label>ملاحظات</label><textarea id="editItemNotes">${esc(it.notes||'')}</textarea></div>
+      </div>
+      <div class="actions"><button class="btn ok" id="saveEditItemBtn">حفظ التعديل</button><button class="btn secondary" id="cancelEditItemBtn">إلغاء</button></div>
+    `:'<p class="muted">اختر صنفًا من الجدول لعرض بياناته.</p>'}</div>
+  </div>`;
+}
+function bindItemsTabs(){
+  document.querySelectorAll('[data-items-tab]').forEach(b=>b.onclick=()=>{state.itemsTab=b.dataset.itemsTab;save();renderItems();});
+}
+function bindItemsCategoryFilter(key, rerender){
+  const el=$(key+'Category');
+  if(el) el.onchange=()=>{state[key+'Category']=el.value;state[key+'Page']=1;save(); if(typeof rerender==='function') rerender();};
+}
+function bindItemButtons(){
+  document.querySelectorAll('[data-item-select]').forEach(ch=>ch.onchange=()=>{if(!state.selectedItemIds)state.selectedItemIds={}; if(ch.checked)state.selectedItemIds[ch.dataset.itemSelect]=true; else delete state.selectedItemIds[ch.dataset.itemSelect]; save();});
+  document.querySelectorAll('[data-edit-item]').forEach(b=>b.onclick=()=>selectItemForEdit(b.dataset.editItem));
+  document.querySelectorAll('[data-price-item]').forEach(b=>b.onclick=()=>{state.itemsTab='prices';state.itemsPriceListQ=safeItemById(b.dataset.priceItem)?.name||'';save();renderItems();});
+  document.querySelectorAll('[data-toggle-visible]').forEach(b=>b.onclick=()=>toggleItemCustomerVisible(b.dataset.toggleVisible));
+  document.querySelectorAll('[data-delete-item]').forEach(b=>b.onclick=()=>deleteSingleItem(b.dataset.deleteItem));
+  document.querySelectorAll('[data-save-price]').forEach(b=>b.onclick=()=>saveItemPriceQuick(b.dataset.savePrice));
+  if($('selectVisibleItemsBtn')) $('selectVisibleItemsBtn').onclick=()=>{if(!state.selectedItemIds)state.selectedItemIds={}; document.querySelectorAll('[data-item-select]').forEach(ch=>{state.selectedItemIds[ch.dataset.itemSelect]=true; ch.checked=true;}); save();};
+  if($('clearSelectedItemsBtn')) $('clearSelectedItemsBtn').onclick=()=>clearSelectedItems();
+  if($('deleteSelectedItemsBtn')) $('deleteSelectedItemsBtn').onclick=()=>deleteItemsByIds(Object.keys(state.selectedItemIds||{}));
+}
+async function importItemsFromExcelFile(file){
+  try{
+    if(!file){msg('اختر ملفًا أولًا.','error');return}
+    const text=await file.text();
+    const lines=text.split(/\r?\n/).filter(Boolean);
+    if(!lines.length){msg('الملف فارغ أو غير مدعوم. استخدم CSV أو الاستيراد من القالب بعد تحويله إلى CSV.','error');return}
+    const headers=lines.shift().split(/,|;|\t/).map(x=>x.trim().replace(/^"|"$/g,''));
+    const idxOf=(names)=>headers.findIndex(h=>names.includes(h)||names.includes(h.toLowerCase()));
+    const nameI=idxOf(['name','اسم الصنف','الصنف']); const barcodeI=idxOf(['barcode','الباركود','code','الكود']); const catI=idxOf(['category','التصنيف']); const unitI=idxOf(['unit','الوحدة']); const cashI=idxOf(['cashPrice','سعر الكاش','cash']); const creditI=idxOf(['creditPrice','سعر الآجل','credit']); const stockI=idxOf(['stock','المخزون','quantity','الكمية']);
+    if(nameI<0){msg('لم أجد عمود اسم الصنف في الملف.','error');return}
+    let count=0; const batch=writeBatch(db);
+    for(const line of lines){
+      const cols=line.split(/,|;|\t/).map(x=>x.trim().replace(/^"|"$/g,''));
+      const name=cols[nameI]||''; if(!name) continue;
+      const barcode=barcodeI>=0?cols[barcodeI]:'';
+      if(itemDuplicateExists({name,barcode})) continue;
+      const ref=doc(collection(db,'shops',state.shopId,'items'));
+      batch.set(ref,{shopId:state.shopId,name,barcode,code:barcode,category:catI>=0?cols[catI]:'عام',unit:unitI>=0?cols[unitI]:'حبة',cashPrice:cashI>=0?Number(cols[cashI]||0):0,creditPrice:creditI>=0?Number(cols[creditI]||0):(cashI>=0?Number(cols[cashI]||0):0),price:cashI>=0?Number(cols[cashI]||0):0,stock:stockI>=0?Number(cols[stockI]||0):0,customerVisible:true,createdAt:serverTimestamp(),createdMs:Date.now(),createdBy:uid()});
+      count++;
+      if(count>=450) break;
+    }
+    await batch.commit();
+    await addAudit('import_items_csv',{count});
+    msg('تم استيراد '+count+' صنف.','success'); renderItems();
+  }catch(e){console.error(e); msg('تعذر الاستيراد: '+String(e.message||e),'error')}
+}
+function renderCatalogDynamicSections(){
+  try{
+    if(active==='items' && state.role==='customer') renderCustomerItemsReadonly();
+    else {
+      const bar=$('catalogCartBar'); if(bar) bar.outerHTML=renderCatalogCartBar();
+      const tbl=$('selectedCartTable'); if(tbl) tbl.innerHTML=renderSelectedCartTable();
+    }
+  }catch(e){console.warn('renderCatalogDynamicSections failed',e)}
+}
+function go(id,page){
+  const el=$(id);
+  if(el) el.onclick=()=>show(page);
+}
+
+/* 1.0.56: removed duplicate renderReports function; existing renderReports assignment above is kept. */
+
+
+
+/* 1.0.54: بناء سجل عرض الصفحات بعد تحميل كل الدوال حتى لا تظهر كل الصفحات كأقسام غير جاهزة. */
+buildPageRendererRegistry();
+
+
 
 (async function boot(){
   try{
