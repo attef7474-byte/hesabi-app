@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 69,
-  "latestVersionName": "1.0.69",
+  "latestVersionCode": 70,
+  "latestVersionName": "1.0.70",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.69",
+  "title": "تحديث حسابي التجاري 1.0.70",
   "message": "تثبيت صفحة التقارير وتنظيم حسابات الملخصات والتصدير بدون تغيير منطق الشراء أو السداد.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
   "releaseNotes": "إضافة js/modules/04_catalog_helpers.js وتوحيد أدوات حالة الكتالوج والسلة والبحث والفرز والترقيم مع إبقاء الدوال القديمة متوافقة.",
-  "notes": "Reports stabilization helpers module.",
-  "versionName": "1.0.69",
-  "versionCode": 69,
+  "notes": "تثبيت فحص runtime شامل للوحدات المستخرجة، وتوحيد self-check بدون تغيير وظائف الشراء أو السداد أو Firestore.",
+  "versionName": "1.0.70",
+  "versionCode": 70,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

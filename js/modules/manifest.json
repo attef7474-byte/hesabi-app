@@ -1,6 +1,6 @@
 {
-  "version": "1.0.69",
-  "buildCode": 69,
+  "version": "1.0.70",
+  "buildCode": 70,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -31,6 +31,11 @@
       "file": "js/modules/03_reports_helpers.js",
       "lines": 147,
       "description": "Safe reports helpers for snapshots, totals, low stock, search text, export button binding and business report text"
+    },
+    {
+      "file": "js/modules/02_runtime_smoke.js",
+      "lines": 172,
+      "description": "Full runtime smoke stabilization for loader state, extracted helper self-checks, final runtime checks and version consistency"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",

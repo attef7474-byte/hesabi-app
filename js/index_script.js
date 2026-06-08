@@ -1,9 +1,9 @@
-// Hesabi App 1.0.69
+// Hesabi App 1.0.70
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.69';
-const HESABI_APP_BUILD_CODE = 69;
+const HESABI_APP_VERSION = '1.0.70';
+const HESABI_APP_BUILD_CODE = 70;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -12,6 +12,7 @@ const HESABI_MODULE_PARTS = [
   'js/modules/05_items_helpers.js',
   'js/modules/04_catalog_helpers.js',
   'js/modules/03_reports_helpers.js',
+  'js/modules/02_runtime_smoke.js',
   'js/modules/08_dialogs_toasts.js',
   'js/modules/09_android_bridge.js',
   'js/modules/10_firebase_live_data.js',
@@ -35,7 +36,8 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiExcelImportExportSelfCheck',
   'hesabiItemsHelpersSelfCheck',
   'hesabiCatalogHelpersSelfCheck',
-  'hesabiReportsHelpersSelfCheck'
+  'hesabiReportsHelpersSelfCheck',
+  'hesabiFullRuntimeSmokeSelfCheck'
 ];
 
 const HESABI_RUNTIME_TIMEOUT_MS = 25000;
@@ -118,6 +120,11 @@ function runPostImportChecks() {
     catch (error) { results.push({ name: 'final-self-check', ok: false, error: String(error && error.message || error) }); }
   }
 
+  if (typeof window.hesabiFullRuntimeSmokeSelfCheck === 'function') {
+    try { const smokeResult = window.hesabiFullRuntimeSmokeSelfCheck(); results.push({ name: 'full-runtime-smoke', ok: !!smokeResult.ok, result: smokeResult }); }
+    catch (error) { results.push({ name: 'full-runtime-smoke', ok: false, error: String(error && error.message || error) }); }
+  }
+
   window.__hesabiRuntime.checks = results;
   const failed = results.filter(item => item.ok === false);
   if (failed.length) {
@@ -142,7 +149,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.69.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.70.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
