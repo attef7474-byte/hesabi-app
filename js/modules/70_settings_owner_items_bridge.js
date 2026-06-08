@@ -353,7 +353,12 @@ function exportCsv(filename, cols, rows){
   try{const escCsv=v=>'"'+String(v??'').replace(/"/g,'""')+'"'; const csv='\ufeff'+cols.join(',')+'\n'+(rows||[]).map(r=>cols.map(c=>escCsv(c==='createdMs'&&r[c]?new Date(Number(r[c])).toLocaleString('ar-YE'):r[c])).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); msg('تم تجهيز ملف التصدير.','success');}catch(e){msg('تعذر التصدير: '+String(e.message||e),'error');}
 }
 async function deleteAllItemsAndStock(){try{if(!ensureTraderOrStop('حذف كل الأصناف')) return; const ok=await confirmDialog('حذف كل الأصناف','سيتم حذف كل الأصناف وحركات المخزون المرتبطة. تأكد أنك صدّرت نسخة احتياطية. هل تريد المتابعة؟','حذف الكل'); if(!ok)return; const batch=writeBatch(db); (cache.items||[]).forEach(i=>batch.delete(doc(db,'shops',state.shopId,'items',i.id))); (cache.stockLedger||[]).forEach(x=>batch.delete(doc(db,'shops',state.shopId,'stockLedger',x.id))); await batch.commit(); clearSelectedItems(); await addAudit('delete_all_items',{count:(cache.items||[]).length}); msg('تم حذف كل الأصناف.','success'); renderItems();}catch(e){msg('تعذر حذف كل الأصناف: '+friendlyFirestoreError(e),'error');}}
-async function shareBusinessReport(){try{const text=`تقرير حسابي التجاري\nالمتجر: ${cache.shop?.name||state.shopName||''}\nالفواتير: ${(cache.invoices||[]).length}\nالسداد: ${(cache.payments||[]).length}\nالعملاء: ${(cache.customers||[]).length}\nالأصناف: ${(cache.items||[]).length}`; if(navigator.share) await navigator.share({title:'تقرير حسابي التجاري',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير.','success');}}catch(e){msg('تعذر مشاركة التقرير.','error');}}
+async function shareBusinessReport(){try{const h=window.hesabiReportsHelpers||{}; const text=typeof h.businessReportText==='function'?h.businessReportText(cache,state):`تقرير حسابي التجاري
+المتجر: ${cache.shop?.name||state.shopName||''}
+الفواتير: ${(cache.invoices||[]).length}
+السداد: ${(cache.payments||[]).length}
+العملاء: ${(cache.customers||[]).length}
+الأصناف: ${(cache.items||[]).length}`; if(navigator.share) await navigator.share({title:'تقرير حسابي التجاري',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ التقرير.','success');}}catch(e){msg('تعذر مشاركة التقرير.','error');}}
 
 function fullPageButtonAudit(){
   const renderers=buildPageRendererRegistry();

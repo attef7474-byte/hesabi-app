@@ -1,6 +1,6 @@
 {
-  "version": "1.0.68",
-  "buildCode": 68,
+  "version": "1.0.69",
+  "buildCode": 69,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -26,6 +26,11 @@
       "file": "js/modules/04_catalog_helpers.js",
       "lines": 259,
       "description": "Safe customer catalog helpers for catalog state, cart totals, item visibility, search, sorting and pagination"
+    },
+    {
+      "file": "js/modules/03_reports_helpers.js",
+      "lines": 147,
+      "description": "Safe reports helpers for snapshots, totals, low stock, search text, export button binding and business report text"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",
@@ -59,8 +64,8 @@
     },
     {
       "file": "js/modules/50_auth_order_approval.js",
-      "lines": 500,
-      "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر"
+      "lines": 504,
+      "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر مع تفويض آمن لحسابات التقارير"
     },
     {
       "file": "js/modules/60_payments_returns_policies.js",
@@ -69,8 +74,8 @@
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 673,
-      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون وجسر أندرويد والتشغيل"
+      "lines": 678,
+      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون وجسر أندرويد والتشغيل مع مشاركة تقرير مستقرة"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",
