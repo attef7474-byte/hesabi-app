@@ -1,45 +1,45 @@
 {
-  "version": "1.0.59",
-  "buildCode": 59,
+  "version": "1.0.60",
+  "buildCode": 60,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
-      "lines": 772,
+      "lines": 771,
       "description": "النواة العامة، الإصدارات، الحوارات، التحديث، المصادقة المساعدة والتنبيهات"
     },
     {
       "file": "js/modules/10_firebase_live_data.js",
-      "lines": 243,
+      "lines": 242,
       "description": "تهيئة Firebase والمستمعات اللحظية والبيانات العامة"
     },
     {
       "file": "js/modules/20_router_setup_profile.js",
-      "lines": 876,
+      "lines": 875,
       "description": "محرك العرض والتنقل وتهيئة الحساب والربط والصفحات العامة"
     },
     {
       "file": "js/modules/30_purchase_catalog.js",
-      "lines": 401,
+      "lines": 400,
       "description": "شراء العميل والكتالوج والسلة ونموذج الطلب"
     },
     {
       "file": "js/modules/40_pages_tables.js",
-      "lines": 213,
+      "lines": 212,
       "description": "صفحات الأصناف والعملاء والطلبات والفواتير والجداول الأساسية"
     },
     {
       "file": "js/modules/50_auth_order_approval.js",
-      "lines": 501,
+      "lines": 500,
       "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر"
     },
     {
       "file": "js/modules/60_payments_returns_policies.js",
-      "lines": 501,
+      "lines": 500,
       "description": "السداد والفواتير والمرتجعات والأقساط والسياسات"
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 601,
+      "lines": 666,
       "description": "الإعدادات والمالك والأصناف والأسعار والمخزون وجسر أندرويد والتشغيل"
     }
   ]

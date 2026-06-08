@@ -15,9 +15,22 @@
     var main=document.getElementById('main'), auth=document.getElementById('authSetup'), role=document.getElementById('roleSetup'), profile=document.getElementById('profileSetup'), lock=document.getElementById('appLockScreen');
     var anyVisible = (main && !main.classList.contains('hidden')) || (auth && !auth.classList.contains('hidden')) || (role && !role.classList.contains('hidden')) || (profile && !profile.classList.contains('hidden')) || (lock && !lock.classList.contains('hidden'));
     if(!anyVisible){
+      var rt=window.__hesabiRuntime||{};
+      var loadingPhases=['starting','loading-manifest','loading-parts','importing-runtime','running-self-check'];
+      if(loadingPhases.indexOf(rt.phase)>=0){
+        setBadge('جاري تحميل ملفات التطبيق...', 'online');
+        setTimeout(function(){
+          var main2=document.getElementById('main'), auth2=document.getElementById('authSetup'), role2=document.getElementById('roleSetup'), profile2=document.getElementById('profileSetup'), lock2=document.getElementById('appLockScreen');
+          var visible2=(main2 && !main2.classList.contains('hidden')) || (auth2 && !auth2.classList.contains('hidden')) || (role2 && !role2.classList.contains('hidden')) || (profile2 && !profile2.classList.contains('hidden')) || (lock2 && !lock2.classList.contains('hidden'));
+          if(!visible2 && (!window.__hesabiRuntime || window.__hesabiRuntime.phase==='failed')){
+            window.hesabiShowNativeRecovery && window.hesabiShowNativeRecovery('لم يكتمل تشغيل التطبيق بعد تحميل ملفات الواجهة. حدّث الواجهات أو ثبّت آخر APK.');
+          }
+        },12000);
+        return;
+      }
       setBadge(navigator.onLine?'متصل - جاري تحميل Firebase':'غير متصل', navigator.onLine?'online':'offline');
       window.hesabiShowNativeRecovery && window.hesabiShowNativeRecovery('لم يكتمل تشغيل التطبيق تلقائيًا. اختر تحديث الواجهات أو تنظيف الكاش، وإذا استمرت المشكلة حدّث APK إلى آخر نسخة.');
     }
-  },15000);
+  },25000);
 })();
 

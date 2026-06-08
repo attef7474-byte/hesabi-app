@@ -1,8 +1,9 @@
-// Hesabi App 1.0.59
-// Bootstrap loader: combines functional source parts into one ES module at runtime.
-// This keeps the original shared scope while making the source maintainable.
-const HESABI_APP_VERSION = '1.0.59';
-const HESABI_APP_BUILD_CODE = 59;
+// Hesabi App 1.0.60
+// Stable module loader + runtime self check.
+// Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
+// and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
+const HESABI_APP_VERSION = '1.0.60';
+const HESABI_APP_BUILD_CODE = 60;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -15,37 +16,138 @@ const HESABI_MODULE_PARTS = [
   'js/modules/70_settings_owner_items_bridge.js'
 ];
 
-async function loadHesabiRuntime(){
-  const versionQuery = '?v=' + encodeURIComponent(HESABI_APP_VERSION + '-' + HESABI_APP_BUILD_CODE);
-  const sources = [];
-  for (const part of HESABI_MODULE_PARTS) {
-    const response = await fetch(part + versionQuery, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error('تعذر تحميل ملف من ملفات التطبيق: ' + part + ' (' + response.status + ')');
-    }
-    const text = await response.text();
-    sources.push('\n/* ===== ' + part + ' ===== */\n' + text);
+const HESABI_REQUIRED_GLOBALS = [
+  'hesabiFinalSelfCheck',
+  'hesabiRuntimeSelfCheck',
+  'showStartupRecoveryDialog',
+  'refreshWebUiNow',
+  'downloadApkUpdate'
+];
+
+const HESABI_RUNTIME_TIMEOUT_MS = 25000;
+
+window.__hesabiRuntime = {
+  version: HESABI_APP_VERSION,
+  build: HESABI_APP_BUILD_CODE,
+  startedAt: Date.now(),
+  phase: 'starting',
+  moduleParts: HESABI_MODULE_PARTS.slice(),
+  loadedParts: [],
+  failedParts: [],
+  checks: [],
+  error: null
+};
+
+function setRuntimePhase(phase, extra = {}) {
+  window.__hesabiRuntime = Object.assign(window.__hesabiRuntime || {}, extra, { phase, updatedAt: Date.now() });
+  try { document.documentElement.setAttribute('data-hesabi-runtime-phase', phase); } catch (_) {}
+}
+
+function runtimeMessage(title, body, details) {
+  const text = [body || '', details ? ('\n\n' + details) : ''].join('').trim();
+  if (typeof window.showStartupRecoveryDialog === 'function') {
+    window.showStartupRecoveryDialog(text || title || 'تعذر تشغيل التطبيق.');
+    return;
+  }
+  const box = document.getElementById('msg');
+  if (box) {
+    box.innerHTML = '<div class="msg error"><b>' + escapeHtml(title || 'تعذر تشغيل التطبيق') + '</b><br>' +
+      escapeHtml(text || 'حدّث الواجهات أو ثبّت آخر APK.') + '</div>';
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = HESABI_RUNTIME_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new DOMException('Timeout', 'AbortError')), timeoutMs);
+  try {
+    return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadPart(part, versionQuery) {
+  const started = Date.now();
+  const response = await fetchWithTimeout(part + versionQuery, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('تعذر تحميل ملف: ' + part + ' - HTTP ' + response.status);
+  }
+  const text = await response.text();
+  if (!text || !text.trim()) {
+    throw new Error('ملف فارغ أو غير صالح: ' + part);
+  }
+  window.__hesabiRuntime.loadedParts.push({ file: part, bytes: text.length, ms: Date.now() - started });
+  return '\n/* ===== ' + part + ' ===== */\n' + text;
+}
+
+function validateRequiredGlobals() {
+  const missing = HESABI_REQUIRED_GLOBALS.filter(name => typeof window[name] !== 'function');
+  return { ok: missing.length === 0, missing };
+}
+
+function runPostImportChecks() {
+  const results = [];
+  const globals = validateRequiredGlobals();
+  results.push({ name: 'required-window-globals', ok: globals.ok, missing: globals.missing });
+
+  if (typeof window.hesabiRuntimeSelfCheck === 'function') {
+    try { results.push({ name: 'runtime-self-check', result: window.hesabiRuntimeSelfCheck(), ok: !!window.hesabiRuntimeSelfCheck().ok }); }
+    catch (error) { results.push({ name: 'runtime-self-check', ok: false, error: String(error && error.message || error) }); }
   }
 
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.59.mjs\n';
+  if (typeof window.hesabiFinalSelfCheck === 'function') {
+    try { const finalResult = window.hesabiFinalSelfCheck(); results.push({ name: 'final-self-check', ok: !!finalResult.ok, result: finalResult }); }
+    catch (error) { results.push({ name: 'final-self-check', ok: false, error: String(error && error.message || error) }); }
+  }
+
+  window.__hesabiRuntime.checks = results;
+  const failed = results.filter(item => item.ok === false);
+  if (failed.length) {
+    console.warn('Hesabi runtime self-check warnings:', failed);
+    try { localStorage.setItem('hesabi_last_runtime_warning', JSON.stringify({ version: HESABI_APP_VERSION, build: HESABI_APP_BUILD_CODE, failed, at: Date.now() })); } catch (_) {}
+  }
+  return { ok: failed.length === 0, results, failed };
+}
+
+async function loadHesabiRuntime() {
+  setRuntimePhase('loading-manifest');
+  const versionQuery = '?v=' + encodeURIComponent(HESABI_APP_VERSION + '-' + HESABI_APP_BUILD_CODE + '-' + Date.now());
+  const sources = [];
+  setRuntimePhase('loading-parts');
+  for (const part of HESABI_MODULE_PARTS) {
+    try {
+      sources.push(await loadPart(part, versionQuery));
+    } catch (error) {
+      window.__hesabiRuntime.failedParts.push({ file: part, error: String(error && error.message || error) });
+      throw error;
+    }
+  }
+
+  setRuntimePhase('importing-runtime');
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.60.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
   } finally {
     setTimeout(() => URL.revokeObjectURL(runtimeUrl), 10000);
   }
+
+  window.__hesabiRuntimeLoaded = true;
+  setRuntimePhase('running-self-check');
+  const check = runPostImportChecks();
+  setRuntimePhase(check.ok ? 'ready' : 'ready-with-warnings', { selfCheck: check });
+  try { document.documentElement.setAttribute('data-hesabi-runtime', 'loaded'); } catch (_) {}
+  return check;
 }
 
-loadHesabiRuntime().catch((error) => {
+loadHesabiRuntime().catch(error => {
   console.error('Hesabi runtime load failed:', error);
   const message = error && (error.message || String(error));
-  if (typeof window.showStartupRecoveryDialog === 'function') {
-    window.showStartupRecoveryDialog(message || 'تعذر تحميل ملفات التطبيق.');
-  } else {
-    const box = document.getElementById('msg');
-    if (box) {
-      box.innerHTML = '<div class="msg error">تعذر تحميل ملفات التطبيق. حدّث الواجهات أو أعد تثبيت آخر APK.<br>' +
-        String(message || '') + '</div>';
-    }
-  }
+  setRuntimePhase('failed', { error: message });
+  try { localStorage.setItem('hesabi_last_runtime_error', JSON.stringify(window.__hesabiRuntime)); } catch (_) {}
+  runtimeMessage('تعذر تحميل ملفات التطبيق', 'فشل تحميل أو تشغيل ملفات التطبيق بعد التقسيم.', message || '');
 });

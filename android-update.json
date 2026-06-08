@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 59,
-  "latestVersionName": "1.0.59",
+  "latestVersionCode": 60,
+  "latestVersionName": "1.0.60",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.59",
+  "title": "تحديث حسابي التجاري 1.0.60",
   "message": "إصلاح نهائي لاستقرار التشغيل، الجسر الأصلي، فحص الصفحات والأزرار، وتحديث APK.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
   "releaseNotes": "تقسيم JavaScript إلى ملفات وظيفية مع الحفاظ على التشغيل والاستقرار.",
   "notes": "تقسيم index.html إلى ملفات CSS وJavaScript منفصلة مع الحفاظ على تشغيل التطبيق.",
-  "versionName": "1.0.59",
-  "versionCode": 59,
+  "versionName": "1.0.60",
+  "versionCode": 60,
   "minimumSupportedVersionCode": 59,
   "forceRefresh": true
 }

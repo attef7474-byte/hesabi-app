@@ -578,6 +578,72 @@ function go(id,page){
 
 
 
+
+
+/* 1.0.60: expose critical runtime functions for inline HTML handlers and module loader self-check. */
+function exposeHesabiRuntimeGlobals(){
+  const names=[
+    'render','show','goBack','renderProfileSetup','ensureLiveDataListeners',
+    'renderCustomerItemsReadonly','renderCustomerAddItemsPage','addItemToPurchaseInvoice','sendCustomerOrder',
+    'approveOrder','rejectOrder','customerApproveOrder','customerRejectOrder','loadOrderForEdit','cancelCustomerOrder',
+    'sendPayment','approvePayment','rejectPayment','openReceipt','shareInvoiceText',
+    'sendReturnRequest','approveReturn','rejectReturn','renderReturnLines',
+    'createSchedule','paySchedule','cancelSchedule','fillScheduleFromInvoice',
+    'renderItems','addItem','saveSelectedItemEdit','saveItemPriceQuick','toggleItemCustomerVisible',
+    'deleteSingleItem','deleteItemsByIds','deleteAllItemsAndStock','adjustStockItem','openStockAdjustmentDialog','editStock',
+    'addManualCustomer','setCreditLimit','setCustomerStatus','sendTraderSale','shareStatementText',
+    'renderPolicies','saveShopPoliciesPhase8','renderSettings','renderMessages','sendMessage','renderNotifications','renderOwnerConsole','renderReports',
+    'downloadApkUpdate','refreshWebUiNow','checkApkUpdateOnly','showPermissionDeniedLogoutDialog','safeFullLogout',
+    'requestNotificationPermission','clearAllNotificationCounters',
+    'startEmbeddedItemBarcodeScanner','startExternalItemBarcodeScanner','startItemOcrNative','startItemBarcodeScanner','scanItemBarcodeStillFrame','usePendingItemBarcode',
+    'buildPageRendererRegistry','fullPageButtonAudit','phase10FinalSelfCheck'
+  ];
+  const exposed=[]; const missing=[];
+  for(const name of names){
+    try{
+      const value=(0,eval)(name);
+      if(typeof value==='function'){
+        window[name]=value;
+        exposed.push(name);
+      }else missing.push(name);
+    }catch(e){
+      try{
+        const value=eval(name);
+        if(typeof value==='function'){
+          window[name]=value;
+          exposed.push(name);
+        }else missing.push(name);
+      }catch(_){ missing.push(name); }
+    }
+  }
+  window.__hesabiExposedFunctions={exposed,missing,version:APP_VERSION,build:APP_BUILD_CODE,at:Date.now()};
+  return window.__hesabiExposedFunctions;
+}
+function hesabiRuntimeSelfCheck(){
+  const renderers=(()=>{try{return buildPageRendererRegistry()}catch(e){return {}}})();
+  const expectedPages=['home','search','tasks','items','customers','orders','shops','messages','payments','invoices','statement','audit','stock','returns','schedules','collections','reports','policies','notifications','shopcode','settings','owner'];
+  const missingPages=expectedPages.filter(p=>typeof renderers[p]!=='function');
+  const exposed=window.__hesabiExposedFunctions||exposeHesabiRuntimeGlobals();
+  const required=['show','render','renderItems','renderCustomerItemsReadonly','sendCustomerOrder','approveOrder','sendPayment','renderSettings','renderMessages','renderReports','downloadApkUpdate','refreshWebUiNow'];
+  const missingRequired=required.filter(name=>typeof window[name]!=='function');
+  const inlineRequired=['editStock','shareStatementText'];
+  const missingInline=inlineRequired.filter(name=>typeof window[name]!=='function');
+  return {
+    ok: missingPages.length===0 && missingRequired.length===0 && missingInline.length===0,
+    version:APP_VERSION,
+    build:APP_BUILD_CODE,
+    pages:expectedPages.length,
+    missingPages,
+    missingRequired,
+    missingInline,
+    exposedCount:(exposed.exposed||[]).length,
+    exposedMissing:exposed.missing||[]
+  };
+}
+window.hesabiRuntimeSelfCheck=hesabiRuntimeSelfCheck;
+exposeHesabiRuntimeGlobals();
+
+
 /* 1.0.54: بناء سجل عرض الصفحات بعد تحميل كل الدوال حتى لا تظهر كل الصفحات كأقسام غير جاهزة. */
 buildPageRendererRegistry();
 
