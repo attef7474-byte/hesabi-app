@@ -90,15 +90,18 @@ let selectedItemIdsForDelete = globalThis.__selectedItemIdsForDelete || new Set(
 globalThis.__selectedItemIdsForDelete = selectedItemIdsForDelete;
 function fieldValue(id){return String($(id)?.value||'').trim();}
 function numericValue(id, fallback=0){const n=Number($(id)?.value); return Number.isFinite(n)?n:Number(fallback||0);}
-function normalizeItemKey(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ');}
-function selectedItemsArray(){return [...selectedItemIdsForDelete].filter(Boolean);}
-function clearSelectedItems(){selectedItemIdsForDelete.clear();}
-function itemDuplicateExists({name='',barcode='',excludeId=''}={}){
+function normalizeItemKey(v){const h=window.hesabiItemsHelpers||{}; return typeof h.normalizeItemKey==='function'?h.normalizeItemKey(v):String(v||'').trim().toLowerCase().replace(/\s+/g,' ');}
+function selectedItemsArray(){const h=window.hesabiItemsHelpers||{}; return typeof h.selectedItemsArray==='function'?h.selectedItemsArray(selectedItemIdsForDelete):[...selectedItemIdsForDelete].filter(Boolean);}
+function clearSelectedItems(){const h=window.hesabiItemsHelpers||{}; if(typeof h.clearSelectedItems==='function') return h.clearSelectedItems(selectedItemIdsForDelete); selectedItemIdsForDelete.clear(); return true;}
+function itemDuplicateExists(candidate={}){
+  const h=window.hesabiItemsHelpers||{};
+  if(typeof h.itemDuplicateExists==='function') return h.itemDuplicateExists(cache.items||[], candidate);
+  const {name='',barcode='',excludeId=''}=candidate||{};
   const n=normalizeItemKey(name), b=normalizeItemKey(barcode);
   return (cache.items||[]).some(i=>i && i.id!==excludeId && i.isDeleted!==true && ((b && normalizeItemKey(i.barcode||i.code)===b) || (n && normalizeItemKey(i.name)===n)));
 }
-function currentItemDoc(itemId){return doc(db,'shops',state.shopId,'items',itemId);}
-function safeItemById(itemId){return (cache.items||[]).find(i=>i.id===itemId)||null;}
+function currentItemDoc(itemId){const h=window.hesabiItemsHelpers||{}; return typeof h.currentItemDoc==='function'?h.currentItemDoc(itemId):doc(db,'shops',state.shopId,'items',itemId);}
+function safeItemById(itemId){const h=window.hesabiItemsHelpers||{}; return typeof h.safeItemById==='function'?h.safeItemById(cache.items||[], itemId):(cache.items||[]).find(i=>i.id===itemId)||null;}
 function ensureTraderOrStop(action){return requireTraderAction(action||'هذه العملية');}
 
 async function addItem(){
@@ -261,20 +264,18 @@ async function shareStatementText(customerId){
 
 
 function extractItemNameFromOcrText(text){
+  const h=window.hesabiItemsHelpers||{};
+  if(typeof h.extractItemNameFromOcrText==='function') return h.extractItemNameFromOcrText(text);
   const raw=String(text||'').replace(/\r/g,'\n');
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-  const joined=lines.join(' ');
-  const model=(joined.match(/(?:Model|MODEL|الموديل)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9._-]{2,})/i)||[])[1]||'';
-  const brand=(joined.match(/\b(HUAWEI|SAMSUNG|APPLE|XIAOMI|OPPO|VIVO|TECNO|INFINIX|NOKIA|LENOVO|HP|DELL|LG|SONY)\b/i)||[])[1]||'';
-  if(model && brand) return `${brand.toUpperCase()} ${model}`;
-  if(model) return model;
-  return lines.find(l=>{const s=l.toUpperCase(); if(/IMEI|S\/N|SN:|SERIAL|MAC|WIFI|WI-FI|IP:|INPUT|PASSWORD|PASS/.test(s)) return false; return /[A-Za-z\u0600-\u06FF]/.test(l) && l.length>=3 && l.length<=60;})||'';
+  return lines.find(l=>/[A-Za-z\u0600-\u06FF]/.test(l) && l.length>=3 && l.length<=60)||'';
 }
-function normalizeItemCodeForLookup(code){return String(code||'').trim().toUpperCase().replace(/\s+/g,'')}
+function normalizeItemCodeForLookup(code){const h=window.hesabiItemsHelpers||{}; return typeof h.normalizeItemCodeForLookup==='function'?h.normalizeItemCodeForLookup(code):String(code||'').trim().toUpperCase().replace(/\s+/g,'');}
 function autoFillItemNameFromCode(code){
   try{
     const key=normalizeItemCodeForLookup(code); if(!key) return false;
-    const found=(cache.items||[]).find(i=>[i.barcode,i.code,i.sku,i.serial,i.imei,i.sn].map(normalizeItemCodeForLookup).includes(key));
+    const h=window.hesabiItemsHelpers||{};
+    const found=typeof h.findItemByCode==='function'?h.findItemByCode(cache.items||[], code):(cache.items||[]).find(i=>[i.barcode,i.code,i.sku,i.serial,i.imei,i.sn].map(normalizeItemCodeForLookup).includes(key));
     if(!found) return false;
     if($('itemName') && !$('itemName').value.trim()) $('itemName').value=found.name||'';
     if($('itemCategory')) $('itemCategory').value=itemCategory(found)||found.category||'عام';
@@ -463,10 +464,13 @@ function itemsTabsBar(){
   return `<div class="workspace-tabs items-top-tabs">${tabs.map(t=>`<button class="workspace-tab ${active===t[0]?'active':''}" data-items-tab="${t[0]}"><span>${t[1]}</span><b>${t[2]}</b></button>`).join('')}</div>`;
 }
 function itemCategoryOptions(selected='الكل'){
-  const cats=['الكل',...Array.from(new Set((cache.items||[]).map(i=>itemCategory(i)).filter(Boolean))).sort((a,b)=>a.localeCompare(b))];
+  const h=window.hesabiItemsHelpers||{};
+  const cats=typeof h.itemCategoryList==='function'?h.itemCategoryList(cache.items||[]):['الكل',...Array.from(new Set((cache.items||[]).map(i=>itemCategory(i)).filter(Boolean))).sort((a,b)=>a.localeCompare(b))];
   return cats.map(c=>`<option value="${esc(c)}" ${c===selected?'selected':''}>${esc(c)}</option>`).join('');
 }
 function filteredItemsByCategory(category='الكل'){
+  const h=window.hesabiItemsHelpers||{};
+  if(typeof h.filteredItemsByCategory==='function') return h.filteredItemsByCategory(cache.items||[], category||'الكل');
   const cat=category||'الكل';
   const arr=cache.items||[];
   return cat==='الكل'?arr.slice():arr.filter(i=>itemCategory(i)===cat);

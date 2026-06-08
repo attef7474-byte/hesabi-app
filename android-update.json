@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 66,
-  "latestVersionName": "1.0.66",
+  "latestVersionCode": 67,
+  "latestVersionName": "1.0.67",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.66",
-  "message": "مرحلة آمنة لاستخراج أدوات استيراد وتصدير Excel/CSV إلى وحدة مستقلة بدون تغيير منطق الأصناف أو الطلبات أو Firestore.",
+  "title": "تحديث حسابي التجاري 1.0.67",
+  "message": "مرحلة آمنة لاستخراج أدوات الأصناف إلى وحدة مستقلة بدون تغيير منطق الشراء أو الطلبات أو Firestore.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة js/modules/06_excel_import_export.js وتوحيد أدوات CSV parser/export downloader مع إبقاء دوال الاستيراد والتصدير القديمة متوافقة.",
-  "notes": "استخراج أدوات استيراد وتصدير Excel/CSV إلى وحدة مستقلة بطريقة آمنة بدون تغيير منطق الأصناف.",
-  "versionName": "1.0.66",
-  "versionCode": 66,
+  "releaseNotes": "إضافة js/modules/05_items_helpers.js وتوحيد أدوات التصنيف والتكرار والبحث بالكود وOCR مع إبقاء الدوال القديمة متوافقة.",
+  "notes": "استخراج أدوات الأصناف العامة إلى وحدة مستقلة بطريقة آمنة بدون تغيير منطق حفظ الأصناف أو الطلبات.",
+  "versionName": "1.0.67",
+  "versionCode": 67,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

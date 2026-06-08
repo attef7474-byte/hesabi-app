@@ -1,8 +1,8 @@
-/* Hesabi 1.0.66 - Excel import/export helpers module.
+/* Hesabi 1.0.67 - Excel import/export helpers module.
    This module centralizes safe CSV/Excel-adjacent import/export helpers.
    Existing item import/export functions keep their old names and delegate here. */
 (function(){
-  const MODULE_VERSION = '1.0.66';
+  const MODULE_VERSION = '1.0.67';
   const MODULE_BUILD = 66;
 
   function normalizeCell(value){

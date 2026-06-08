@@ -11,7 +11,11 @@ function renderHome(){
 }
 function renderCustomerLimitBox(){const d=customerDebtInfo(); return `<div class="notice"><b>سقف الدين:</b> ${money(d.limit)}<br><b>الدين الحالي:</b> ${money(d.balance)}<br><b>المتاح للشراء الآجل:</b> ${money(d.remaining)}</div>`}
 
-function itemCategory(i){return String(i.category||i.group||i.type||'عام').trim()||'عام'}
+function itemCategory(i){
+  const helpers=window.hesabiItemsHelpers||{};
+  if(typeof helpers.itemCategory==='function') return helpers.itemCategory(i);
+  return String(i.category||i.group||i.type||'عام').trim()||'عام';
+}
 
 
 /* phase9: removed older duplicate shopPolicyBool; final implementation appears later. */

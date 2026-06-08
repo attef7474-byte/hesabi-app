@@ -1,6 +1,6 @@
 {
-  "version": "1.0.66",
-  "buildCode": 66,
+  "version": "1.0.67",
+  "buildCode": 67,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -16,6 +16,11 @@
       "file": "js/modules/06_excel_import_export.js",
       "lines": 103,
       "description": "Safe Excel/CSV import-export helpers, CSV builder/downloader and delimited text parser wrappers"
+    },
+    {
+      "file": "js/modules/05_items_helpers.js",
+      "lines": 153,
+      "description": "Safe item helpers for categories, duplicate checks, item lookup, code/OCR helpers and selected item utilities"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",
@@ -39,7 +44,7 @@
     },
     {
       "file": "js/modules/30_purchase_catalog.js",
-      "lines": 400,
+      "lines": 404,
       "description": "卮乇丕亍 丕賱毓賲賷賱 賵丕賱賰鬲丕賱賵噩 賵丕賱爻賱丞 賵賳賲賵匕噩 丕賱胤賱亘"
     },
     {
@@ -59,7 +64,7 @@
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 669,
+      "lines": 673,
       "description": "丕賱廿毓丿丕丿丕鬲 賵丕賱賲丕賱賰 賵丕賱兀氐賳丕賮 賵丕賱兀爻毓丕乇 賵丕賱賲禺夭賵賳 賵噩爻乇 兀賳丿乇賵賷丿 賵丕賱鬲卮睾賷賱"
     },
     {
