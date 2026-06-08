@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.81';
-const APP_BUILD_CODE = 81;
+const APP_VERSION='1.0.85';
+const APP_BUILD_CODE = 85;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.

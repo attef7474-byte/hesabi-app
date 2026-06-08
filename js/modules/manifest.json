@@ -1,6 +1,6 @@
 {
-  "version": "1.0.81",
-  "buildCode": 81,
+  "version": "1.0.85",
+  "buildCode": 85,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 194,
+      "lines": 202,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -106,6 +106,26 @@
       "file": "js/modules/20_permissions_role_guards.js",
       "lines": 43,
       "description": "Permissions and role guard review helpers for safe page access matrix, trader/owner checks and self-checks"
+    },
+    {
+      "file": "js/modules/21_firestore_rules_alignment.js",
+      "lines": 62,
+      "description": "Firestore rules alignment review helpers: expected paths, runtime context and permission-denied diagnostics without writes"
+    },
+    {
+      "file": "js/modules/22_customer_purchase_smoke.js",
+      "lines": 68,
+      "description": "Customer purchase full smoke helpers: read-only checks for catalog, cart, linked customer context and required purchase functions"
+    },
+    {
+      "file": "js/modules/23_trader_workflow_smoke.js",
+      "lines": 51,
+      "description": "Trader daily workflow smoke helpers: read-only checks for orders, invoices, payments, statements, returns and schedules functions"
+    },
+    {
+      "file": "js/modules/24_android_native_smoke.js",
+      "lines": 50,
+      "description": "Android native features smoke helpers: safe diagnostics for HesabiAndroid bridge, APK version, cache, barcode, OCR and badge methods"
     },
     {
       "file": "js/modules/20_router_setup_profile.js",

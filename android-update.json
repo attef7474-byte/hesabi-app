@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 81,
-  "latestVersionName": "1.0.81",
+  "latestVersionCode": 85,
+  "latestVersionName": "1.0.85",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.78-1.0.81",
-  "message": "حزمة تثبيت مجمعة لأربع مراحل: الجداول والأقساط، الإشعارات والبادج، لوحة المالك والاشتراكات، ومراجعة حراس الصلاحيات بدون تغيير منطق Firestore أو السداد أو الفواتير.",
+  "title": "تحديث حسابي التجاري 1.0.82-1.0.85",
+  "message": "حزمة تثبيت مجمعة لأربع مراحل: مراجعة توافق Firestore Rules، فحص شراء العميل، فحص سير عمل التاجر اليومي، وفحص ميزات أندرويد الأصلية بدون تغيير منطق Firestore أو السداد أو الفواتير.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة modules: 17_schedules_helpers.js, 18_notifications_helpers.js, 19_owner_subscription_helpers.js, 20_permissions_role_guards.js وربطها بالفحص الشامل.",
-  "notes": "حزمة تثبيت آمنة مجمعة من 1.0.78 إلى 1.0.81.",
-  "versionName": "1.0.81",
-  "versionCode": 81,
+  "releaseNotes": "إضافة modules: 21_firestore_rules_alignment.js, 22_customer_purchase_smoke.js, 23_trader_workflow_smoke.js, 24_android_native_smoke.js، مع إصلاح loader ليشمل وحدات 1.0.78-1.0.85 في الفحص الشامل.",
+  "notes": "حزمة تثبيت آمنة مجمعة من 1.0.82 إلى 1.0.85.",
+  "versionName": "1.0.85",
+  "versionCode": 85,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

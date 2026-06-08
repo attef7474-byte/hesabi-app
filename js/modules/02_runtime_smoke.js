@@ -1,10 +1,10 @@
-/* Hesabi 1.0.81 - Full runtime smoke stabilization.
+/* Hesabi 1.0.85 - Full runtime smoke stabilization.
    Non-intrusive checks only: no Firestore writes, no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.81";
-  const BUILD_CODE = 81;
+  const VERSION = "1.0.85";
+  const BUILD_CODE = 85;
 
   const EXPECTED_MODULES = [
     "js/modules/00_core_update_auth.js",
@@ -28,6 +28,10 @@
     "js/modules/18_notifications_helpers.js",
     "js/modules/19_owner_subscription_helpers.js",
     "js/modules/20_permissions_role_guards.js",
+    "js/modules/21_firestore_rules_alignment.js",
+    "js/modules/22_customer_purchase_smoke.js",
+    "js/modules/23_trader_workflow_smoke.js",
+    "js/modules/24_android_native_smoke.js",
     "js/modules/20_router_setup_profile.js",
     "js/modules/30_purchase_catalog.js",
     "js/modules/40_pages_tables.js",
@@ -49,6 +53,10 @@
     { name: "notifications-helpers", fn: "hesabiNotificationsHelpersSelfCheck", required: true },
     { name: "owner-subscription-helpers", fn: "hesabiOwnerSubscriptionHelpersSelfCheck", required: true },
     { name: "permissions-role-guards", fn: "hesabiPermissionsRoleGuardsSelfCheck", required: true },
+    { name: "firestore-rules-alignment", fn: "hesabiFirestoreRulesAlignmentSelfCheck", required: true },
+    { name: "customer-purchase-smoke", fn: "hesabiCustomerPurchaseSmokeSelfCheck", required: true },
+    { name: "trader-workflow-smoke", fn: "hesabiTraderWorkflowSmokeSelfCheck", required: true },
+    { name: "android-native-smoke", fn: "hesabiAndroidNativeSmokeSelfCheck", required: true },
     { name: "reports-helpers", fn: "hesabiReportsHelpersSelfCheck", required: true },
     { name: "catalog-helpers", fn: "hesabiCatalogHelpersSelfCheck", required: true },
     { name: "items-helpers", fn: "hesabiItemsHelpersSelfCheck", required: true },

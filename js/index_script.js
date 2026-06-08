@@ -1,9 +1,9 @@
-// Hesabi App 1.0.81
+// Hesabi App 1.0.85
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.81';
-const HESABI_APP_BUILD_CODE = 81;
+const HESABI_APP_VERSION = '1.0.85';
+const HESABI_APP_BUILD_CODE = 85;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -23,6 +23,14 @@ const HESABI_MODULE_PARTS = [
   'js/modules/14_invoices_helpers.js',
   'js/modules/15_statements_helpers.js',
   'js/modules/16_returns_helpers.js',
+  'js/modules/17_schedules_helpers.js',
+  'js/modules/18_notifications_helpers.js',
+  'js/modules/19_owner_subscription_helpers.js',
+  'js/modules/20_permissions_role_guards.js',
+  'js/modules/21_firestore_rules_alignment.js',
+  'js/modules/22_customer_purchase_smoke.js',
+  'js/modules/23_trader_workflow_smoke.js',
+  'js/modules/24_android_native_smoke.js',
   'js/modules/20_router_setup_profile.js',
   'js/modules/30_purchase_catalog.js',
   'js/modules/40_pages_tables.js',
@@ -51,6 +59,14 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiInvoicesHelpersSelfCheck',
   'hesabiStatementsHelpersSelfCheck',
   'hesabiReturnsHelpersSelfCheck',
+  'hesabiSchedulesHelpersSelfCheck',
+  'hesabiNotificationsHelpersSelfCheck',
+  'hesabiOwnerSubscriptionHelpersSelfCheck',
+  'hesabiPermissionsRoleGuardsSelfCheck',
+  'hesabiFirestoreRulesAlignmentSelfCheck',
+  'hesabiCustomerPurchaseSmokeSelfCheck',
+  'hesabiTraderWorkflowSmokeSelfCheck',
+  'hesabiAndroidNativeSmokeSelfCheck',
   'hesabiFullRuntimeSmokeSelfCheck'
 ];
 
@@ -168,7 +184,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.81.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.85.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
