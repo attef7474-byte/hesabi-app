@@ -1,6 +1,6 @@
 {
-  "version": "1.0.71",
-  "buildCode": 71,
+  "version": "1.0.72",
+  "buildCode": 72,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 174,
+      "lines": 176,
       "description": "Full runtime smoke stabilization for loader state, extracted helper self-checks, final runtime checks and version consistency"
     },
     {
@@ -56,6 +56,11 @@
       "file": "js/modules/10_firebase_live_data.js",
       "lines": 242,
       "description": "تهيئة Firebase والمستمعات اللحظية والبيانات العامة"
+    },
+    {
+      "file": "js/modules/11_settings_helpers.js",
+      "lines": 223,
+      "description": "Settings page stabilization helpers for tabs, safe action binding, update/cache/security shortcuts and self-checks"
     },
     {
       "file": "js/modules/20_router_setup_profile.js",
@@ -84,8 +89,8 @@
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 678,
-      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون وجسر أندرويد والتشغيل مع مشاركة تقرير مستقرة"
+      "lines": 684,
+      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",

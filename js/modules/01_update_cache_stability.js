@@ -1,10 +1,10 @@
-/* Hesabi 1.0.71 - App cache / update stability.
+/* Hesabi 1.0.72 - App cache / update stability.
    Non-intrusive update helpers only: no Firestore writes and no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.71";
-  const BUILD_CODE = 71;
+  const VERSION = "1.0.72";
+  const BUILD_CODE = 72;
   const STORAGE_PREFIX = "hesabi_cache_update_stability";
   const DEFAULT_UPDATE_URLS = ["android-update.json", "/android-update.json"];
 
