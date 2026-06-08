@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 75,
-  "latestVersionName": "1.0.75",
+  "latestVersionCode": 76,
+  "latestVersionName": "1.0.76",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.75",
-  "message": "تثبيت صفحة الفواتير وحماية عرض الفواتير والفلاتر والإجماليات وربط فحص ذاتي للفواتير بدون تغيير منطق Firestore أو إنشاء الفواتير.",
+  "title": "تحديث حسابي التجاري 1.0.76",
+  "message": "تثبيت صفحة كشف الحساب وحماية عرض الحركات والرصيد والمدين والدائن وربط فحص ذاتي لكشف الحساب بدون تغيير منطق Firestore أو الفواتير أو السداد.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة js/modules/14_invoices_helpers.js وربط renderInvoices بها، وإدخال فحص invoices ضمن runtime smoke.",
-  "notes": "مرحلة Invoices Page Stabilization: مساعدات آمنة لتطبيع الفواتير، فلترة العميل ونوع الدفع، حساب ملخص الفواتير، بناء جدول التفاصيل، وربط زر مشاركة الفاتورة بدون تغيير إنشاء الفواتير أو اعتماد الطلبات.",
-  "versionName": "1.0.75",
-  "versionCode": 75,
+  "releaseNotes": "إضافة js/modules/15_statements_helpers.js وربط renderStatement بها، وإدخال فحص statements ضمن runtime smoke.",
+  "notes": "تثبيت صفحة كشف الحساب وفحصها الذاتي بدون تغيير منطق الفواتير أو السداد.",
+  "versionName": "1.0.76",
+  "versionCode": 76,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

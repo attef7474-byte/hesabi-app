@@ -129,6 +129,33 @@ renderSchedules=function(){
 }
 
 renderStatement=function(){
+  const statementsHelper=window.hesabiStatementsHelpers;
+  if(statementsHelper && typeof statementsHelper.renderPage==='function'){
+    try{
+      const tab=pageTabState('statement','ledger');
+      const rendered=statementsHelper.renderPage({
+        ledger:cache.customerLedger||[],
+        customers:cache.customers||[],
+        role:state.role,
+        state,
+        tab,
+        selectedCustomer:state.statementCustomer||'',
+        customerId:state.customerId||''
+      });
+      $('page_statement').innerHTML=rendered.html;
+      setTimeout(()=>statementsHelper.bindActions({
+        state,
+        save,
+        renderStatement,
+        bindPageTabs,
+        bindDemandTable,
+        shareStatementText
+      }));
+      return;
+    }catch(e){
+      console.warn('statements helper render failed, fallback to legacy renderer',e);
+    }
+  }
   const tab=pageTabState('statement','ledger');
   const tabs=[['summary','📊','ملخص'],['ledger','📒','الحركات'],['debit','⬆️','مدين'],['credit','⬇️','دائن'],['share','📤','مشاركة']];
   let data=[...(cache.customerLedger||[])]; if(tab==='debit') data=data.filter(l=>Number(l.amount||0)>0 && !String(l.type||'').includes('payment')); if(tab==='credit') data=data.filter(l=>String(l.type||'').includes('payment'));
