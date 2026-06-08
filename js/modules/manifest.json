@@ -1,6 +1,6 @@
 {
-  "version": "1.0.72",
-  "buildCode": 72,
+  "version": "1.0.73",
+  "buildCode": 73,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,8 +39,8 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 176,
-      "description": "Full runtime smoke stabilization for loader state, extracted helper self-checks, final runtime checks and version consistency"
+      "lines": 178,
+      "description": "Full runtime smoke stabilization including update/cache, settings, messages and extracted helper self-checks"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",
@@ -61,6 +61,11 @@
       "file": "js/modules/11_settings_helpers.js",
       "lines": 223,
       "description": "Settings page stabilization helpers for tabs, safe action binding, update/cache/security shortcuts and self-checks"
+    },
+    {
+      "file": "js/modules/12_messages_helpers.js",
+      "lines": 140,
+      "description": "Messages page stabilization helpers for safe message normalization, customer selector, rows rendering, send button binding and self-checks"
     },
     {
       "file": "js/modules/20_router_setup_profile.js",
@@ -89,8 +94,8 @@
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 684,
-      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات"
+      "lines": 697,
+      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات والرسائل"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",

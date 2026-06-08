@@ -1,10 +1,10 @@
-/* Hesabi 1.0.72 - Settings page stabilization.
+/* Hesabi 1.0.73 - Settings page stabilization.
    Non-intrusive settings helpers only: no Firestore writes and no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.72";
-  const BUILD_CODE = 72;
+  const VERSION = "1.0.73";
+  const BUILD_CODE = 73;
   const REQUIRED_TABS = ["security", "appearance", "shop", "permissions", "update", "backup", "account", "notifications"];
 
   function safeString(value){

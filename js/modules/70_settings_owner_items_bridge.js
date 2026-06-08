@@ -19,12 +19,25 @@ async function sendMessage(){
   }catch(e){console.error('send message failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إرسال الرسالة',e);return;} msg('تعذر إرسال الرسالة: '+friendlyFirestoreError(e),'error');}
 }
 function renderMessages(){
+  const helper = window.hesabiMessagesHelpers;
+  const page = $('page_messages');
+  if(!page) return;
+  const chk = canSendMessageNow();
+  try{
+    if(helper && typeof helper.safeMarkRead === 'function') helper.safeMarkRead(markMessagesReadForActiveUser);
+    else setTimeout(()=>markMessagesReadForActiveUser(), 150);
+  }catch(e){ console.warn('message read marker scheduling failed', e); }
+  try{
+    if(helper && typeof helper.renderPage === 'function'){
+      page.innerHTML = helper.renderPage({ messages: cache.messages || [], customers: cache.customers || [], role: state.role, check: chk });
+      setTimeout(()=>{ if(helper && typeof helper.bindActions === 'function') helper.bindActions(sendMessage); else if($('sendMessageBtn')) $('sendMessageBtn').onclick=sendMessage; });
+      return;
+    }
+  }catch(e){ console.warn('messages helper render failed', e); }
   const msgs=(cache.messages||[]).slice(-80).reverse();
-  setTimeout(()=>markMessagesReadForActiveUser(), 150);
   const customerOptions=state.role==='trader'?`<div class="field"><label>العميل</label><select id="messageCustomer"><option value="">اختر العميل</option>${(cache.customers||[]).map(c=>`<option value="${esc(c.customerId||c.id||'')}">${esc(c.name||'عميل')} - ${esc(c.phone||'')}</option>`).join('')}</select></div>`:'';
-  const chk=canSendMessageNow();
   const rows=msgs.map(m=>`<tr><td class="name"><b>${esc(m.fromName||m.senderName||'رسالة')}</b><div class="muted">${esc(m.fromRole==='trader'?'تاجر':m.fromRole==='customer'?'عميل':'النظام')}</div></td><td>${esc(m.text||m.body||m.message||'')}</td><td>${dt(m.createdMs)}</td></tr>`).join('');
-  $('page_messages').innerHTML=`<div class="card"><h2>الرسائل</h2>${chk.ok?'':`<div class="notice warn">${esc(chk.msg)}</div>`}${customerOptions}<div class="field"><label>نص الرسالة</label><textarea id="messageText" placeholder="اكتب رسالتك هنا"></textarea></div><button class="btn ok" id="sendMessageBtn" ${chk.ok?'':'disabled'}>إرسال</button></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>المرسل</th><th>الرسالة</th><th>التاريخ</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد رسائل</td></tr>'}</tbody></table></div>`;
+  page.innerHTML=`<div class="card"><h2>الرسائل</h2>${chk.ok?'':`<div class="notice warn">${esc(chk.msg)}</div>`}${customerOptions}<div class="field"><label>نص الرسالة</label><textarea id="messageText" placeholder="اكتب رسالتك هنا"></textarea></div><button class="btn ok" id="sendMessageBtn" ${chk.ok?'':'disabled'}>إرسال</button></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>المرسل</th><th>الرسالة</th><th>التاريخ</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد رسائل</td></tr>'}</tbody></table></div>`;
   setTimeout(()=>{ if($('sendMessageBtn')) $('sendMessageBtn').onclick=sendMessage; });
 }
 function renderSettings(){
