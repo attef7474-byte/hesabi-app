@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     id "com.android.application"
 }
 
@@ -10,8 +10,8 @@ android {
         applicationId "com.hesabi.app"
         minSdk 23
         targetSdk 35
-        versionCode 60
-        versionName "1.0.60"
+        versionCode 61
+        versionName "1.0.61"
     }
 
     signingConfigs {
@@ -58,3 +58,4 @@ dependencies {
     implementation "com.google.zxing:core:3.5.3"
     implementation "com.google.mlkit:text-recognition:16.0.1"
 }
+

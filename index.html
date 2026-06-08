@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>حسابي التجاري - Firebase</title>
+  <title>丨爻丕亘賷 丕賱鬲噩丕乇賷 - Firebase</title>
 
 
 
@@ -23,23 +23,23 @@
 
 
 
-  <link rel="stylesheet" href="css/app.css?v=1.0.60" />
+  <link rel="stylesheet" href="css/app.css?v=1.0.61" />
 </head>
 <body>
 <div class="app">
-  <div class="top"><div class="title"><h1>حسابي التجاري</h1><span id="netBadge" class="badge">جاري الفحص...</span></div><div id="subTitle" class="muted"></div></div>
+  <div class="top"><div class="title"><h1>丨爻丕亘賷 丕賱鬲噩丕乇賷</h1><span id="netBadge" class="badge">噩丕乇賷 丕賱賮丨氐...</span></div><div id="subTitle" class="muted"></div></div>
   <div id="msg"></div>
   <div id="hesabiDialogBackdrop" class="hesabi-dialog-backdrop hidden" role="dialog" aria-modal="true">
     <div id="hesabiDialog" class="hesabi-dialog">
-      <div class="hesabi-dialog-head"><span id="hesabiDialogTitle" class="hesabi-dialog-title">تنبيه</span><span id="hesabiDialogIcon" class="hesabi-dialog-icon">ℹ️</span></div>
+      <div class="hesabi-dialog-head"><span id="hesabiDialogTitle" class="hesabi-dialog-title">鬲賳亘賷賴</span><span id="hesabiDialogIcon" class="hesabi-dialog-icon">鈩癸笍</span></div>
       <div id="hesabiDialogBody" class="hesabi-dialog-body"></div>
       <div id="hesabiDialogActions" class="hesabi-dialog-actions one"></div>
     </div>
   </div>
 
   <section id="firebaseSetup" class="card hidden">
-    <h2>إعداد Firebase Firestore</h2>
-    <p class="muted">أدخل إعدادات Firebase Web App مرة واحدة. بعدها سيعمل التزامن بين هاتف العميل وهاتف التاجر عبر Firestore.</p>
+    <h2>廿毓丿丕丿 Firebase Firestore</h2>
+    <p class="muted">兀丿禺賱 廿毓丿丕丿丕鬲 Firebase Web App 賲乇丞 賵丕丨丿丞. 亘毓丿賴丕 爻賷毓賲賱 丕賱鬲夭丕賲賳 亘賷賳 賴丕鬲賮 丕賱毓賲賷賱 賵賴丕鬲賮 丕賱鬲丕噩乇 毓亘乇 Firestore.</p>
     <div class="form">
       <div class="field"><label>apiKey</label><input id="cfg_apiKey"></div>
       <div class="field"><label>authDomain</label><input id="cfg_authDomain" placeholder="project.firebaseapp.com"></div>
@@ -47,7 +47,7 @@
       <div class="field"><label>storageBucket</label><input id="cfg_storageBucket" placeholder="project.appspot.com"></div>
       <div class="field"><label>messagingSenderId</label><input id="cfg_messagingSenderId"></div>
       <div class="field"><label>appId</label><input id="cfg_appId"></div>
-      <button class="btn" id="saveFirebaseConfig">حفظ إعدادات Firebase</button>
+      <button class="btn" id="saveFirebaseConfig">丨賮馗 廿毓丿丕丿丕鬲 Firebase</button>
     </div>
 
   </section>
@@ -55,38 +55,38 @@
 
 
   <section id="authSetup" class="card hidden">
-    <h2>تسجيل الدخول الآمن</h2>
-    <p class="muted">الدخول الأساسي الآن برقم الهاتف وكود تحقق SMS من Firebase. الحساب لا يتم إنشاؤه إلا بعد مطابقة كود التحقق.</p>
+    <h2>鬲爻噩賷賱 丕賱丿禺賵賱 丕賱丌賲賳</h2>
+    <p class="muted">丕賱丿禺賵賱 丕賱兀爻丕爻賷 丕賱丌賳 亘乇賯賲 丕賱賴丕鬲賮 賵賰賵丿 鬲丨賯賯 SMS 賲賳 Firebase. 丕賱丨爻丕亘 賱丕 賷鬲賲 廿賳卮丕丐賴 廿賱丕 亘毓丿 賲胤丕亘賯丞 賰賵丿 丕賱鬲丨賯賯.</p>
     <div class="auth-tabs">
-      <button class="auth-tab-btn active" id="smsAuthTab" type="button">دخول بكود SMS</button>
-      <button class="auth-tab-btn" id="legacyAuthTab" type="button">دخول قديم بكلمة مرور</button>
+      <button class="auth-tab-btn active" id="smsAuthTab" type="button">丿禺賵賱 亘賰賵丿 SMS</button>
+      <button class="auth-tab-btn" id="legacyAuthTab" type="button">丿禺賵賱 賯丿賷賲 亘賰賱賲丞 賲乇賵乇</button>
     </div>
     <div class="form" id="smsAuthBox">
-      <div class="field"><label>رقم الهاتف الدولي</label><input id="smsPhone" inputmode="tel" placeholder="مثال: +967771749776"></div>
+      <div class="field"><label>乇賯賲 丕賱賴丕鬲賮 丕賱丿賵賱賷</label><input id="smsPhone" inputmode="tel" placeholder="賲孬丕賱: +967771749776"></div>
       <div id="recaptcha-container"></div>
-      <button class="btn" id="sendSmsCodeBtn">إرسال كود التحقق</button>
-      <div class="field"><label>كود التحقق 6 أرقام</label><input id="smsCode" inputmode="numeric" maxlength="6" placeholder="مثال: 123456"></div>
-      <button class="btn ok" id="verifySmsCodeBtn">تحقق ودخول</button>
-      <div class="notice">إذا كان الرقم رقم تجربة في Firebase استخدم الكود المحدد هناك. بعد الدخول اختر تاجر أو عميل أو استرجع حسابك بنفس الرقم.</div>
-      <div class="mini-help">ملاحظة: إذا لم تصل رسالة SMS تأكد أن مزود Phone مفعل في Firebase وأن الدومين مسموح.</div>
+      <button class="btn" id="sendSmsCodeBtn">廿乇爻丕賱 賰賵丿 丕賱鬲丨賯賯</button>
+      <div class="field"><label>賰賵丿 丕賱鬲丨賯賯 6 兀乇賯丕賲</label><input id="smsCode" inputmode="numeric" maxlength="6" placeholder="賲孬丕賱: 123456"></div>
+      <button class="btn ok" id="verifySmsCodeBtn">鬲丨賯賯 賵丿禺賵賱</button>
+      <div class="notice">廿匕丕 賰丕賳 丕賱乇賯賲 乇賯賲 鬲噩乇亘丞 賮賷 Firebase 丕爻鬲禺丿賲 丕賱賰賵丿 丕賱賲丨丿丿 賴賳丕賰. 亘毓丿 丕賱丿禺賵賱 丕禺鬲乇 鬲丕噩乇 兀賵 毓賲賷賱 兀賵 丕爻鬲乇噩毓 丨爻丕亘賰 亘賳賮爻 丕賱乇賯賲.</div>
+      <div class="mini-help">賲賱丕丨馗丞: 廿匕丕 賱賲 鬲氐賱 乇爻丕賱丞 SMS 鬲兀賰丿 兀賳 賲夭賵丿 Phone 賲賮毓賱 賮賷 Firebase 賵兀賳 丕賱丿賵賲賷賳 賲爻賲賵丨.</div>
     </div>
     <div class="form hidden" id="legacyAuthBox">
-      <div class="field"><label>رقم الهاتف</label><input id="authPhone" placeholder="مثال: 777123456"></div>
-      <div class="field"><label>كلمة المرور</label><input id="authPass" type="password" placeholder="6 أحرف على الأقل"></div>
+      <div class="field"><label>乇賯賲 丕賱賴丕鬲賮</label><input id="authPhone" placeholder="賲孬丕賱: 777123456"></div>
+      <div class="field"><label>賰賱賲丞 丕賱賲乇賵乇</label><input id="authPass" type="password" placeholder="6 兀丨乇賮 毓賱賶 丕賱兀賯賱"></div>
       <div class="actions">
-        <button class="btn" id="loginBtn">دخول</button>
-        <button class="btn secondary" id="signupBtn">إنشاء حساب قديم</button>
+        <button class="btn" id="loginBtn">丿禺賵賱</button>
+        <button class="btn secondary" id="signupBtn">廿賳卮丕亍 丨爻丕亘 賯丿賷賲</button>
       </div>
-      <div class="notice">هذا الخيار مؤقت للحسابات القديمة التي كانت تعمل برقم الهاتف وكلمة مرور.</div>
+      <div class="notice">賴匕丕 丕賱禺賷丕乇 賲丐賯鬲 賱賱丨爻丕亘丕鬲 丕賱賯丿賷賲丞 丕賱鬲賷 賰丕賳鬲 鬲毓賲賱 亘乇賯賲 丕賱賴丕鬲賮 賵賰賱賲丞 賲乇賵乇.</div>
     </div>
   </section>
 
   <section id="roleSetup" class="card hidden">
-    <h2>تهيئة أول تشغيل</h2>
-    <p class="muted">اختر نوع المستخدم. العميل يرى مشترياته وسداداته فقط، والتاجر يرى إدارة المحل والطلبات.</p>
+    <h2>鬲賴賷卅丞 兀賵賱 鬲卮睾賷賱</h2>
+    <p class="muted">丕禺鬲乇 賳賵毓 丕賱賲爻鬲禺丿賲. 丕賱毓賲賷賱 賷乇賶 賲卮鬲乇賷丕鬲賴 賵爻丿丕丿丕鬲賴 賮賯胤貙 賵丕賱鬲丕噩乇 賷乇賶 廿丿丕乇丞 丕賱賲丨賱 賵丕賱胤賱亘丕鬲.</p>
     <div class="setupChoice">
-      <button class="bigChoice" id="chooseTrader"><strong>تاجر / محل</strong><span class="muted">إدارة الأصناف والعملاء والطلبات</span></button>
-      <button class="bigChoice" id="chooseCustomer"><strong>عميل</strong><span class="muted">شراء أصناف وسداد حساب</span></button>
+      <button class="bigChoice" id="chooseTrader"><strong>鬲丕噩乇 / 賲丨賱</strong><span class="muted">廿丿丕乇丞 丕賱兀氐賳丕賮 賵丕賱毓賲賱丕亍 賵丕賱胤賱亘丕鬲</span></button>
+      <button class="bigChoice" id="chooseCustomer"><strong>毓賲賷賱</strong><span class="muted">卮乇丕亍 兀氐賳丕賮 賵爻丿丕丿 丨爻丕亘</span></button>
     </div>
   </section>
 
@@ -120,9 +120,10 @@
 </div>
 
 <nav id="nav" class="nav hidden"><div id="navInner" class="nav-inner"></div></nav>
-<button id="setupBackFloating" class="setup-back-floating hidden" type="button" aria-label="رجوع">↩️</button>
+<button id="setupBackFloating" class="setup-back-floating hidden" type="button" aria-label="乇噩賵毓">鈫╋笍</button>
 
-  <script src="js/startup-recovery.js?v=1.0.60"></script>
-  <script type="module" src="js/index_script.js?v=1.0.60"></script>
+  <script src="js/startup-recovery.js?v=1.0.61"></script>
+  <script type="module" src="js/index_script.js?v=1.0.61"></script>
 </body>
 </html>
+
