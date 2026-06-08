@@ -114,6 +114,8 @@ function phase5BuildInvoiceText(inv){
   return `فاتورة ${inv.invoiceNo||inv.id}\nالعميل: ${inv.customerName||''}\nنوع الدفع: ${payTypeText(inv.paymentType||'cash')}\nالتاريخ: ${dt(inv.createdMs)}\n----------------------\n${rows||'لا توجد أصناف'}\n----------------------\nالإجمالي: ${money(inv.total||0)}`;
 }
 async function confirmDialog(title, body, okText='موافق'){
+  const dialogs=window.hesabiDialogsToasts;
+  if(dialogs&&typeof dialogs.confirmDialog==='function') return dialogs.confirmDialog(title, body, okText);
   return new Promise(resolve=>{
     showAppDialog(title, body, 'warn', [
       {text:okText, cls:'ok', fn:()=>resolve(true)},

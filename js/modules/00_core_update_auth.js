@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.63';
-const APP_BUILD_CODE = 63;
+const APP_VERSION='1.0.64';
+const APP_BUILD_CODE = 64;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -307,8 +307,14 @@ function extractShopCodeFromText(text){
 function load(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
 function save(){localStorage.setItem(LS,JSON.stringify(state))}
 function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-function hideAppDialog(){try{$('hesabiDialogBackdrop')?.classList.add('hidden')}catch{}}
+function hideAppDialog(){
+  const dialogs=window.hesabiDialogsToasts;
+  if(dialogs&&typeof dialogs.hideAppDialog==='function') return dialogs.hideAppDialog();
+  try{$('hesabiDialogBackdrop')?.classList.add('hidden')}catch{}
+}
 function showAppDialog(title, body, type='notice', buttons){
+  const dialogs=window.hesabiDialogsToasts;
+  if(dialogs&&typeof dialogs.showAppDialog==='function') return dialogs.showAppDialog(title, body, type, buttons);
   const back=$('hesabiDialogBackdrop'), ttl=$('hesabiDialogTitle'), icon=$('hesabiDialogIcon'), bdy=$('hesabiDialogBody'), acts=$('hesabiDialogActions');
   if(!back||!ttl||!bdy||!acts){ if($('msg')) $('msg').innerHTML=`<div class="notice ${type}">${esc(body||title)}</div>`; return; }
   const kind=type==='error'?'dialog-error':(type==='success'?'dialog-success':(type==='warn'?'dialog-warn':''));
@@ -320,9 +326,16 @@ function showAppDialog(title, body, type='notice', buttons){
   acts.querySelectorAll('[data-dialog-action]').forEach(btn=>{btn.onclick=()=>{const x=list[Number(btn.dataset.dialogAction)]; try{ if(x.close!==false) hideAppDialog(); if(typeof x.fn==='function') x.fn(); }catch(e){console.warn('dialog action failed',e)} };});
 }
 function msg(t,type='notice'){
+  const dialogs=window.hesabiDialogsToasts;
+  if(dialogs&&typeof dialogs.msg==='function') return dialogs.msg(t,type);
   const text=String(t||'');
   const isErr=type==='error'||/خطأ|فشل|تعذر|Missing|Firebase|Uncaught|Error|ReferenceError/i.test(text);
   showAppDialog(isErr?'تنبيه مهم':(type==='success'?'تم بنجاح':'تنبيه'), text, isErr?'error':type);
+}
+function safeMsg(t,type='notice'){
+  const dialogs=window.hesabiDialogsToasts;
+  if(dialogs&&typeof dialogs.safeMsg==='function') return dialogs.safeMsg(t,type);
+  try{msg(t,type)}catch(e){console.warn('safeMsg failed',e,t)}
 }
 function showStartupRecoveryDialog(errorText=''){
   const details=errorText?('\n\nالتفاصيل: '+String(errorText).slice(0,180)):'';

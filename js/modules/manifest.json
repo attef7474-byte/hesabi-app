@@ -1,15 +1,20 @@
 {
-  "version": "1.0.63",
-  "buildCode": 63,
+  "version": "1.0.64",
+  "buildCode": 64,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
-      "lines": 771,
+      "lines": 784,
       "description": "丕賱賳賵丕丞 丕賱毓丕賲丞貙 丕賱廿氐丿丕乇丕鬲貙 丕賱丨賵丕乇丕鬲貙 丕賱鬲丨丿賷孬貙 丕賱賲氐丕丿賯丞 丕賱賲爻丕毓丿丞 賵丕賱鬲賳亘賷賴丕鬲"
     },
     {
+      "file": "js/modules/08_dialogs_toasts.js",
+      "lines": 111,
+      "description": "Safe dialogs, messages, toasts and confirmation wrappers"
+    },
+    {
       "file": "js/modules/09_android_bridge.js",
-      "lines": 121,
+      "lines": 123,
       "description": "Safe Android bridge helpers using HesabiAndroid"
     },
     {
@@ -39,17 +44,17 @@
     },
     {
       "file": "js/modules/60_payments_returns_policies.js",
-      "lines": 500,
+      "lines": 502,
       "description": "丕賱爻丿丕丿 賵丕賱賮賵丕鬲賷乇 賵丕賱賲乇鬲噩毓丕鬲 賵丕賱兀賯爻丕胤 賵丕賱爻賷丕爻丕鬲"
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 666,
+      "lines": 663,
       "description": "丕賱廿毓丿丕丿丕鬲 賵丕賱賲丕賱賰 賵丕賱兀氐賳丕賮 賵丕賱兀爻毓丕乇 賵丕賱賲禺夭賵賳 賵噩爻乇 兀賳丿乇賵賷丿 賵丕賱鬲卮睾賷賱"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",
-      "lines": 1,
+      "lines": 163,
       "description": "Runtime safety aliases for missing critical functions"
     }
   ]
