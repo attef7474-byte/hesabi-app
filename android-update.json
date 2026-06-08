@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 70,
-  "latestVersionName": "1.0.70",
+  "latestVersionCode": 71,
+  "latestVersionName": "1.0.71",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.70",
-  "message": "تثبيت صفحة التقارير وتنظيم حسابات الملخصات والتصدير بدون تغيير منطق الشراء أو السداد.",
+  "title": "تحديث حسابي التجاري 1.0.71",
+  "message": "تثبيت الكاش والتحديثات وتقليل بقاء ملفات قديمة بعد تحديث الواجهات أو APK بدون تغيير منطق الشراء أو السداد.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة js/modules/04_catalog_helpers.js وتوحيد أدوات حالة الكتالوج والسلة والبحث والفرز والترقيم مع إبقاء الدوال القديمة متوافقة.",
-  "notes": "تثبيت فحص runtime شامل للوحدات المستخرجة، وتوحيد self-check بدون تغيير وظائف الشراء أو السداد أو Firestore.",
-  "versionName": "1.0.70",
-  "versionCode": 70,
+  "releaseNotes": "إضافة js/modules/01_update_cache_stability.js وتوحيد أدوات تنظيف الكاش وجلب android-update.json بدون كاش وربطها بفحص runtime الشامل.",
+  "notes": "مرحلة App Cache / Update Stability: فحص ذاتي للكاش والتحديث، no-store للملفات الحساسة، وتسجيل آخر تنظيف/تحديث بأمان.",
+  "versionName": "1.0.71",
+  "versionCode": 71,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

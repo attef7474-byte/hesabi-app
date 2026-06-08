@@ -1,11 +1,16 @@
 {
-  "version": "1.0.70",
-  "buildCode": 70,
+  "version": "1.0.71",
+  "buildCode": 71,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
-      "lines": 793,
+      "lines": 810,
       "description": "النواة العامة، الإصدارات، التحديث، المصادقة والدوال المساعدة الأساسية"
+    },
+    {
+      "file": "js/modules/01_update_cache_stability.js",
+      "lines": 279,
+      "description": "App cache/update stability helpers for cache clearing, no-store update checks, refresh URLs and self-checks"
     },
     {
       "file": "js/modules/07_utils_helpers.js",
@@ -34,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 172,
+      "lines": 174,
       "description": "Full runtime smoke stabilization for loader state, extracted helper self-checks, final runtime checks and version consistency"
     },
     {

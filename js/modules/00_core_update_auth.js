@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.70';
-const APP_BUILD_CODE = 70;
+const APP_VERSION='1.0.71';
+const APP_BUILD_CODE = 71;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -108,6 +108,11 @@ function renderAppLockScreen(){
 }
 async function refreshWebUiNow(){
   try{
+    const updater=window.hesabiUpdateCacheStability;
+    if(updater && typeof updater.refreshWebUiNow==='function'){
+      await updater.refreshWebUiNow('legacy-refreshWebUiNow');
+      return;
+    }
     if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations(); for(const r of regs){try{await r.unregister()}catch(e){}}}
     if('caches' in window){const keys=await caches.keys(); for(const k of keys){try{await caches.delete(k)}catch(e){}}}
     try{localStorage.setItem('hesabi_last_cache_clean', String(Date.now()));}catch(e){}
@@ -152,6 +157,10 @@ function nativeVersionLabel(){
 }
 async function fetchAndroidUpdateInfo(){
   const urls=['android-update.json','/android-update.json'];
+  const updater=window.hesabiUpdateCacheStability;
+  if(updater && typeof updater.fetchUpdateInfo==='function'){
+    return await updater.fetchUpdateInfo(urls);
+  }
   let lastErr='';
   for(const u of urls){
     try{
@@ -191,6 +200,11 @@ async function prepareFullUpdateRefresh(){
   state.lastManualUpdateAt = Date.now();
   state.pendingFullApkRefresh = true;
   save();
+  const updater=window.hesabiUpdateCacheStability;
+  if(updater && typeof updater.prepareFullApkUpdate==='function'){
+    await updater.prepareFullApkUpdate();
+    return;
+  }
   if('serviceWorker' in navigator){
     try{ const regs=await navigator.serviceWorker.getRegistrations(); for(const reg of regs){try{await reg.unregister();}catch(e){}} }catch(e){}
   }
@@ -253,23 +267,26 @@ async function refreshWebOnly(){
     msg('جاري تحديث الواجهات فقط بدون تثبيت APK...', 'notice');
     state.lastManualUpdateAt = Date.now();
     save();
-    if('serviceWorker' in navigator){
-      try{
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for(const reg of regs){ try{ await reg.update(); }catch(e){} }
-      }catch(e){}
+    const updater=window.hesabiUpdateCacheStability;
+    if(updater && typeof updater.refreshWebUiNow==='function'){
+      await updater.refreshWebUiNow('web-only-refresh');
+    }else{
+      if('serviceWorker' in navigator){
+        try{
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for(const reg of regs){ try{ await reg.update(); }catch(e){} }
+        }catch(e){}
+      }
+      if('caches' in window){
+        try{
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        }catch(e){}
+      }
+      try{ sessionStorage.setItem('hesabi_force_update_ts', String(Date.now())); }catch(e){}
     }
-    if('caches' in window){
-      try{
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k=>caches.delete(k)));
-      }catch(e){}
-    }
-    try{ sessionStorage.setItem('hesabi_force_update_ts', String(Date.now())); }catch(e){}
-    const url = new URL(location.href);
-    url.searchParams.set('v', String(Date.now()));
-    url.searchParams.set('refresh', '1');
-    setTimeout(()=>location.replace(url.toString()), 450);
+    const nextUrl = updater && typeof updater.buildRefreshUrl==='function' ? updater.buildRefreshUrl({refresh:'1'}) : (()=>{const url = new URL(location.href); url.searchParams.set('v', String(Date.now())); url.searchParams.set('refresh','1'); return url.toString();})();
+    setTimeout(()=>location.replace(nextUrl), 450);
   }catch(e){
     msg('تعذر تحديث الواجهات: '+(e.message||e),'error');
   }
