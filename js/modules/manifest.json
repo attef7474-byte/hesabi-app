@@ -1,6 +1,6 @@
 {
-  "version": "1.0.103",
-  "buildCode": 103,
+  "version": "1.0.104",
+  "buildCode": 104,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -241,9 +241,15 @@
       "file": "js/modules/42_returns_schedules_page_sweep.js",
       "description": "Returns and schedules page final sweep: delegated tabs, return approve/reject/request, schedule create/pay/cancel, invoice autofill and mobile table guards",
       "lines": 256
+    },
+    {
+      "file": "js/modules/44_customers_owner_page_sweep.js",
+      "lines": 204,
+      "description": "Customers and owner/subscriptions page final sweep: tabs, local search, customer actions, owner controls, subscription form and mobile table guards"
     }
   ],
   "modules": [
-    "js/modules/43_messages_notifications_page_sweep.js"
+    "js/modules/43_messages_notifications_page_sweep.js",
+    "js/modules/44_customers_owner_page_sweep.js"
   ]
 }

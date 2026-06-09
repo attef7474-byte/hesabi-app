@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 103,
-  "latestVersionName": "1.0.103",
+  "latestVersionCode": 104,
+  "latestVersionName": "1.0.104",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.103",
-  "message": "تثبيت صفحة المرتجعات والجداول والأقساط مع ربط الأزرار والتبويبات وحماية الجداول على الهاتف.",
+  "title": "تحديث حسابي التجاري 1.0.104",
+  "message": "تثبيت صفحة العملاء وصفحة المالك والاشتراكات: التنقل، البحث، الأزرار والجداول على الهاتف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Returns/schedules page sweep: stable tabs, request return, approve/reject return, create schedule, pay schedule, cancel schedule, invoice autofill, and mobile table containment without Firestore logic changes.",
-  "notes": "تثبيت صفحة الرسائل والإشعارات: بحث آمن، أزرار الإرسال وفتح الإشعارات وتصفير العداد واختبار البادج، بدون تغيير قاعدة البيانات.",
-  "versionName": "1.0.103",
-  "versionCode": 103,
+  "releaseNotes": "Customers + owner/subscriptions page sweep: stable tabs, local search without keyboard closing, customer limit/status actions, manual customer add, trader sale, owner reload/message/control/subscription actions, and mobile table containment without changing Firestore write logic.",
+  "notes": "تثبيت صفحات العملاء والمالك والاشتراكات بدون تغيير منطق قاعدة البيانات.",
+  "versionName": "1.0.104",
+  "versionCode": 104,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
