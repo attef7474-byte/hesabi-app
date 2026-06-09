@@ -573,3 +573,24 @@ html,body,.app{max-width:100%!important;overflow-x:hidden!important}
 #page_invoices .compact-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
 #page_invoices .mini-actions .btn,#page_invoices .btn.mini{white-space:nowrap}
 @media(max-width:520px){#page_settings .page-tabs-card.side-tabs .page-tabs-bar,#page_invoices .page-tabs-card.side-tabs .page-tabs-bar{grid-template-columns:repeat(4,minmax(70px,1fr));overflow-x:auto;padding-bottom:2px}#page_settings .page-tab-btn,#page_invoices .page-tab-btn{min-width:70px}.settings-compact-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.settings-compact-actions .btn{width:100%!important}}
+
+
+/* === 1.0.100 Remove Page Explanations === */
+.page-workspace-head .page-help,
+.page-workspace-head .phase-note,
+.page-help,
+.phase-note,
+.safe-placeholder,
+.mini-help,
+.form-help,
+.help-text,
+.page-description,
+.page-caption,
+.setup-help,
+.workflow-help,
+.card > p.muted,
+section.card > p.muted {
+  display: none !important;
+}
+.clean-page-head { padding-bottom: 12px !important; }
+.clean-page-head h2 { margin-bottom: 0 !important; }

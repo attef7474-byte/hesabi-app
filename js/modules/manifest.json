@@ -1,6 +1,6 @@
 {
-  "version": "1.0.99",
-  "buildCode": 99,
+  "version": "1.0.100",
+  "buildCode": 100,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -226,6 +226,11 @@
       "file": "js/modules/38_orders_approval_page_sweep.js",
       "lines": 249,
       "description": "Orders and approval page final sweep: delegated tabs, approve/reject/customer actions, edit/cancel, details toggle, and mobile table guards"
+    },
+    {
+      "file": "js/modules/39_remove_page_explanations.js",
+      "lines": 98,
+      "description": "Remove page explanations and clean page headers while preserving titles, tables, actions and data"
     }
   ]
 }
