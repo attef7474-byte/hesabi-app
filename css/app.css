@@ -542,7 +542,7 @@ html,body,.app{max-width:100%!important;overflow-x:hidden!important}
 }
 
 
-/* Hesabi 1.0.93 - Items page tab/action/search final mobile fix */
+/* Hesabi 1.0.94 - Items page tab/action/search final mobile fix */
 .items-top-tabs-1093 .settings-top-tab{cursor:pointer!important;pointer-events:auto!important;user-select:none!important;-webkit-user-select:none!important}
 .items-top-tabs-1093 .settings-top-tab.active{box-shadow:0 10px 22px rgba(15,118,110,.20)!important;transform:translateY(-1px)}
 .items-demand-card .items-search-apply,.items-demand-card .items-pager-top .btn,.items-real-table .compact-actions .btn{pointer-events:auto!important;position:relative!important;z-index:3!important}

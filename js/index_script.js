@@ -1,9 +1,9 @@
-// Hesabi App 1.0.93
+// Hesabi App 1.0.94
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.93';
-const HESABI_APP_BUILD_CODE = 93;
+const HESABI_APP_VERSION = '1.0.94';
+const HESABI_APP_BUILD_CODE = 94;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -44,6 +44,7 @@ const HESABI_MODULE_PARTS = [
   'js/modules/29_items_mobile_table_fix.js',
   'js/modules/31_final_release_validation.js',
   'js/modules/32_items_actions_search_fix.js',
+  'js/modules/33_utf8_arabic_encoding_repair.js',
   'js/modules/99_runtime_missing_functions_fix.js'
 ];
 
@@ -81,6 +82,7 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiItemsMobileTableFixSelfCheck',
   'hesabiFinalReleaseValidationSelfCheck',
   'hesabiItemsActionsSearchFixSelfCheck',
+  'hesabiUtf8ArabicEncodingRepairSelfCheck',
   'hesabiFullRuntimeSmokeSelfCheck'
 ];
 
@@ -106,13 +108,13 @@ function setRuntimePhase(phase, extra = {}) {
 function runtimeMessage(title, body, details) {
   const text = [body || '', details ? ('\n\n' + details) : ''].join('').trim();
   if (typeof window.showStartupRecoveryDialog === 'function') {
-    window.showStartupRecoveryDialog(text || title || '鬲毓匕乇 鬲卮睾賷賱 丕賱鬲胤亘賷賯.');
+    window.showStartupRecoveryDialog(text || title || 'تعذر تشغيل التطبيق.');
     return;
   }
   const box = document.getElementById('msg');
   if (box) {
-    box.innerHTML = '<div class="msg error"><b>' + escapeHtml(title || '鬲毓匕乇 鬲卮睾賷賱 丕賱鬲胤亘賷賯') + '</b><br>' +
-      escapeHtml(text || '丨丿賾孬 丕賱賵丕噩賴丕鬲 兀賵 孬亘賾鬲 丌禺乇 APK.') + '</div>';
+    box.innerHTML = '<div class="msg error"><b>' + escapeHtml(title || 'تعذر تشغيل التطبيق') + '</b><br>' +
+      escapeHtml(text || 'حدّث الواجهات أو ثبّت آخر APK.') + '</div>';
   }
 }
 
@@ -134,11 +136,11 @@ async function loadPart(part, versionQuery) {
   const started = Date.now();
   const response = await fetchWithTimeout(part + versionQuery, { cache: 'no-store' });
   if (!response.ok) {
-    throw new Error('鬲毓匕乇 鬲丨賲賷賱 賲賱賮: ' + part + ' - HTTP ' + response.status);
+    throw new Error('تعذر تحميل ملف: ' + part + ' - HTTP ' + response.status);
   }
   const text = await response.text();
   if (!text || !text.trim()) {
-    throw new Error('賲賱賮 賮丕乇睾 兀賵 睾賷乇 氐丕賱丨: ' + part);
+    throw new Error('ملف فارغ أو غير صالح: ' + part);
   }
   window.__hesabiRuntime.loadedParts.push({ file: part, bytes: text.length, ms: Date.now() - started });
   return '\n/* ===== ' + part + ' ===== */\n' + text;
@@ -219,6 +221,6 @@ loadHesabiRuntime().catch(error => {
   const message = error && (error.message || String(error));
   setRuntimePhase('failed', { error: message });
   try { localStorage.setItem('hesabi_last_runtime_error', JSON.stringify(window.__hesabiRuntime)); } catch (_) {}
-  runtimeMessage('鬲毓匕乇 鬲丨賲賷賱 賲賱賮丕鬲 丕賱鬲胤亘賷賯', '賮卮賱 鬲丨賲賷賱 兀賵 鬲卮睾賷賱 賲賱賮丕鬲 丕賱鬲胤亘賷賯 亘毓丿 丕賱鬲賯爻賷賲.', message || '');
+  runtimeMessage('تعذر تحميل ملفات التطبيق', 'فشل تحميل أو تشغيل ملفات التطبيق بعد التقسيم.', message || '');
 });
 

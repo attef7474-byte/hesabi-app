@@ -72,7 +72,7 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.93';
+const APP_VERSION='1.0.94';
 const APP_BUILD_CODE = 93;
 let renderReports;
 

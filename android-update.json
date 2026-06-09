@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 93,
-  "latestVersionName": "1.0.93",
+  "latestVersionCode": 94,
+  "latestVersionName": "1.0.94",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.93",
-  "message": "إصلاح نهائي لصفحة الأصناف: التنقل بين أيقونات الأصناف، البحث المطابق داخل الجدول، وأزرار تعديل/سعر/إظهار/حذف داخل جدول الأصناف على الهاتف.",
+  "title": "تحديث حسابي التجاري 1.0.94",
+  "message": "إصلاح ترميز اللغة العربية وإزالة ظهور الرموز الغريبة في الواجهة، مع الحفاظ على إصلاحات الأصناف والرسائل السابقة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
   "releaseNotes": "Items Actions/Search Fix: ربط أحداث التبويبات بالاعتماد على event delegation، تحسين البحث العربي والباركود، تثبيت أزرار الإجراءات داخل جدول الأصناف، والحفاظ على عدم إعادة الرسم أثناء الكتابة حتى لا تختفي لوحة المفاتيح.",
   "notes": "مرحلة إغلاق نهائية آمنة للفحص والتحقق فقط.",
-  "versionName": "1.0.93",
-  "versionCode": 93,
+  "versionName": "1.0.94",
+  "versionCode": 94,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

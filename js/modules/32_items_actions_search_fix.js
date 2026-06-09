@@ -1,10 +1,10 @@
-/* Hesabi 1.0.93 - Items actions/search/tab final fix.
+/* Hesabi 1.0.94 - Items actions/search/tab final fix.
    Scope: trader items UI only. Fixes tab navigation, item search filtering, and table action buttons.
    No Firestore rules, no order/payment/invoice logic changes. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.93";
+  const VERSION = "1.0.94";
   const ITEM_PAGE_SIZE = 10;
   const ITEM_TABLE_KEYS = { itemsList:true, itemsEditList:true, itemsPriceList:true };
 
