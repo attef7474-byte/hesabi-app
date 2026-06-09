@@ -594,3 +594,22 @@ section.card > p.muted {
 }
 .clean-page-head { padding-bottom: 12px !important; }
 .clean-page-head h2 { margin-bottom: 0 !important; }
+
+
+/* Hesabi 1.0.103 - messages/notifications final mobile sweep */
+.mn-page-sweep{max-width:100%;overflow-x:hidden}
+.mn-search-box{margin:0 0 10px 0}
+.mn-search-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mn-search-row input{flex:1 1 180px;min-width:0}
+.mn-safe-table-wrap{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mn-safe-table{min-width:680px;width:100%;border-collapse:collapse}
+.wa-chat-card,.notify-card,.notify-list-card{max-width:100%;overflow:hidden}
+.wa-thread,.notify-list{max-width:100%;overflow-x:hidden}
+.wa-bubble,.notify-row{overflow-wrap:anywhere;word-break:break-word}
+@media (max-width: 640px){
+  .mn-search-row{display:grid;grid-template-columns:1fr auto auto;gap:6px}
+  .mn-search-row input{width:100%;min-width:0}
+  .mn-search-row .btn{padding:9px 10px;white-space:nowrap}
+  .notify-row{display:grid;grid-template-columns:auto 1fr;gap:8px}
+  .notify-meta{grid-column:1 / -1;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+}

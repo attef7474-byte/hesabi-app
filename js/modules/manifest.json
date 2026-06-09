@@ -1,6 +1,6 @@
 {
-  "version": "1.0.102",
-  "buildCode": 102,
+  "version": "1.0.103",
+  "buildCode": 103,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -242,5 +242,8 @@
       "description": "Returns and schedules page final sweep: delegated tabs, return approve/reject/request, schedule create/pay/cancel, invoice autofill and mobile table guards",
       "lines": 256
     }
+  ],
+  "modules": [
+    "js/modules/43_messages_notifications_page_sweep.js"
   ]
 }
