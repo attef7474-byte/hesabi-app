@@ -1,10 +1,10 @@
-/* Hesabi 1.0.102 - Full runtime smoke stabilization.
+/* Hesabi 1.0.106 - Full runtime smoke stabilization.
    Non-intrusive checks only: no Firestore writes, no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.102";
-  const BUILD_CODE = 102;
+  const VERSION = "1.0.106";
+  const BUILD_CODE = 106;
 
   const EXPECTED_MODULES = [
     "js/modules/00_core_update_auth.js",
@@ -44,13 +44,21 @@
     "js/modules/70_settings_owner_items_bridge.js",
     "js/modules/29_items_mobile_table_fix.js",
     "js/modules/31_final_release_validation.js",
+    "js/modules/32_items_actions_search_fix.js",
+    "js/modules/33_utf8_arabic_encoding_repair.js",
     "js/modules/99_runtime_missing_functions_fix.js",
+    "js/modules/34_items_final_interaction_controller.js",
+    "js/modules/35_items_remaining_actions_fix.js",
     "js/modules/36_settings_invoices_page_sweep.js",
     "js/modules/37_payments_statements_page_sweep.js",
     "js/modules/38_orders_approval_page_sweep.js",
     "js/modules/39_remove_page_explanations.js",
     "js/modules/41_catalog_cart_purchase_page_sweep.js",
-    "js/modules/42_returns_schedules_page_sweep.js"
+    "js/modules/42_returns_schedules_page_sweep.js",
+    "js/modules/43_messages_notifications_page_sweep.js",
+    "js/modules/44_customers_owner_page_sweep.js",
+    "js/modules/45_reports_policies_page_sweep.js",
+    "js/modules/46_audit_update_cache_final_sweep.js"
   ];
 
   const CHECKS = [
@@ -85,7 +93,17 @@
     { name: "settings-invoices-page-sweep", fn: "hesabiSettingsInvoicesPageSweepSelfCheck", required: true },
     { name: "payments-statements-page-sweep", fn: "hesabiPaymentsStatementsPageSweepSelfCheck", required: true },
     { name: "orders-approval-page-sweep", fn: "hesabiOrdersApprovalPageSweepSelfCheck", required: true },
+    { name: "remove-page-explanations", fn: "hesabiRemovePageExplanationsSelfCheck", required: true },
+    { name: "catalog-cart-purchase-page-sweep", fn: "hesabiCatalogCartPurchasePageSweepSelfCheck", required: true },
     { name: "returns-schedules-page-sweep", fn: "hesabiReturnsSchedulesPageSweepSelfCheck", required: true },
+    { name: "messages-notifications-page-sweep", fn: "hesabiMessagesNotificationsPageSweepSelfCheck", required: true },
+    { name: "customers-owner-page-sweep", fn: "hesabiCustomersOwnerPageSweepSelfCheck", required: true },
+    { name: "reports-policies-page-sweep", fn: "hesabiReportsPoliciesPageSweepSelfCheck", required: true },
+    { name: "items-actions-search-fix", fn: "hesabiItemsActionsSearchFixSelfCheck", required: true },
+    { name: "utf8-arabic-encoding-repair", fn: "hesabiUtf8ArabicEncodingRepairSelfCheck", required: true },
+    { name: "items-final-interaction-controller", fn: "hesabiItemsFinalInteractionControllerSelfCheck", required: true },
+    { name: "items-remaining-actions-fix", fn: "hesabiItemsRemainingActionsFixSelfCheck", required: true },
+    { name: "audit-update-cache-final-sweep", fn: "hesabiAuditUpdateCacheFinalSweepSelfCheck", required: true },
     { name: "runtime-missing-functions", fn: "hesabiRuntimeMissingFunctionsFix", required: true },
     { name: "runtime-self-check", fn: "hesabiRuntimeSelfCheck", required: true },
     { name: "final-self-check", fn: "hesabiFinalSelfCheck", required: true }

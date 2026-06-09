@@ -1,9 +1,9 @@
-/* Hesabi 1.0.102 - Final Release Validation.
+/* Hesabi 1.0.106 - Final Release Validation.
    Scope: diagnostics + mobile guards only. No Firestore writes, no order/payment/item mutations. */
 (function(){
   "use strict";
-  const VERSION = "1.0.102";
-  const BUILD_CODE = 102;
+  const VERSION = "1.0.106";
+  const BUILD_CODE = 106;
   const CRITICAL_MODULES = [
     "js/modules/25_apk_version_final_check.js",
     "js/modules/26_production_release_candidate.js",
@@ -12,7 +12,11 @@
     "js/modules/29_items_mobile_table_fix.js",
     "js/modules/31_final_release_validation.js",
     "js/modules/99_runtime_missing_functions_fix.js",
-    "js/modules/42_returns_schedules_page_sweep.js"
+    "js/modules/42_returns_schedules_page_sweep.js",
+    "js/modules/43_messages_notifications_page_sweep.js",
+    "js/modules/44_customers_owner_page_sweep.js",
+    "js/modules/45_reports_policies_page_sweep.js",
+    "js/modules/46_audit_update_cache_final_sweep.js"
   ];
   const CRITICAL_CHECKS = [
     "hesabiApkVersionFinalCheckSelfCheck",
@@ -22,7 +26,11 @@
     "hesabiItemsMobileTableFixSelfCheck",
     "hesabiFullRuntimeSmokeSelfCheck",
     "hesabiRuntimeSmokeSelfCheck",
-    "hesabiReturnsSchedulesPageSweepSelfCheck"
+    "hesabiReturnsSchedulesPageSweepSelfCheck",
+    "hesabiMessagesNotificationsPageSweepSelfCheck",
+    "hesabiCustomersOwnerPageSweepSelfCheck",
+    "hesabiReportsPoliciesPageSweepSelfCheck",
+    "hesabiAuditUpdateCacheFinalSweepSelfCheck"
   ];
   function safeArray(value){ return Array.isArray(value) ? value : []; }
   function safeString(value){ try{ return String(value == null ? "" : value); }catch(_){ return ""; } }

@@ -3,8 +3,8 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.89";
-  const BUILD_CODE = 89;
+  const VERSION = "1.0.106";
+  const BUILD_CODE = 106;
   const STORAGE_PREFIX = "hesabi_cache_update_stability";
   const DEFAULT_UPDATE_URLS = ["android-update.json", "/android-update.json"];
 

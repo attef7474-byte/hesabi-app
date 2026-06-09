@@ -1,6 +1,6 @@
 {
-  "version": "1.0.105",
-  "buildCode": 105,
+  "version": "1.0.106",
+  "buildCode": 106,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -251,11 +251,18 @@
       "file": "js/modules/45_reports_policies_page_sweep.js",
       "lines": 212,
       "description": "Reports and policies page final sweep: delegated report export buttons, policy save, tabs, local search and mobile table guards"
+    },
+    {
+      "file": "js/modules/46_audit_update_cache_final_sweep.js",
+      "lines": 335,
+      "description": "Audit and final update/cache sweep: audit search/export/mobile guards, final cache clean, UI refresh, APK/update diagnostics and aligned runtime version checks"
     }
   ],
   "modules": [
     "js/modules/43_messages_notifications_page_sweep.js",
     "js/modules/44_customers_owner_page_sweep.js",
-    "js/modules/45_reports_policies_page_sweep.js"
-  ]
+    "js/modules/45_reports_policies_page_sweep.js",
+    "js/modules/46_audit_update_cache_final_sweep.js"
+  ],
+  "generatedAt": "2026-06-09T21:30:00Z"
 }
