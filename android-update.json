@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 107,
-  "latestVersionName": "1.0.107",
+  "latestVersionCode": 108,
+  "latestVersionName": "1.0.108",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.107",
-  "message": "تثبيت صفحة المخزون والتحصيل اليومي: تبويبات، بحث ثابت، تسوية المخزون، فتح تعديل الصنف، قبول/رفض التحصيل، مشاركة وتصدير CSV وحماية الجداول على الهاتف.",
+  "title": "تحديث حسابي التجاري 1.0.108",
+  "message": "تثبيت التسجيل والدخول وربط العميل بالتاجر: تبويبات الدخول، حقول الهاتف والكود، تهيئة التاجر والعميل، صفحة متاجري، تبديل المتجر، إضافة واسترجاع الربط وحماية العرض على الهاتف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Stock + daily collections page sweep: stable tabs, explicit search to keep keyboard open, stock adjustment/edit actions, collection approve/reject/receipt actions, CSV/share, mobile table containment, and runtime checks without changing Firestore write logic.",
-  "notes": "تثبيت المخزون والتحصيل اليومي بدون تغيير منطق البيانات.",
-  "versionName": "1.0.107",
-  "versionCode": 107,
+  "releaseNotes": "Login, registration and customer-to-trader linking page sweep: stable auth tabs, phone/code inputs, trader/customer setup binding, My Stores actions, switch/add/recover linking, mobile layout containment and runtime checks without changing Firestore write logic.",
+  "notes": "تثبيت التسجيل والدخول وربط العميل بالتاجر بدون تغيير منطق البيانات.",
+  "versionName": "1.0.108",
+  "versionCode": 108,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

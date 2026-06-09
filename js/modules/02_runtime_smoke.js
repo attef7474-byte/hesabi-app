@@ -1,10 +1,10 @@
-/* Hesabi 1.0.107 - Full runtime smoke stabilization.
+/* Hesabi 1.0.108 - Full runtime smoke stabilization.
    Non-intrusive checks only: no Firestore writes, no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.107";
-  const BUILD_CODE = 107;
+  const VERSION = "1.0.108";
+  const BUILD_CODE = 108;
 
   const EXPECTED_MODULES = [
     "js/modules/00_core_update_auth.js",
@@ -59,7 +59,8 @@
     "js/modules/44_customers_owner_page_sweep.js",
     "js/modules/45_reports_policies_page_sweep.js",
     "js/modules/46_audit_update_cache_final_sweep.js",
-    "js/modules/47_stock_collections_page_sweep.js"
+    "js/modules/47_stock_collections_page_sweep.js",
+    "js/modules/48_auth_customer_linking_page_sweep.js"
   ];
 
   const CHECKS = [
@@ -106,6 +107,7 @@
     { name: "items-remaining-actions-fix", fn: "hesabiItemsRemainingActionsFixSelfCheck", required: true },
     { name: "audit-update-cache-final-sweep", fn: "hesabiAuditUpdateCacheFinalSweepSelfCheck", required: true },
     { name: "stock-collections-page-sweep", fn: "hesabiStockCollectionsPageSweepSelfCheck", required: true },
+    { name: "auth-customer-linking-page-sweep", fn: "hesabiAuthCustomerLinkingPageSweepSelfCheck", required: true },
     { name: "runtime-missing-functions", fn: "hesabiRuntimeMissingFunctionsFix", required: true },
     { name: "runtime-self-check", fn: "hesabiRuntimeSelfCheck", required: true },
     { name: "final-self-check", fn: "hesabiFinalSelfCheck", required: true }

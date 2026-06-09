@@ -1,6 +1,6 @@
 {
-  "version": "1.0.107",
-  "buildCode": 106,
+  "version": "1.0.108",
+  "buildCode": 108,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -256,6 +256,16 @@
       "file": "js/modules/46_audit_update_cache_final_sweep.js",
       "lines": 335,
       "description": "Audit and final update/cache sweep: audit search/export/mobile guards, final cache clean, UI refresh, APK/update diagnostics and aligned runtime version checks"
+    },
+    {
+      "file": "js/modules/47_stock_collections_page_sweep.js",
+      "lines": 406,
+      "description": "Stock and daily collections page final sweep: tabs, explicit search, stock adjustment/edit actions, collection approve/reject/receipt, CSV/share and mobile table guards"
+    },
+    {
+      "file": "js/modules/48_auth_customer_linking_page_sweep.js",
+      "lines": 272,
+      "description": "Login, registration and customer-to-trader linking page final sweep: auth tabs, phone/code inputs, profile setup binding, My Stores switch/add/recover actions and mobile guards"
     }
   ],
   "modules": [
@@ -263,15 +273,16 @@
     "js/modules/44_customers_owner_page_sweep.js",
     "js/modules/45_reports_policies_page_sweep.js",
     "js/modules/46_audit_update_cache_final_sweep.js",
-    "js/modules/47_stock_collections_page_sweep.js"
+    "js/modules/47_stock_collections_page_sweep.js",
+    "js/modules/48_auth_customer_linking_page_sweep.js"
   ],
-  "generatedAt": "2026-06-09T21:50:00Z",
-  "build": 107,
+  "generatedAt": "2026-06-09T22:05:00Z",
+  "build": 108,
   "files": [
     {
-      "file": "js/modules/47_stock_collections_page_sweep.js",
-      "lines": 406,
-      "description": "Stock and daily collections page final sweep: tabs, explicit search, stock adjustment/edit actions, collection approve/reject/receipt, CSV/share and mobile table guards"
+      "file": "js/modules/48_auth_customer_linking_page_sweep.js",
+      "lines": 272,
+      "description": "Login, registration and customer-to-trader linking page final sweep: auth tabs, phone/code inputs, profile setup binding, My Stores switch/add/recover actions and mobile guards"
     }
   ]
 }
