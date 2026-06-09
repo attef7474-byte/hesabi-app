@@ -1,6 +1,6 @@
 {
-  "version": "1.0.94",
-  "buildCode": 94,
+  "version": "1.0.95",
+  "buildCode": 95,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -201,6 +201,11 @@
       "file": "js/modules/99_runtime_missing_functions_fix.js",
       "lines": 163,
       "description": "Runtime safety aliases for missing critical functions"
+    },
+    {
+      "file": "js/modules/34_items_final_interaction_controller.js",
+      "lines": 265,
+      "description": "Final items page interaction controller: fixes item tabs, search, paging, and table action buttons by bridging module-scoped state/cache and rebinding handlers"
     }
   ]
 }
