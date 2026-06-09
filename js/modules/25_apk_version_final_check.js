@@ -4,8 +4,8 @@
   "use strict";
   const VERSION = "1.0.86";
   const BUILD_CODE = 86;
-  const TARGET_VERSION = "1.0.110";
-  const TARGET_BUILD = 110;
+  const TARGET_VERSION = "1.0.111";
+  const TARGET_BUILD = 111;
 
   function safeNumber(value){ const n = Number(value || 0); return Number.isFinite(n) ? n : 0; }
   function safeString(value){ try { return String(value == null ? "" : value); } catch (_) { return ""; } }
@@ -72,8 +72,8 @@
     const warnings = [];
     if(!nativeInfo.nativeAvailable) warnings.push("الجسر الأصلي غير متاح في المتصفح؛ هذا طبيعي خارج APK.");
     if(nativeInfo.nativeAvailable && nativeInfo.versionCode && nativeInfo.versionCode < TARGET_BUILD) warnings.push("APK المثبت أقدم من build المطلوب؛ ثبّت آخر APK من GitHub Actions.");
-    if(!runtimeState.ok) warnings.push("نسخة runtime أو APP_VERSION لا تطابق 1.0.110 / build 110.");
-    if(!updateState.ok) warnings.push("ملف android-update.json المخزن لا يطابق 1.0.110 / build 110.");
+    if(!runtimeState.ok) warnings.push("نسخة runtime أو APP_VERSION لا تطابق 1.0.111 / build 111.");
+    if(!updateState.ok) warnings.push("ملف android-update.json المخزن لا يطابق 1.0.111 / build 111.");
     return { ok: runtimeState.ok && updateState.ok, version: VERSION, build: BUILD_CODE, targetVersion: TARGET_VERSION, targetBuild: TARGET_BUILD, nativeInfo, runtimeState, updateState, warnings };
   }
   function selfCheck(){

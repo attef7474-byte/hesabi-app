@@ -1,7 +1,7 @@
 {
-  "version": "1.0.110",
-  "build": 110,
-  "generatedAt": "2026-06-09T22:20:00Z",
+  "version": "1.0.111",
+  "build": 111,
+  "generatedAt": "2026-06-09T22:30:00Z",
   "modules": [
     "js/modules/00_core_update_auth.js",
     "js/modules/01_update_cache_stability.js",
@@ -58,7 +58,8 @@
     "js/modules/47_stock_collections_page_sweep.js",
     "js/modules/48_auth_customer_linking_page_sweep.js",
     "js/modules/49_home_search_navigation_sweep.js",
-    "js/modules/51_final_all_pages_validation_cleanup.js"
+    "js/modules/51_final_all_pages_validation_cleanup.js",
+    "js/modules/52_top_overflow_menu_actions.js"
   ],
   "files": [
     {
@@ -340,6 +341,11 @@
       "file": "js/modules/51_final_all_pages_validation_cleanup.js",
       "lines": 261,
       "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/52_top_overflow_menu_actions.js",
+      "lines": 325,
+      "description": "Top overflow menu actions: update, contact, complaints and app information"
     }
   ]
 }

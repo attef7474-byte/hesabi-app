@@ -1,10 +1,10 @@
-/* Hesabi 1.0.110 - Final All Pages Validation + Explanation Cleanup.
+/* Hesabi 1.0.111 - Final All Pages Validation + Explanation Cleanup.
    Scope: final read-only page checks, mobile guards, and hiding explanatory/help text inside pages.
    No Firestore writes, no orders/payments/invoices/items mutations. */
 (function(){
   "use strict";
-  const VERSION = "1.0.110";
-  const BUILD_CODE = 110;
+  const VERSION = "1.0.111";
+  const BUILD_CODE = 111;
 
   const PAGE_IDS = [
     "home","search","items","customers","orders","invoices","payments","statement","returns","schedules",
@@ -65,6 +65,7 @@
     ["stock-collections", "hesabiStockCollectionsPageSweepSelfCheck"],
     ["auth-linking", "hesabiAuthCustomerLinkingPageSweepSelfCheck"],
     ["home-search-navigation", "hesabiHomeSearchNavigationSweepSelfCheck"],
+    ["top-overflow-menu", "hesabiTopOverflowMenuActionsSelfCheck"],
     ["final-release-validation", "hesabiFinalReleaseValidationSelfCheck"]
   ];
 

@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 110,
-  "latestVersionName": "1.0.110",
+  "latestVersionCode": 111,
+  "latestVersionName": "1.0.111",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.110",
-  "message": "الفحص النهائي الشامل لكل الصفحات مع إزالة الشروحات والتوضيحات الظاهرة داخل الصفحات، وتثبيت فحوصات runtime والنسخة والكاش بدون تغيير منطق البيانات.",
+  "title": "تحديث حسابي التجاري 1.0.111",
+  "message": "إضافة قائمة الثلاث نقاط أعلى الصفحة بجانب شعار حسابي التجاري مع تحديث التطبيق، تواصل معنا، إبلاغ وشكاوي، ومعلومات التطبيق كخيارات فعالة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Final all-pages validation and explanation cleanup: hides in-page helper/explanation text, validates page sweep modules, mobile containment, runtime version alignment, update/cache/APK diagnostics, without changing Firestore write logic.",
-  "notes": "فحص شامل للصفحات وإزالة الشروحات الظاهرة داخل التطبيق.",
-  "versionName": "1.0.110",
-  "versionCode": 110,
+  "releaseNotes": "Top overflow menu actions: update UI/APK/version check, contact form, complaint/report form, app info dialog, local save/share/mail fallback, runtime self-check integration.",
+  "notes": "إضافة قائمة أعلى التطبيق وتفعيل خياراتها.",
+  "versionName": "1.0.111",
+  "versionCode": 111,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
