@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 95,
-  "latestVersionName": "1.0.95",
+  "latestVersionCode": 96,
+  "latestVersionName": "1.0.96",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.95",
-  "message": "إصلاح نهائي لتفاعل صفحة الأصناف: التنقل بين التبويبات، البحث، التصفح السابق/التالي، وأزرار تعديل/سعر/حفظ/إظهار/حذف داخل الجدول.",
+  "title": "تحديث حسابي التجاري 1.0.96",
+  "message": "إصلاح نهائي للأزرار المتبقية في صفحة الأصناف: إلغاء التحديد، زر تعديل داخل الجدول، وحفظ أسعار الأصناف من تبويب الأسعار.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Items Final Interaction Controller: ربط state/cache مع معالجات الأحداث القديمة، تثبيت أزرار تبويبات الأصناف، تثبيت البحث بدون إخفاء لوحة المفاتيح، تثبيت أزرار الإجراءات داخل جدول الأصناف، وإبقاء منطق Firestore كما هو.",
-  "notes": "إصلاح واجهة نهائي ومحدود لصفحة الأصناف فقط.",
-  "versionName": "1.0.95",
-  "versionCode": 95,
+  "releaseNotes": "Items Remaining Actions Fix: توحيد مسارات إلغاء التحديد، إعادة تعريف selectItemForEdit بشكل مباشر، وإصلاح حفظ السعر ليتوافق مع حقول cash_<id>/credit_<id> و priceCash_<id>/priceCredit_<id>.",
+  "notes": "إصلاح تفاعل محدود ومباشر لصفحة الأصناف فقط.",
+  "versionName": "1.0.96",
+  "versionCode": 96,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

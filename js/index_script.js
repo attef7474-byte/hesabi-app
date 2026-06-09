@@ -1,9 +1,9 @@
-// Hesabi App 1.0.95
+// Hesabi App 1.0.96
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.95';
-const HESABI_APP_BUILD_CODE = 95;
+const HESABI_APP_VERSION = '1.0.96';
+const HESABI_APP_BUILD_CODE = 96;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -47,6 +47,7 @@ const HESABI_MODULE_PARTS = [
   'js/modules/33_utf8_arabic_encoding_repair.js',
   'js/modules/99_runtime_missing_functions_fix.js',
   'js/modules/34_items_final_interaction_controller.js',
+  'js/modules/35_items_remaining_actions_fix.js',
 ];
 
 const HESABI_REQUIRED_GLOBALS = [
@@ -85,6 +86,7 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiItemsActionsSearchFixSelfCheck',
   'hesabiUtf8ArabicEncodingRepairSelfCheck',
   'hesabiItemsFinalInteractionControllerSelfCheck',
+  'hesabiItemsRemainingActionsFixSelfCheck',
   'hesabiFullRuntimeSmokeSelfCheck'
 ];
 
