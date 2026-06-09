@@ -44,7 +44,9 @@
     "js/modules/70_settings_owner_items_bridge.js",
     "js/modules/29_items_mobile_table_fix.js",
     "js/modules/31_final_release_validation.js",
-    "js/modules/99_runtime_missing_functions_fix.js"
+    "js/modules/99_runtime_missing_functions_fix.js",
+    "js/modules/36_settings_invoices_page_sweep.js",
+    "js/modules/37_payments_statements_page_sweep.js"
   ];
 
   const CHECKS = [
@@ -76,6 +78,8 @@
     { name: "dialogs-toasts", fn: "hesabiDialogsToastsSelfCheck", required: true },
     { name: "android-bridge", fn: "hesabiAndroidBridgeSelfCheck", required: true },
     { name: "final-release-validation", fn: "hesabiFinalReleaseValidationSelfCheck", required: true },
+    { name: "settings-invoices-page-sweep", fn: "hesabiSettingsInvoicesPageSweepSelfCheck", required: true },
+    { name: "payments-statements-page-sweep", fn: "hesabiPaymentsStatementsPageSweepSelfCheck", required: true },
     { name: "runtime-missing-functions", fn: "hesabiRuntimeMissingFunctionsFix", required: true },
     { name: "runtime-self-check", fn: "hesabiRuntimeSelfCheck", required: true },
     { name: "final-self-check", fn: "hesabiFinalSelfCheck", required: true }

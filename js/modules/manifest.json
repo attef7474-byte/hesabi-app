@@ -1,6 +1,6 @@
 {
-  "version": "1.0.97",
-  "buildCode": 97,
+  "version": "1.0.98",
+  "buildCode": 98,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -216,6 +216,11 @@
       "file": "js/modules/36_settings_invoices_page_sweep.js",
       "lines": 232,
       "description": "Settings and invoices page final sweep: delegated tabs/actions, invoice filters, details/share buttons, and page self-checks"
+    },
+    {
+      "file": "js/modules/37_payments_statements_page_sweep.js",
+      "lines": 217,
+      "description": "Payments and statements page final sweep: delegated tabs, payment actions, receipts, statement filter/share, and mobile table guards"
     }
   ]
 }
