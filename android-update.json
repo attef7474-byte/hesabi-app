@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 109,
-  "latestVersionName": "1.0.109",
+  "latestVersionCode": 110,
+  "latestVersionName": "1.0.110",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.109",
-  "message": "تثبيت الرئيسية والبحث العام وشريط التنقل: أزرار الرئيسية، البحث بدون إغلاق لوحة المفاتيح، فتح النتائج، شريط تنقل سفلي آمن ومحصور، وحماية العرض على الهاتف.",
+  "title": "تحديث حسابي التجاري 1.0.110",
+  "message": "الفحص النهائي الشامل لكل الصفحات مع إزالة الشروحات والتوضيحات الظاهرة داخل الصفحات، وتثبيت فحوصات runtime والنسخة والكاش بدون تغيير منطق البيانات.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Home, global search and bottom navigation sweep: stable home shortcuts, explicit global search without keyboard-closing rerenders, result open actions, scoped bottom navigation bindings, mobile containment and runtime checks without changing Firestore write logic.",
-  "notes": "تثبيت الرئيسية والبحث العام وشريط التنقل بدون تغيير منطق البيانات.",
-  "versionName": "1.0.109",
-  "versionCode": 109,
+  "releaseNotes": "Final all-pages validation and explanation cleanup: hides in-page helper/explanation text, validates page sweep modules, mobile containment, runtime version alignment, update/cache/APK diagnostics, without changing Firestore write logic.",
+  "notes": "فحص شامل للصفحات وإزالة الشروحات الظاهرة داخل التطبيق.",
+  "versionName": "1.0.110",
+  "versionCode": 110,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

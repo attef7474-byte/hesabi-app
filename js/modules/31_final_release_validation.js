@@ -1,9 +1,9 @@
-/* Hesabi 1.0.109 - Final Release Validation.
+/* Hesabi 1.0.110 - Final Release Validation.
    Scope: diagnostics + mobile guards only. No Firestore writes, no order/payment/item mutations. */
 (function(){
   "use strict";
-  const VERSION = "1.0.109";
-  const BUILD_CODE = 109;
+  const VERSION = "1.0.110";
+  const BUILD_CODE = 110;
   const CRITICAL_MODULES = [
     "js/modules/25_apk_version_final_check.js",
     "js/modules/26_production_release_candidate.js",
@@ -19,7 +19,8 @@
     "js/modules/46_audit_update_cache_final_sweep.js",
     "js/modules/47_stock_collections_page_sweep.js",
     "js/modules/48_auth_customer_linking_page_sweep.js",
-    "js/modules/49_home_search_navigation_sweep.js"
+    "js/modules/49_home_search_navigation_sweep.js",
+    "js/modules/51_final_all_pages_validation_cleanup.js"
   ];
   const CRITICAL_CHECKS = [
     "hesabiApkVersionFinalCheckSelfCheck",
@@ -36,7 +37,8 @@
     "hesabiAuditUpdateCacheFinalSweepSelfCheck",
     "hesabiStockCollectionsPageSweepSelfCheck",
     "hesabiAuthCustomerLinkingPageSweepSelfCheck",
-    "hesabiHomeSearchNavigationSweepSelfCheck"
+    "hesabiHomeSearchNavigationSweepSelfCheck",
+    "hesabiFinalAllPagesValidationCleanupSelfCheck"
   ];
   function safeArray(value){ return Array.isArray(value) ? value : []; }
   function safeString(value){ try{ return String(value == null ? "" : value); }catch(_){ return ""; } }

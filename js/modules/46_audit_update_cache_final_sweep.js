@@ -1,10 +1,10 @@
-/* Hesabi 1.0.109 - Audit + Final Update/Cache Sweep.
+/* Hesabi 1.0.110 - Audit + Final Update/Cache Sweep.
    Scope: audit page bindings, local search/export, mobile containment, and final update/cache diagnostics only.
    No Firestore writes, orders, payments, invoices, items, or subscription logic are changed. */
 (function(){
   "use strict";
-  const VERSION = "1.0.109";
-  const BUILD_CODE = 109;
+  const VERSION = "1.0.110";
+  const BUILD_CODE = 110;
   const STORE = "hesabi_audit_update_cache_final";
 
   function byId(id){ try { return document.getElementById(id); } catch (_) { return null; } }

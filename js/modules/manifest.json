@@ -1,293 +1,345 @@
 {
-  "version": "1.0.109",
-  "buildCode": 109,
-  "parts": [
-    {
-      "file": "js/modules/00_core_update_auth.js",
-      "lines": 810,
-      "description": "النواة العامة، الإصدارات، التحديث، المصادقة والدوال المساعدة الأساسية"
-    },
-    {
-      "file": "js/modules/01_update_cache_stability.js",
-      "lines": 279,
-      "description": "App cache/update stability helpers for cache clearing, no-store update checks, refresh URLs and self-checks"
-    },
-    {
-      "file": "js/modules/07_utils_helpers.js",
-      "lines": 108,
-      "description": "Safe generic utilities/helpers for escaping, money formatting, IDs, phone normalization and file reading wrappers"
-    },
-    {
-      "file": "js/modules/06_excel_import_export.js",
-      "lines": 103,
-      "description": "Safe Excel/CSV import-export helpers, CSV builder/downloader and delimited text parser wrappers"
-    },
-    {
-      "file": "js/modules/05_items_helpers.js",
-      "lines": 153,
-      "description": "Safe item helpers for categories, duplicate checks, item lookup, code/OCR helpers and selected item utilities"
-    },
-    {
-      "file": "js/modules/04_catalog_helpers.js",
-      "lines": 259,
-      "description": "Safe customer catalog helpers for catalog state, cart totals, item visibility, search, sorting and pagination"
-    },
-    {
-      "file": "js/modules/03_reports_helpers.js",
-      "lines": 147,
-      "description": "Safe reports helpers for snapshots, totals, low stock, search text, export button binding and business report text"
-    },
-    {
-      "file": "js/modules/02_runtime_smoke.js",
-      "lines": 248,
-      "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
-    },
-    {
-      "file": "js/modules/08_dialogs_toasts.js",
-      "lines": 111,
-      "description": "Safe dialogs, messages, toasts and confirmation wrappers"
-    },
-    {
-      "file": "js/modules/09_android_bridge.js",
-      "lines": 123,
-      "description": "Safe Android bridge helpers using HesabiAndroid"
-    },
-    {
-      "file": "js/modules/10_firebase_live_data.js",
-      "lines": 252,
-      "description": "تهيئة Firebase والمستمعات اللحظية والبيانات العامة"
-    },
-    {
-      "file": "js/modules/11_settings_helpers.js",
-      "lines": 223,
-      "description": "Settings page stabilization helpers for tabs, safe action binding, update/cache/security shortcuts and self-checks"
-    },
-    {
-      "file": "js/modules/12_messages_helpers.js",
-      "lines": 167,
-      "description": "Messages mobile layout fix: WhatsApp-style safe bubbles, no wide table, send binding and self-checks"
-    },
-    {
-      "file": "js/modules/13_payments_helpers.js",
-      "lines": 193,
-      "description": "Payments page stabilization helpers for safe payment normalization, status filters, summary stats, rows rendering, action binding and self-checks"
-    },
-    {
-      "file": "js/modules/14_invoices_helpers.js",
-      "lines": 262,
-      "description": "Invoices page stabilization helpers for safe invoice normalization, filters, summary stats, rows rendering, share button binding and self-checks"
-    },
-    {
-      "file": "js/modules/15_statements_helpers.js",
-      "lines": 261,
-      "description": "Statements page stabilization helpers for safe ledger normalization, debit/credit summaries, customer filters, rows rendering, action binding and self-checks"
-    },
-    {
-      "file": "js/modules/16_returns_helpers.js",
-      "lines": 220,
-      "description": "Returns page stabilization helpers for safe return normalization, request form fallback, status filters, summary stats, rows rendering, action binding and self-checks"
-    },
-    {
-      "file": "js/modules/17_schedules_helpers.js",
-      "lines": 129,
-      "description": "Schedules page stabilization helpers for safe installments, due/overdue filters, summary stats, rows rendering, action binding and self-checks"
-    },
-    {
-      "file": "js/modules/18_notifications_helpers.js",
-      "lines": 131,
-      "description": "Notifications mobile layout fix: summary cards, notification cards, permission text, badge actions and self-checks"
-    },
-    {
-      "file": "js/modules/19_owner_subscription_helpers.js",
-      "lines": 60,
-      "description": "Owner console and subscription settings stabilization helpers for safe owner metrics, users, shops, controls, subscription forms and self-checks"
-    },
-    {
-      "file": "js/modules/20_permissions_role_guards.js",
-      "lines": 43,
-      "description": "Permissions and role guard review helpers for safe page access matrix, trader/owner checks and self-checks"
-    },
-    {
-      "file": "js/modules/21_firestore_rules_alignment.js",
-      "lines": 62,
-      "description": "Firestore rules alignment review helpers: expected paths, runtime context and permission-denied diagnostics without writes"
-    },
-    {
-      "file": "js/modules/22_customer_purchase_smoke.js",
-      "lines": 68,
-      "description": "Customer purchase full smoke helpers: read-only checks for catalog, cart, linked customer context and required purchase functions"
-    },
-    {
-      "file": "js/modules/23_trader_workflow_smoke.js",
-      "lines": 51,
-      "description": "Trader daily workflow smoke helpers: read-only checks for orders, invoices, payments, statements, returns and schedules functions"
-    },
-    {
-      "file": "js/modules/24_android_native_smoke.js",
-      "lines": 50,
-      "description": "Android native features smoke helpers: safe diagnostics for HesabiAndroid bridge, APK version, cache, barcode, OCR and badge methods"
-    },
-    {
-      "file": "js/modules/25_apk_version_final_check.js",
-      "lines": 88,
-      "description": "APK and web runtime version final check updated for 1.0.92"
-    },
-    {
-      "file": "js/modules/26_production_release_candidate.js",
-      "lines": 73,
-      "description": "Production release candidate smoke aggregator updated for 1.0.92"
-    },
-    {
-      "file": "js/modules/27_customer_catalog_bug_fixes.js",
-      "lines": 99,
-      "description": "Customer catalog bug-fix diagnostics for cart validity, search consistency and layout overlap risk without writes"
-    },
-    {
-      "file": "js/modules/28_payments_statements_real_data.js",
-      "lines": 82,
-      "description": "Payments/statements real-data consistency diagnostics for approved payments, invoices, ledger and balances without writes"
-    },
-    {
-      "file": "js/modules/20_router_setup_profile.js",
-      "lines": 882,
-      "description": "محرك العرض والتنقل وتهيئة الحساب والربط والصفحات العامة"
-    },
-    {
-      "file": "js/modules/30_purchase_catalog.js",
-      "lines": 446,
-      "description": "شراء العميل والكتالوج والسلة ونموذج الطلب مع تفويض آمن لوحدة الكتالوج"
-    },
-    {
-      "file": "js/modules/40_pages_tables.js",
-      "lines": 239,
-      "description": "صفحات الأصناف والعملاء والطلبات والفواتير والجداول الأساسية"
-    },
-    {
-      "file": "js/modules/50_auth_order_approval.js",
-      "lines": 618,
-      "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر مع تفويض آمن لحسابات التقارير والسداد"
-    },
-    {
-      "file": "js/modules/60_payments_returns_policies.js",
-      "lines": 502,
-      "description": "السداد والفواتير والمرتجعات والأقساط والسياسات"
-    },
-    {
-      "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 717,
-      "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات والرسائل"
-    },
-    {
-      "file": "js/modules/29_items_mobile_table_fix.js",
-      "lines": 151,
-      "description": "Items page mobile table/search fix: settings-style top icons, 10-row paging, no keyboard-closing live rerender, and contained horizontal table scroll"
-    },
-    {
-      "file": "js/modules/31_final_release_validation.js",
-      "description": "Final release validation, loader consistency, version target and mobile layout guard self-checks",
-      "lines": 97
-    },
-    {
-      "file": "js/modules/32_items_actions_search_fix.js",
-      "lines": 277,
-      "description": "Items actions/search final fix: robust tab navigation, Arabic/barcode search, paging, and table action buttons via delegated event binding"
-    },
-    {
-      "file": "js/modules/33_utf8_arabic_encoding_repair.js",
-      "lines": 66,
-      "description": "UTF-8 Arabic encoding repair and static UI mojibake self-check"
-    },
-    {
-      "file": "js/modules/99_runtime_missing_functions_fix.js",
-      "lines": 163,
-      "description": "Runtime safety aliases for missing critical functions"
-    },
-    {
-      "file": "js/modules/34_items_final_interaction_controller.js",
-      "lines": 265,
-      "description": "Final items page interaction controller: fixes item tabs, search, paging, and table action buttons by bridging module-scoped state/cache and rebinding handlers"
-    },
-    {
-      "file": "js/modules/35_items_remaining_actions_fix.js",
-      "lines": 183,
-      "description": "Final remaining items actions fix: clear selection, edit action button, and saving prices from current table input IDs"
-    },
-    {
-      "file": "js/modules/36_settings_invoices_page_sweep.js",
-      "lines": 232,
-      "description": "Settings and invoices page final sweep: delegated tabs/actions, invoice filters, details/share buttons, and page self-checks"
-    },
-    {
-      "file": "js/modules/37_payments_statements_page_sweep.js",
-      "lines": 216,
-      "description": "Payments and statements page final sweep: delegated tabs, payment actions, receipts, statement filter/share, and mobile table guards"
-    },
-    {
-      "file": "js/modules/38_orders_approval_page_sweep.js",
-      "lines": 248,
-      "description": "Orders and approval page final sweep: delegated tabs, approve/reject/customer actions, edit/cancel, details toggle, and mobile table guards"
-    },
-    {
-      "file": "js/modules/39_remove_page_explanations.js",
-      "lines": 98,
-      "description": "Remove page explanations and clean page headers while preserving titles, tables, actions and data"
-    },
-    {
-      "file": "js/modules/41_catalog_cart_purchase_page_sweep.js",
-      "lines": 157,
-      "description": "Catalog, cart and customer purchase page final interaction sweep for mobile search, pagination and cart actions"
-    },
-    {
-      "file": "js/modules/42_returns_schedules_page_sweep.js",
-      "description": "Returns and schedules page final sweep: delegated tabs, return approve/reject/request, schedule create/pay/cancel, invoice autofill and mobile table guards",
-      "lines": 256
-    },
-    {
-      "file": "js/modules/44_customers_owner_page_sweep.js",
-      "lines": 204,
-      "description": "Customers and owner/subscriptions page final sweep: tabs, local search, customer actions, owner controls, subscription form and mobile table guards"
-    },
-    {
-      "file": "js/modules/45_reports_policies_page_sweep.js",
-      "lines": 212,
-      "description": "Reports and policies page final sweep: delegated report export buttons, policy save, tabs, local search and mobile table guards"
-    },
-    {
-      "file": "js/modules/46_audit_update_cache_final_sweep.js",
-      "lines": 335,
-      "description": "Audit and final update/cache sweep: audit search/export/mobile guards, final cache clean, UI refresh, APK/update diagnostics and aligned runtime version checks"
-    },
-    {
-      "file": "js/modules/47_stock_collections_page_sweep.js",
-      "lines": 405,
-      "description": "Stock and daily collections page final sweep: tabs, explicit search, stock adjustment/edit actions, collection approve/reject/receipt, CSV/share and mobile table guards"
-    },
-    {
-      "file": "js/modules/48_auth_customer_linking_page_sweep.js",
-      "lines": 272,
-      "description": "Login, registration and customer-to-trader linking page final sweep: auth tabs, phone/code inputs, profile setup binding, My Stores switch/add/recover actions and mobile guards"
-    },
-    {
-      "file": "js/modules/49_home_search_navigation_sweep.js",
-      "lines": 240,
-      "description": "Home, global search and bottom navigation page sweep: stable shortcuts, explicit search, scoped nav binding and mobile guards"
-    }
-  ],
+  "version": "1.0.110",
+  "build": 110,
+  "generatedAt": "2026-06-09T22:20:00Z",
   "modules": [
+    "js/modules/00_core_update_auth.js",
+    "js/modules/01_update_cache_stability.js",
+    "js/modules/07_utils_helpers.js",
+    "js/modules/06_excel_import_export.js",
+    "js/modules/05_items_helpers.js",
+    "js/modules/04_catalog_helpers.js",
+    "js/modules/03_reports_helpers.js",
+    "js/modules/02_runtime_smoke.js",
+    "js/modules/08_dialogs_toasts.js",
+    "js/modules/09_android_bridge.js",
+    "js/modules/10_firebase_live_data.js",
+    "js/modules/11_settings_helpers.js",
+    "js/modules/12_messages_helpers.js",
+    "js/modules/13_payments_helpers.js",
+    "js/modules/14_invoices_helpers.js",
+    "js/modules/15_statements_helpers.js",
+    "js/modules/16_returns_helpers.js",
+    "js/modules/17_schedules_helpers.js",
+    "js/modules/18_notifications_helpers.js",
+    "js/modules/19_owner_subscription_helpers.js",
+    "js/modules/20_permissions_role_guards.js",
+    "js/modules/21_firestore_rules_alignment.js",
+    "js/modules/22_customer_purchase_smoke.js",
+    "js/modules/23_trader_workflow_smoke.js",
+    "js/modules/24_android_native_smoke.js",
+    "js/modules/25_apk_version_final_check.js",
+    "js/modules/26_production_release_candidate.js",
+    "js/modules/27_customer_catalog_bug_fixes.js",
+    "js/modules/28_payments_statements_real_data.js",
+    "js/modules/20_router_setup_profile.js",
+    "js/modules/30_purchase_catalog.js",
+    "js/modules/40_pages_tables.js",
+    "js/modules/50_auth_order_approval.js",
+    "js/modules/60_payments_returns_policies.js",
+    "js/modules/70_settings_owner_items_bridge.js",
+    "js/modules/29_items_mobile_table_fix.js",
+    "js/modules/31_final_release_validation.js",
+    "js/modules/32_items_actions_search_fix.js",
+    "js/modules/33_utf8_arabic_encoding_repair.js",
+    "js/modules/99_runtime_missing_functions_fix.js",
+    "js/modules/34_items_final_interaction_controller.js",
+    "js/modules/35_items_remaining_actions_fix.js",
+    "js/modules/36_settings_invoices_page_sweep.js",
+    "js/modules/37_payments_statements_page_sweep.js",
+    "js/modules/38_orders_approval_page_sweep.js",
+    "js/modules/39_remove_page_explanations.js",
+    "js/modules/41_catalog_cart_purchase_page_sweep.js",
+    "js/modules/42_returns_schedules_page_sweep.js",
     "js/modules/43_messages_notifications_page_sweep.js",
     "js/modules/44_customers_owner_page_sweep.js",
     "js/modules/45_reports_policies_page_sweep.js",
     "js/modules/46_audit_update_cache_final_sweep.js",
     "js/modules/47_stock_collections_page_sweep.js",
-    "js/modules/48_auth_customer_linking_page_sweep.js"
+    "js/modules/48_auth_customer_linking_page_sweep.js",
+    "js/modules/49_home_search_navigation_sweep.js",
+    "js/modules/51_final_all_pages_validation_cleanup.js"
   ],
-  "generatedAt": "2026-06-09T22:05:00Z",
-  "build": 108,
   "files": [
+    {
+      "file": "js/modules/00_core_update_auth.js",
+      "lines": 810,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/01_update_cache_stability.js",
+      "lines": 279,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/07_utils_helpers.js",
+      "lines": 108,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/06_excel_import_export.js",
+      "lines": 103,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/05_items_helpers.js",
+      "lines": 153,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/04_catalog_helpers.js",
+      "lines": 259,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/03_reports_helpers.js",
+      "lines": 147,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/02_runtime_smoke.js",
+      "lines": 250,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/08_dialogs_toasts.js",
+      "lines": 111,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/09_android_bridge.js",
+      "lines": 123,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/10_firebase_live_data.js",
+      "lines": 252,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/11_settings_helpers.js",
+      "lines": 223,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/12_messages_helpers.js",
+      "lines": 167,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/13_payments_helpers.js",
+      "lines": 193,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/14_invoices_helpers.js",
+      "lines": 262,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/15_statements_helpers.js",
+      "lines": 261,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/16_returns_helpers.js",
+      "lines": 220,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/17_schedules_helpers.js",
+      "lines": 129,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/18_notifications_helpers.js",
+      "lines": 131,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/19_owner_subscription_helpers.js",
+      "lines": 60,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/20_permissions_role_guards.js",
+      "lines": 43,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/21_firestore_rules_alignment.js",
+      "lines": 62,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/22_customer_purchase_smoke.js",
+      "lines": 68,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/23_trader_workflow_smoke.js",
+      "lines": 51,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/24_android_native_smoke.js",
+      "lines": 50,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/25_apk_version_final_check.js",
+      "lines": 88,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/26_production_release_candidate.js",
+      "lines": 73,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/27_customer_catalog_bug_fixes.js",
+      "lines": 99,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/28_payments_statements_real_data.js",
+      "lines": 82,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/20_router_setup_profile.js",
+      "lines": 882,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/30_purchase_catalog.js",
+      "lines": 446,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/40_pages_tables.js",
+      "lines": 239,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/50_auth_order_approval.js",
+      "lines": 618,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/60_payments_returns_policies.js",
+      "lines": 502,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/70_settings_owner_items_bridge.js",
+      "lines": 717,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/29_items_mobile_table_fix.js",
+      "lines": 151,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/31_final_release_validation.js",
+      "lines": 99,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/32_items_actions_search_fix.js",
+      "lines": 277,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/33_utf8_arabic_encoding_repair.js",
+      "lines": 66,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/99_runtime_missing_functions_fix.js",
+      "lines": 163,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/34_items_final_interaction_controller.js",
+      "lines": 265,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/35_items_remaining_actions_fix.js",
+      "lines": 183,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/36_settings_invoices_page_sweep.js",
+      "lines": 232,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/37_payments_statements_page_sweep.js",
+      "lines": 216,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/38_orders_approval_page_sweep.js",
+      "lines": 248,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/39_remove_page_explanations.js",
+      "lines": 98,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/41_catalog_cart_purchase_page_sweep.js",
+      "lines": 157,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/42_returns_schedules_page_sweep.js",
+      "lines": 256,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/43_messages_notifications_page_sweep.js",
+      "lines": 155,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/44_customers_owner_page_sweep.js",
+      "lines": 204,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/45_reports_policies_page_sweep.js",
+      "lines": 212,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/46_audit_update_cache_final_sweep.js",
+      "lines": 335,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/47_stock_collections_page_sweep.js",
+      "lines": 405,
+      "description": "Hesabi runtime module"
+    },
     {
       "file": "js/modules/48_auth_customer_linking_page_sweep.js",
       "lines": 272,
-      "description": "Login, registration and customer-to-trader linking page final sweep: auth tabs, phone/code inputs, profile setup binding, My Stores switch/add/recover actions and mobile guards"
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/49_home_search_navigation_sweep.js",
+      "lines": 240,
+      "description": "Hesabi runtime module"
+    },
+    {
+      "file": "js/modules/51_final_all_pages_validation_cleanup.js",
+      "lines": 261,
+      "description": "Hesabi runtime module"
     }
   ]
 }
