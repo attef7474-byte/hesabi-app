@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 89,
-  "latestVersionName": "1.0.89",
+  "latestVersionCode": 90,
+  "latestVersionName": "1.0.90",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.86-1.0.89",
-  "message": "حزمة الفحص النهائي قبل المرشح للنشر: فحص نسخة APK، مرشح النشر، تشخيص كتالوج العميل، ومراجعة بيانات السداد وكشف الحساب بدون تغيير منطق Firestore أو العمليات الحساسة.",
+  "title": "تحديث حسابي التجاري 1.0.90",
+  "message": "إصلاح عرض صفحة الرسائل والإشعارات على الهاتف: إلغاء الجداول العريضة، تحويل الرسائل إلى فقاعات محادثة، تحويل الإشعارات إلى بطاقات، ومنع الانزياح الأفقي.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "إضافة modules: 25_apk_version_final_check.js, 26_production_release_candidate.js, 27_customer_catalog_bug_fixes.js, 28_payments_statements_real_data.js، مع تحديث الفحص الشامل ليطابق 1.0.89 / build 89.",
-  "notes": "حزمة تثبيت آمنة مجمعة من 1.0.86 إلى 1.0.89.",
-  "versionName": "1.0.89",
-  "versionCode": 89,
+  "releaseNotes": "تحسين واجهة الرسائل والإشعارات للهاتف، إصلاح overflow أفقي، تنسيق صلاحية التنبيهات، وتثبيت عرض القائمة بدون تغيير Firestore أو منطق الإرسال.",
+  "notes": "Hotfix آمن لواجهتي الرسائل والإشعارات فقط.",
+  "versionName": "1.0.90",
+  "versionCode": 90,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
