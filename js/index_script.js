@@ -1,9 +1,9 @@
-// Hesabi App 1.0.104
+// Hesabi App 1.0.105
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.104';
-const HESABI_APP_BUILD_CODE = 104;
+const HESABI_APP_VERSION = '1.0.105';
+const HESABI_APP_BUILD_CODE = 105;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -56,6 +56,7 @@ const HESABI_MODULE_PARTS = [
   'js/modules/42_returns_schedules_page_sweep.js',
   'js/modules/43_messages_notifications_page_sweep.js',
   'js/modules/44_customers_owner_page_sweep.js',
+  'js/modules/45_reports_policies_page_sweep.js',
 ];
 
 const HESABI_REQUIRED_GLOBALS = [
@@ -103,6 +104,7 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiReturnsSchedulesPageSweepSelfCheck',
   'hesabiMessagesNotificationsPageSweepSelfCheck',
   'hesabiCustomersOwnerPageSweepSelfCheck',
+  'hesabiReportsPoliciesPageSweepSelfCheck',
 ];
 
 const HESABI_RUNTIME_TIMEOUT_MS = 25000;
@@ -219,7 +221,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.104.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.105.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
