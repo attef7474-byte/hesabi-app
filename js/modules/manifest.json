@@ -1,6 +1,6 @@
 {
-  "version": "1.0.96",
-  "buildCode": 96,
+  "version": "1.0.97",
+  "buildCode": 97,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -211,6 +211,11 @@
       "file": "js/modules/35_items_remaining_actions_fix.js",
       "lines": 183,
       "description": "Final remaining items actions fix: clear selection, edit action button, and saving prices from current table input IDs"
+    },
+    {
+      "file": "js/modules/36_settings_invoices_page_sweep.js",
+      "lines": 232,
+      "description": "Settings and invoices page final sweep: delegated tabs/actions, invoice filters, details/share buttons, and page self-checks"
     }
   ]
 }

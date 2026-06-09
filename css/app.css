@@ -565,3 +565,11 @@ html,body,.app{max-width:100%!important;overflow-x:hidden!important}
 .items-demand-card .items-search-field input{direction:rtl!important;text-align:right!important}
 .items-real-table .compact-actions,.items-real-table td:last-child{position:relative!important;z-index:4!important}
 .items-table-wrap{max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
+
+/* Hesabi 1.0.97 settings/invoices final sweep */
+.lines-row.open .demand-details{display:block!important}
+#page_settings .page-tabs-card,#page_invoices .page-tabs-card{overflow:hidden}
+#page_settings .page-tabs-bar,#page_invoices .page-tabs-bar{align-items:stretch}
+#page_invoices .compact-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+#page_invoices .mini-actions .btn,#page_invoices .btn.mini{white-space:nowrap}
+@media(max-width:520px){#page_settings .page-tabs-card.side-tabs .page-tabs-bar,#page_invoices .page-tabs-card.side-tabs .page-tabs-bar{grid-template-columns:repeat(4,minmax(70px,1fr));overflow-x:auto;padding-bottom:2px}#page_settings .page-tab-btn,#page_invoices .page-tab-btn{min-width:70px}.settings-compact-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.settings-compact-actions .btn{width:100%!important}}
