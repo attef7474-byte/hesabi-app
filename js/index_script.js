@@ -1,9 +1,7 @@
-// Hesabi App 1.0.111
+// Hesabi App 1.0.113
 // Stable module loader + runtime self check.
-// Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
-// and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.111';
-const HESABI_APP_BUILD_CODE = 111;
+const HESABI_APP_VERSION = '1.0.113';
+const HESABI_APP_BUILD_CODE = 113;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -63,6 +61,7 @@ const HESABI_MODULE_PARTS = [
   'js/modules/49_home_search_navigation_sweep.js',
   'js/modules/51_final_all_pages_validation_cleanup.js',
   'js/modules/52_top_overflow_menu_actions.js',
+  'js/modules/53_ui_cleanup_header_home_nav.js'
 ];
 
 const HESABI_REQUIRED_GLOBALS = [
@@ -118,6 +117,7 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiHomeSearchNavigationSweepSelfCheck',
   'hesabiFinalAllPagesValidationCleanupSelfCheck',
   'hesabiTopOverflowMenuActionsSelfCheck',
+  'hesabiUiCleanupHeaderHomeNavSelfCheck'
 ];
 
 const HESABI_RUNTIME_TIMEOUT_MS = 25000;
@@ -191,23 +191,28 @@ function runPostImportChecks() {
   results.push({ name: 'required-window-globals', ok: globals.ok, missing: globals.missing });
 
   if (typeof window.hesabiRuntimeSelfCheck === 'function') {
-    try { results.push({ name: 'runtime-self-check', result: window.hesabiRuntimeSelfCheck(), ok: !!window.hesabiRuntimeSelfCheck().ok }); }
+    try { const r = window.hesabiRuntimeSelfCheck(); results.push({ name: 'runtime-self-check', result: r, ok: !!r.ok }); }
     catch (error) { results.push({ name: 'runtime-self-check', ok: false, error: String(error && error.message || error) }); }
   }
 
   if (typeof window.hesabiFinalSelfCheck === 'function') {
-    try { const finalResult = window.hesabiFinalSelfCheck(); results.push({ name: 'final-self-check', ok: !!finalResult.ok, result: finalResult }); }
+    try { const r = window.hesabiFinalSelfCheck(); results.push({ name: 'final-self-check', ok: !!r.ok, result: r }); }
     catch (error) { results.push({ name: 'final-self-check', ok: false, error: String(error && error.message || error) }); }
   }
 
   if (typeof window.hesabiUpdateCacheStabilitySelfCheck === 'function') {
-    try { const cacheResult = window.hesabiUpdateCacheStabilitySelfCheck(); results.push({ name: 'update-cache-stability', ok: !!cacheResult.ok, result: cacheResult }); }
+    try { const r = window.hesabiUpdateCacheStabilitySelfCheck(); results.push({ name: 'update-cache-stability', ok: !!r.ok, result: r }); }
     catch (error) { results.push({ name: 'update-cache-stability', ok: false, error: String(error && error.message || error) }); }
   }
 
   if (typeof window.hesabiFullRuntimeSmokeSelfCheck === 'function') {
-    try { const smokeResult = window.hesabiFullRuntimeSmokeSelfCheck(); results.push({ name: 'full-runtime-smoke', ok: !!smokeResult.ok, result: smokeResult }); }
+    try { const r = window.hesabiFullRuntimeSmokeSelfCheck(); results.push({ name: 'full-runtime-smoke', ok: !!r.ok, result: r }); }
     catch (error) { results.push({ name: 'full-runtime-smoke', ok: false, error: String(error && error.message || error) }); }
+  }
+
+  if (typeof window.hesabiUiCleanupHeaderHomeNavSelfCheck === 'function') {
+    try { const r = window.hesabiUiCleanupHeaderHomeNavSelfCheck(); results.push({ name: 'ui-cleanup-header-home-nav', ok: !!r.ok, result: r }); }
+    catch (error) { results.push({ name: 'ui-cleanup-header-home-nav', ok: false, error: String(error && error.message || error) }); }
   }
 
   window.__hesabiRuntime.checks = results;
@@ -234,7 +239,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.111.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.113.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
@@ -257,4 +262,3 @@ loadHesabiRuntime().catch(error => {
   try { localStorage.setItem('hesabi_last_runtime_error', JSON.stringify(window.__hesabiRuntime)); } catch (_) {}
   runtimeMessage('تعذر تحميل ملفات التطبيق', 'فشل تحميل أو تشغيل ملفات التطبيق بعد التقسيم.', message || '');
 });
-

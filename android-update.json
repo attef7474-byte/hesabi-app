@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 112,
-  "latestVersionName": "1.0.112",
+  "latestVersionCode": 113,
+  "latestVersionName": "1.0.113",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.112",
-  "message": "حذف كروت البحث المحلية الزائدة التي كانت تظهر داخل الصفحات وتشوّه الواجهة، مع إبقاء الجداول والأزرار والفلاتر الأساسية كما هي.",
+  "title": "تحديث حسابي التجاري 1.0.113",
+  "message": "تنظيف الواجهة: إصلاح مكان وعمل قائمة الثلاث نقاط، حذف أزرار تحديث/CSV/فحص الزائدة من الصفحات، حذف ملخصات الرئيسية، وحذف زر البحث من الشريط السفلي.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Remove injected local page search cards from customers, owner, audit, reports, policies and similar page sweeps. UI cleanup only; no Firestore/order/payment/invoice/stock logic changed.",
-  "notes": "حذف مربعات البحث الزائدة داخل الصفحات.",
-  "versionName": "1.0.112",
-  "versionCode": 112,
+  "releaseNotes": "UI cleanup only: header overflow menu rebind/reposition, remove repeated sweep toolbars, home icons only, remove bottom navigation search tab.",
+  "notes": "تنظيف الواجهة الرئيسية والشريط السفلي والقائمة العلوية.",
+  "versionName": "1.0.113",
+  "versionCode": 113,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
