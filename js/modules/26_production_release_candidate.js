@@ -4,8 +4,8 @@
   "use strict";
   const VERSION = "1.0.87";
   const BUILD_CODE = 87;
-  const TARGET_VERSION = "1.0.94";
-  const TARGET_BUILD = 94;
+  const TARGET_VERSION = "1.0.102";
+  const TARGET_BUILD = 102;
   const CRITICAL_CHECKS = [
     ["full-runtime", "hesabiFullRuntimeSmokeSelfCheck"],
     ["apk-version-final", "hesabiApkVersionFinalCheckSelfCheck"],
@@ -15,7 +15,8 @@
     ["android-native", "hesabiAndroidNativeSmokeSelfCheck"],
     ["catalog-bug-fixes", "hesabiCustomerCatalogBugFixesSelfCheck"],
     ["payments-statements-real-data", "hesabiPaymentsStatementsRealDataSelfCheck"],
-    ["final-release-validation", "hesabiFinalReleaseValidationSelfCheck"]
+    ["final-release-validation", "hesabiFinalReleaseValidationSelfCheck"],
+    ["returns-schedules-page-sweep", "hesabiReturnsSchedulesPageSweepSelfCheck"]
   ];
   function callCheck(label, fnName){
     const fn = window[fnName];

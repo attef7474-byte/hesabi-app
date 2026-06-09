@@ -1,6 +1,6 @@
 {
-  "version": "1.0.101",
-  "buildCode": 101,
+  "version": "1.0.102",
+  "buildCode": 102,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -236,6 +236,11 @@
       "file": "js/modules/41_catalog_cart_purchase_page_sweep.js",
       "lines": 157,
       "description": "Catalog, cart and customer purchase page final interaction sweep for mobile search, pagination and cart actions"
+    },
+    {
+      "file": "js/modules/42_returns_schedules_page_sweep.js",
+      "description": "Returns and schedules page final sweep: delegated tabs, return approve/reject/request, schedule create/pay/cancel, invoice autofill and mobile table guards",
+      "lines": 256
     }
   ]
 }
