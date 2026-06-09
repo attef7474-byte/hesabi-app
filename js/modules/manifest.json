@@ -1,6 +1,6 @@
 {
-  "version": "1.0.108",
-  "buildCode": 108,
+  "version": "1.0.109",
+  "buildCode": 109,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 219,
+      "lines": 248,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -134,7 +134,7 @@
     },
     {
       "file": "js/modules/26_production_release_candidate.js",
-      "lines": 68,
+      "lines": 73,
       "description": "Production release candidate smoke aggregator updated for 1.0.92"
     },
     {
@@ -185,7 +185,7 @@
     {
       "file": "js/modules/31_final_release_validation.js",
       "description": "Final release validation, loader consistency, version target and mobile layout guard self-checks",
-      "lines": 81
+      "lines": 97
     },
     {
       "file": "js/modules/32_items_actions_search_fix.js",
@@ -259,13 +259,18 @@
     },
     {
       "file": "js/modules/47_stock_collections_page_sweep.js",
-      "lines": 406,
+      "lines": 405,
       "description": "Stock and daily collections page final sweep: tabs, explicit search, stock adjustment/edit actions, collection approve/reject/receipt, CSV/share and mobile table guards"
     },
     {
       "file": "js/modules/48_auth_customer_linking_page_sweep.js",
       "lines": 272,
       "description": "Login, registration and customer-to-trader linking page final sweep: auth tabs, phone/code inputs, profile setup binding, My Stores switch/add/recover actions and mobile guards"
+    },
+    {
+      "file": "js/modules/49_home_search_navigation_sweep.js",
+      "lines": 240,
+      "description": "Home, global search and bottom navigation page sweep: stable shortcuts, explicit search, scoped nav binding and mobile guards"
     }
   ],
   "modules": [

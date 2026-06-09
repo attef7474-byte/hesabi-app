@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 108,
-  "latestVersionName": "1.0.108",
+  "latestVersionCode": 109,
+  "latestVersionName": "1.0.109",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.108",
-  "message": "تثبيت التسجيل والدخول وربط العميل بالتاجر: تبويبات الدخول، حقول الهاتف والكود، تهيئة التاجر والعميل، صفحة متاجري، تبديل المتجر، إضافة واسترجاع الربط وحماية العرض على الهاتف.",
+  "title": "تحديث حسابي التجاري 1.0.109",
+  "message": "تثبيت الرئيسية والبحث العام وشريط التنقل: أزرار الرئيسية، البحث بدون إغلاق لوحة المفاتيح، فتح النتائج، شريط تنقل سفلي آمن ومحصور، وحماية العرض على الهاتف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Login, registration and customer-to-trader linking page sweep: stable auth tabs, phone/code inputs, trader/customer setup binding, My Stores actions, switch/add/recover linking, mobile layout containment and runtime checks without changing Firestore write logic.",
-  "notes": "تثبيت التسجيل والدخول وربط العميل بالتاجر بدون تغيير منطق البيانات.",
-  "versionName": "1.0.108",
-  "versionCode": 108,
+  "releaseNotes": "Home, global search and bottom navigation sweep: stable home shortcuts, explicit global search without keyboard-closing rerenders, result open actions, scoped bottom navigation bindings, mobile containment and runtime checks without changing Firestore write logic.",
+  "notes": "تثبيت الرئيسية والبحث العام وشريط التنقل بدون تغيير منطق البيانات.",
+  "versionName": "1.0.109",
+  "versionCode": 109,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
