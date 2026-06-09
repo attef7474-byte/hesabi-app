@@ -1,165 +1,185 @@
 {
-  "version": "1.0.85",
-  "buildCode": 85,
+  "version": "1.0.89",
+  "buildCode": 89,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
-      "lines": 810,
+      "lines": 811,
       "description": "النواة العامة، الإصدارات، التحديث، المصادقة والدوال المساعدة الأساسية"
     },
     {
       "file": "js/modules/01_update_cache_stability.js",
-      "lines": 279,
+      "lines": 280,
       "description": "App cache/update stability helpers for cache clearing, no-store update checks, refresh URLs and self-checks"
     },
     {
       "file": "js/modules/07_utils_helpers.js",
-      "lines": 108,
+      "lines": 109,
       "description": "Safe generic utilities/helpers for escaping, money formatting, IDs, phone normalization and file reading wrappers"
     },
     {
       "file": "js/modules/06_excel_import_export.js",
-      "lines": 103,
+      "lines": 104,
       "description": "Safe Excel/CSV import-export helpers, CSV builder/downloader and delimited text parser wrappers"
     },
     {
       "file": "js/modules/05_items_helpers.js",
-      "lines": 153,
+      "lines": 154,
       "description": "Safe item helpers for categories, duplicate checks, item lookup, code/OCR helpers and selected item utilities"
     },
     {
       "file": "js/modules/04_catalog_helpers.js",
-      "lines": 259,
+      "lines": 260,
       "description": "Safe customer catalog helpers for catalog state, cart totals, item visibility, search, sorting and pagination"
     },
     {
       "file": "js/modules/03_reports_helpers.js",
-      "lines": 147,
+      "lines": 148,
       "description": "Safe reports helpers for snapshots, totals, low stock, search text, export button binding and business report text"
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 202,
+      "lines": 211,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
       "file": "js/modules/08_dialogs_toasts.js",
-      "lines": 111,
+      "lines": 112,
       "description": "Safe dialogs, messages, toasts and confirmation wrappers"
     },
     {
       "file": "js/modules/09_android_bridge.js",
-      "lines": 123,
+      "lines": 124,
       "description": "Safe Android bridge helpers using HesabiAndroid"
     },
     {
       "file": "js/modules/10_firebase_live_data.js",
-      "lines": 252,
+      "lines": 253,
       "description": "تهيئة Firebase والمستمعات اللحظية والبيانات العامة"
     },
     {
       "file": "js/modules/11_settings_helpers.js",
-      "lines": 223,
+      "lines": 224,
       "description": "Settings page stabilization helpers for tabs, safe action binding, update/cache/security shortcuts and self-checks"
     },
     {
       "file": "js/modules/12_messages_helpers.js",
-      "lines": 140,
+      "lines": 141,
       "description": "Messages page stabilization helpers for safe message normalization, customer selector, rows rendering, send button binding and self-checks"
     },
     {
       "file": "js/modules/13_payments_helpers.js",
-      "lines": 193,
+      "lines": 194,
       "description": "Payments page stabilization helpers for safe payment normalization, status filters, summary stats, rows rendering, action binding and self-checks"
     },
     {
       "file": "js/modules/14_invoices_helpers.js",
-      "lines": 262,
+      "lines": 263,
       "description": "Invoices page stabilization helpers for safe invoice normalization, filters, summary stats, rows rendering, share button binding and self-checks"
     },
     {
       "file": "js/modules/15_statements_helpers.js",
-      "lines": 261,
+      "lines": 262,
       "description": "Statements page stabilization helpers for safe ledger normalization, debit/credit summaries, customer filters, rows rendering, action binding and self-checks"
     },
     {
       "file": "js/modules/16_returns_helpers.js",
-      "lines": 220,
+      "lines": 221,
       "description": "Returns page stabilization helpers for safe return normalization, request form fallback, status filters, summary stats, rows rendering, action binding and self-checks"
     },
     {
       "file": "js/modules/17_schedules_helpers.js",
-      "lines": 129,
+      "lines": 130,
       "description": "Schedules page stabilization helpers for safe installments, due/overdue filters, summary stats, rows rendering, action binding and self-checks"
     },
     {
       "file": "js/modules/18_notifications_helpers.js",
-      "lines": 65,
+      "lines": 66,
       "description": "Notifications and Android badge stabilization helpers for safe counters, unread notification rows, badge detail text, action binding and self-checks"
     },
     {
       "file": "js/modules/19_owner_subscription_helpers.js",
-      "lines": 60,
+      "lines": 61,
       "description": "Owner console and subscription settings stabilization helpers for safe owner metrics, users, shops, controls, subscription forms and self-checks"
     },
     {
       "file": "js/modules/20_permissions_role_guards.js",
-      "lines": 43,
+      "lines": 44,
       "description": "Permissions and role guard review helpers for safe page access matrix, trader/owner checks and self-checks"
     },
     {
       "file": "js/modules/21_firestore_rules_alignment.js",
-      "lines": 62,
+      "lines": 63,
       "description": "Firestore rules alignment review helpers: expected paths, runtime context and permission-denied diagnostics without writes"
     },
     {
       "file": "js/modules/22_customer_purchase_smoke.js",
-      "lines": 68,
+      "lines": 69,
       "description": "Customer purchase full smoke helpers: read-only checks for catalog, cart, linked customer context and required purchase functions"
     },
     {
       "file": "js/modules/23_trader_workflow_smoke.js",
-      "lines": 51,
+      "lines": 52,
       "description": "Trader daily workflow smoke helpers: read-only checks for orders, invoices, payments, statements, returns and schedules functions"
     },
     {
       "file": "js/modules/24_android_native_smoke.js",
-      "lines": 50,
+      "lines": 51,
       "description": "Android native features smoke helpers: safe diagnostics for HesabiAndroid bridge, APK version, cache, barcode, OCR and badge methods"
     },
     {
+      "file": "js/modules/25_apk_version_final_check.js",
+      "lines": 89,
+      "description": "APK update/version final check helpers for runtime, android-update metadata and native installed-version diagnostics"
+    },
+    {
+      "file": "js/modules/26_production_release_candidate.js",
+      "lines": 68,
+      "description": "Production release candidate aggregator for critical read-only smoke checks and readiness snapshot"
+    },
+    {
+      "file": "js/modules/27_customer_catalog_bug_fixes.js",
+      "lines": 100,
+      "description": "Customer catalog bug-fix diagnostics for cart validity, search consistency and layout overlap risk without writes"
+    },
+    {
+      "file": "js/modules/28_payments_statements_real_data.js",
+      "lines": 83,
+      "description": "Payments/statements real-data consistency diagnostics for approved payments, invoices, ledger and balances without writes"
+    },
+    {
       "file": "js/modules/20_router_setup_profile.js",
-      "lines": 882,
+      "lines": 883,
       "description": "محرك العرض والتنقل وتهيئة الحساب والربط والصفحات العامة"
     },
     {
       "file": "js/modules/30_purchase_catalog.js",
-      "lines": 446,
+      "lines": 447,
       "description": "شراء العميل والكتالوج والسلة ونموذج الطلب مع تفويض آمن لوحدة الكتالوج"
     },
     {
       "file": "js/modules/40_pages_tables.js",
-      "lines": 239,
+      "lines": 240,
       "description": "صفحات الأصناف والعملاء والطلبات والفواتير والجداول الأساسية"
     },
     {
       "file": "js/modules/50_auth_order_approval.js",
-      "lines": 618,
+      "lines": 619,
       "description": "استقرار تسجيل الدخول والطلب واعتماد التاجر مع تفويض آمن لحسابات التقارير والسداد"
     },
     {
       "file": "js/modules/60_payments_returns_policies.js",
-      "lines": 502,
+      "lines": 503,
       "description": "السداد والفواتير والمرتجعات والأقساط والسياسات"
     },
     {
       "file": "js/modules/70_settings_owner_items_bridge.js",
-      "lines": 717,
+      "lines": 718,
       "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات والرسائل"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",
-      "lines": 163,
+      "lines": 164,
       "description": "Runtime safety aliases for missing critical functions"
     }
   ]
