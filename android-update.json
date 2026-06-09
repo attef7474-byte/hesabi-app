@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 100,
-  "latestVersionName": "1.0.100",
+  "latestVersionCode": 101,
+  "latestVersionName": "1.0.101",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.100",
-  "message": "إزالة الشروحات والتوضيحات العامة من الصفحات مع إبقاء الجداول والأزرار والبيانات.",
+  "title": "تحديث حسابي التجاري 1.0.101",
+  "message": "تثبيت كتالوج العميل والسلة وطلب الشراء مع بحث لا يغلق لوحة المفاتيح وأزرار تنقل واضحة.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Remove page explanations globally: clean page headers, hide help/phase notes and direct muted explanation paragraphs without changing Firestore or business actions.",
-  "notes": "Remove page explanations and clean page headers",
-  "versionName": "1.0.100",
-  "versionCode": 100,
+  "releaseNotes": "Catalog/cart/customer purchase page sweep: stable search button, clear button, paging, add-to-cart binding, and mobile table containment without Firestore changes.",
+  "notes": "Catalog cart purchase page sweep",
+  "versionName": "1.0.101",
+  "versionCode": 101,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.100",
-  "buildCode": 100,
+  "version": "1.0.101",
+  "buildCode": 101,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 214,
+      "lines": 219,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -194,7 +194,7 @@
     },
     {
       "file": "js/modules/33_utf8_arabic_encoding_repair.js",
-      "lines": 73,
+      "lines": 66,
       "description": "UTF-8 Arabic encoding repair and static UI mojibake self-check"
     },
     {
@@ -219,18 +219,23 @@
     },
     {
       "file": "js/modules/37_payments_statements_page_sweep.js",
-      "lines": 217,
+      "lines": 216,
       "description": "Payments and statements page final sweep: delegated tabs, payment actions, receipts, statement filter/share, and mobile table guards"
     },
     {
       "file": "js/modules/38_orders_approval_page_sweep.js",
-      "lines": 249,
+      "lines": 248,
       "description": "Orders and approval page final sweep: delegated tabs, approve/reject/customer actions, edit/cancel, details toggle, and mobile table guards"
     },
     {
       "file": "js/modules/39_remove_page_explanations.js",
       "lines": 98,
       "description": "Remove page explanations and clean page headers while preserving titles, tables, actions and data"
+    },
+    {
+      "file": "js/modules/41_catalog_cart_purchase_page_sweep.js",
+      "lines": 157,
+      "description": "Catalog, cart and customer purchase page final interaction sweep for mobile search, pagination and cart actions"
     }
   ]
 }
