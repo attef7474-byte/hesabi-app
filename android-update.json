@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 111,
-  "latestVersionName": "1.0.111",
+  "latestVersionCode": 112,
+  "latestVersionName": "1.0.112",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.111",
-  "message": "إضافة قائمة الثلاث نقاط أعلى الصفحة بجانب شعار حسابي التجاري مع تحديث التطبيق، تواصل معنا، إبلاغ وشكاوي، ومعلومات التطبيق كخيارات فعالة.",
+  "title": "تحديث حسابي التجاري 1.0.112",
+  "message": "حذف كروت البحث المحلية الزائدة التي كانت تظهر داخل الصفحات وتشوّه الواجهة، مع إبقاء الجداول والأزرار والفلاتر الأساسية كما هي.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Top overflow menu actions: update UI/APK/version check, contact form, complaint/report form, app info dialog, local save/share/mail fallback, runtime self-check integration.",
-  "notes": "إضافة قائمة أعلى التطبيق وتفعيل خياراتها.",
-  "versionName": "1.0.111",
-  "versionCode": 111,
+  "releaseNotes": "Remove injected local page search cards from customers, owner, audit, reports, policies and similar page sweeps. UI cleanup only; no Firestore/order/payment/invoice/stock logic changed.",
+  "notes": "حذف مربعات البحث الزائدة داخل الصفحات.",
+  "versionName": "1.0.112",
+  "versionCode": 112,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
