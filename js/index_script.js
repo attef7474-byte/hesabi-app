@@ -1,9 +1,9 @@
-// Hesabi App 1.0.91
+// Hesabi App 1.0.92
 // Stable module loader + runtime self check.
 // Loads module parts in a fixed order, imports them as one runtime module to preserve shared scope,
 // and exposes diagnostics so startup errors are clear instead of leaving a blank screen.
-const HESABI_APP_VERSION = '1.0.91';
-const HESABI_APP_BUILD_CODE = 91;
+const HESABI_APP_VERSION = '1.0.92';
+const HESABI_APP_BUILD_CODE = 92;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -31,12 +31,18 @@ const HESABI_MODULE_PARTS = [
   'js/modules/22_customer_purchase_smoke.js',
   'js/modules/23_trader_workflow_smoke.js',
   'js/modules/24_android_native_smoke.js',
+  'js/modules/25_apk_version_final_check.js',
+  'js/modules/26_production_release_candidate.js',
+  'js/modules/27_customer_catalog_bug_fixes.js',
+  'js/modules/28_payments_statements_real_data.js',
   'js/modules/20_router_setup_profile.js',
   'js/modules/30_purchase_catalog.js',
   'js/modules/40_pages_tables.js',
   'js/modules/50_auth_order_approval.js',
   'js/modules/60_payments_returns_policies.js',
   'js/modules/70_settings_owner_items_bridge.js',
+  'js/modules/29_items_mobile_table_fix.js',
+  'js/modules/31_final_release_validation.js',
   'js/modules/99_runtime_missing_functions_fix.js'
 ];
 
@@ -67,6 +73,12 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiCustomerPurchaseSmokeSelfCheck',
   'hesabiTraderWorkflowSmokeSelfCheck',
   'hesabiAndroidNativeSmokeSelfCheck',
+  'hesabiApkVersionFinalCheckSelfCheck',
+  'hesabiProductionReleaseCandidateSelfCheck',
+  'hesabiCustomerCatalogBugFixesSelfCheck',
+  'hesabiPaymentsStatementsRealDataSelfCheck',
+  'hesabiItemsMobileTableFixSelfCheck',
+  'hesabiFinalReleaseValidationSelfCheck',
   'hesabiFullRuntimeSmokeSelfCheck'
 ];
 
@@ -184,7 +196,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.91.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.92.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);

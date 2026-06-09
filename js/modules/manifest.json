@@ -1,6 +1,6 @@
 {
-  "version": "1.0.91",
-  "buildCode": 91,
+  "version": "1.0.92",
+  "buildCode": 92,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -39,7 +39,7 @@
     },
     {
       "file": "js/modules/02_runtime_smoke.js",
-      "lines": 210,
+      "lines": 214,
       "description": "Full runtime smoke stabilization including update/cache, settings, messages, payments and extracted helper self-checks"
     },
     {
@@ -130,12 +130,12 @@
     {
       "file": "js/modules/25_apk_version_final_check.js",
       "lines": 88,
-      "description": "APK update/version final check helpers for runtime, android-update metadata and native installed-version diagnostics"
+      "description": "APK and web runtime version final check updated for 1.0.92"
     },
     {
       "file": "js/modules/26_production_release_candidate.js",
-      "lines": 67,
-      "description": "Production release candidate aggregator for critical read-only smoke checks and readiness snapshot"
+      "lines": 68,
+      "description": "Production release candidate smoke aggregator updated for 1.0.92"
     },
     {
       "file": "js/modules/27_customer_catalog_bug_fixes.js",
@@ -181,6 +181,11 @@
       "file": "js/modules/29_items_mobile_table_fix.js",
       "lines": 151,
       "description": "Items page mobile table/search fix: settings-style top icons, 10-row paging, no keyboard-closing live rerender, and contained horizontal table scroll"
+    },
+    {
+      "file": "js/modules/31_final_release_validation.js",
+      "description": "Final release validation, loader consistency, version target and mobile layout guard self-checks",
+      "lines": 81
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",

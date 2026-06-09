@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 91,
-  "latestVersionName": "1.0.91",
+  "latestVersionCode": 92,
+  "latestVersionName": "1.0.92",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.91",
-  "message": "إصلاح صفحة الأصناف على الهاتف: أيقونات علوية مثل الإعدادات، جدول حقيقي داخل تمرير أفقي محدود، عرض أول 10 أصناف افتراضيًا، وإيقاف إعادة الرسم أثناء كتابة البحث حتى لا تختفي لوحة المفاتيح.",
+  "title": "تحديث حسابي التجاري 1.0.92",
+  "message": "المرحلة الأخيرة: تثبيت فحص المرشح النهائي للنشر، توحيد تحميل جميع وحدات runtime حتى 1.0.92، وتحديث فحص APK والنسخة مع حماية إضافية لعرض الهاتف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "تحسين واجهة الأصناف والمخزون للهاتف مع ترقيم صفحات 10 أصناف، زر بحث يدوي، أزرار السابق/التالي أعلى الجدول، ومنع تمدد الصفحة أفقيًا بدون تغيير Firestore أو منطق الأصناف.",
-  "notes": "Hotfix آمن لواجهة الأصناف والمخزون فقط.",
-  "versionName": "1.0.91",
-  "versionCode": 91,
+  "releaseNotes": "Final Release Validation: توحيد loader مع manifest، تحميل وحدات الفحص النهائية وواجهة الأصناف، تحديث هدف فحص APK إلى 1.0.92، وإضافة فحص نهائي آمن بدون تغيير Firestore أو العمليات الحساسة.",
+  "notes": "مرحلة إغلاق نهائية آمنة للفحص والتحقق فقط.",
+  "versionName": "1.0.92",
+  "versionCode": 92,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

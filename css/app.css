@@ -526,3 +526,17 @@ html,body,.app{max-width:100%!important;overflow-x:hidden!important}
   .items-real-table td{font-size:11px!important;padding:7px 4px!important}
   .items-real-table td.name{min-width:140px!important}
 }
+
+/* ===== Hesabi 1.0.92 final mobile release guards ===== */
+html,body,.app{max-width:100%!important;overflow-x:hidden!important}
+.top,.card,.page,.section,main{max-width:100%!important;box-sizing:border-box!important}
+.title,.top .title{min-width:0!important;max-width:100%!important;overflow:hidden!important}
+.title h1,.top h1{max-width:calc(100vw - 125px)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.tablewrap,.mobile-table-wrap,.items-table-scroll,.statement-table-wrap,.invoice-table-wrap{max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
+.bottom-nav,.bottomNav,.quick-nav,.mobile-bottom-actions{max-width:100vw!important;left:0!important;right:0!important;box-sizing:border-box!important}
+@media(max-width:560px){
+  .card{border-radius:18px!important;padding:14px!important}
+  .grid,.form .grid{grid-template-columns:1fr!important}
+  .settings-tabs-bar.icon-mode{max-width:100%!important}
+  .settings-top-tab{min-width:0!important}
+}
