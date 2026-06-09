@@ -1,6 +1,6 @@
 {
-  "version": "1.0.98",
-  "buildCode": 98,
+  "version": "1.0.99",
+  "buildCode": 99,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -221,6 +221,11 @@
       "file": "js/modules/37_payments_statements_page_sweep.js",
       "lines": 217,
       "description": "Payments and statements page final sweep: delegated tabs, payment actions, receipts, statement filter/share, and mobile table guards"
+    },
+    {
+      "file": "js/modules/38_orders_approval_page_sweep.js",
+      "lines": 249,
+      "description": "Orders and approval page final sweep: delegated tabs, approve/reject/customer actions, edit/cancel, details toggle, and mobile table guards"
     }
   ]
 }

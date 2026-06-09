@@ -80,6 +80,7 @@
     { name: "final-release-validation", fn: "hesabiFinalReleaseValidationSelfCheck", required: true },
     { name: "settings-invoices-page-sweep", fn: "hesabiSettingsInvoicesPageSweepSelfCheck", required: true },
     { name: "payments-statements-page-sweep", fn: "hesabiPaymentsStatementsPageSweepSelfCheck", required: true },
+    { name: "orders-approval-page-sweep", fn: "hesabiOrdersApprovalPageSweepSelfCheck", required: true },
     { name: "runtime-missing-functions", fn: "hesabiRuntimeMissingFunctionsFix", required: true },
     { name: "runtime-self-check", fn: "hesabiRuntimeSelfCheck", required: true },
     { name: "final-self-check", fn: "hesabiFinalSelfCheck", required: true }

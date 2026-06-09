@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 98,
-  "latestVersionName": "1.0.98",
+  "latestVersionCode": 99,
+  "latestVersionName": "1.0.99",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.98",
-  "message": "تثبيت نهائي لصفحة السداد وكشف الحساب",
+  "title": "تحديث حسابي التجاري 1.0.99",
+  "message": "تثبيت نهائي لصفحة الطلبات واعتماد الطلبات",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Payments + Statements Page Sweep: تثبيت تنقل تبويبات السداد وكشف الحساب، أزرار إرسال/اعتماد/رفض السداد، فتح الإيصال، فلترة ومشاركة كشف الحساب، وتحسين الجداول على الهاتف بدون تغيير Firestore.",
-  "notes": "Payments and statements page final sweep",
-  "versionName": "1.0.98",
-  "versionCode": 98,
+  "releaseNotes": "Orders + Approval Page Sweep: تثبيت تنقل تبويبات الطلبات، أزرار اعتماد/رفض التاجر، موافقة/رفض العميل، تعديل/إلغاء طلب العميل، تفاصيل الطلب، وتحسين الجدول على الهاتف بدون تغيير Firestore أو منطق اعتماد الطلب.",
+  "notes": "Orders and approval page final sweep",
+  "versionName": "1.0.99",
+  "versionCode": 99,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
