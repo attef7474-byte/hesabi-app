@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 106,
-  "latestVersionName": "1.0.106",
+  "latestVersionCode": 107,
+  "latestVersionName": "1.0.107",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.106",
-  "message": "تثبيت سجل العمليات والتحديث والكاش النهائي: البحث، التصدير، أزرار التحديث والتنظيف والفحص النهائي.",
+  "title": "تحديث حسابي التجاري 1.0.107",
+  "message": "تثبيت صفحة المخزون والتحصيل اليومي: تبويبات، بحث ثابت، تسوية المخزون، فتح تعديل الصنف، قبول/رفض التحصيل، مشاركة وتصدير CSV وحماية الجداول على الهاتف.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Audit + final update/cache sweep: stable audit tabs/search/export, mobile table containment, final cache cleaning, UI refresh, APK/update diagnostics, and aligned runtime version checks without changing Firestore write logic.",
-  "notes": "تثبيت سجل العمليات والتحديث والكاش النهائي بدون تغيير منطق البيانات.",
-  "versionName": "1.0.106",
-  "versionCode": 106,
+  "releaseNotes": "Stock + daily collections page sweep: stable tabs, explicit search to keep keyboard open, stock adjustment/edit actions, collection approve/reject/receipt actions, CSV/share, mobile table containment, and runtime checks without changing Firestore write logic.",
+  "notes": "تثبيت المخزون والتحصيل اليومي بدون تغيير منطق البيانات.",
+  "versionName": "1.0.107",
+  "versionCode": 107,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }

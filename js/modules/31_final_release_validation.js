@@ -1,9 +1,9 @@
-/* Hesabi 1.0.106 - Final Release Validation.
+/* Hesabi 1.0.107 - Final Release Validation.
    Scope: diagnostics + mobile guards only. No Firestore writes, no order/payment/item mutations. */
 (function(){
   "use strict";
-  const VERSION = "1.0.106";
-  const BUILD_CODE = 106;
+  const VERSION = "1.0.107";
+  const BUILD_CODE = 107;
   const CRITICAL_MODULES = [
     "js/modules/25_apk_version_final_check.js",
     "js/modules/26_production_release_candidate.js",

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.106",
+  "version": "1.0.107",
   "buildCode": 106,
   "parts": [
     {
@@ -262,7 +262,16 @@
     "js/modules/43_messages_notifications_page_sweep.js",
     "js/modules/44_customers_owner_page_sweep.js",
     "js/modules/45_reports_policies_page_sweep.js",
-    "js/modules/46_audit_update_cache_final_sweep.js"
+    "js/modules/46_audit_update_cache_final_sweep.js",
+    "js/modules/47_stock_collections_page_sweep.js"
   ],
-  "generatedAt": "2026-06-09T21:30:00Z"
+  "generatedAt": "2026-06-09T21:50:00Z",
+  "build": 107,
+  "files": [
+    {
+      "file": "js/modules/47_stock_collections_page_sweep.js",
+      "lines": 406,
+      "description": "Stock and daily collections page final sweep: tabs, explicit search, stock adjustment/edit actions, collection approve/reject/receipt, CSV/share and mobile table guards"
+    }
+  ]
 }
