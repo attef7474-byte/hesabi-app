@@ -1,6 +1,6 @@
 {
-  "version": "1.0.92",
-  "buildCode": 92,
+  "version": "1.0.93",
+  "buildCode": 93,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -186,6 +186,11 @@
       "file": "js/modules/31_final_release_validation.js",
       "description": "Final release validation, loader consistency, version target and mobile layout guard self-checks",
       "lines": 81
+    },
+    {
+      "file": "js/modules/32_items_actions_search_fix.js",
+      "lines": 277,
+      "description": "Items actions/search final fix: robust tab navigation, Arabic/barcode search, paging, and table action buttons via delegated event binding"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",

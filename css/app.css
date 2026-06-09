@@ -540,3 +540,20 @@ html,body,.app{max-width:100%!important;overflow-x:hidden!important}
   .settings-tabs-bar.icon-mode{max-width:100%!important}
   .settings-top-tab{min-width:0!important}
 }
+
+
+/* Hesabi 1.0.93 - Items page tab/action/search final mobile fix */
+.items-top-tabs-1093 .settings-top-tab{cursor:pointer!important;pointer-events:auto!important;user-select:none!important;-webkit-user-select:none!important}
+.items-top-tabs-1093 .settings-top-tab.active{box-shadow:0 10px 22px rgba(15,118,110,.20)!important;transform:translateY(-1px)}
+.items-demand-card .items-search-apply,.items-demand-card .items-pager-top .btn,.items-real-table .compact-actions .btn{pointer-events:auto!important;position:relative!important;z-index:3!important}
+.items-demand-card .items-demand-toolbar{align-items:end!important}
+.items-demand-card .items-search-field{min-width:180px!important;flex:1 1 220px!important}
+.items-demand-card .items-extra-controls select{min-height:38px!important;max-width:160px!important}
+.items-real-table .compact-actions{min-width:150px!important}
+.items-real-table .compact-actions .btn{white-space:nowrap!important;margin:2px!important}
+@media(max-width:520px){
+  .items-demand-card .items-demand-toolbar{display:grid!important;grid-template-columns:1fr auto auto!important;gap:6px!important}
+  .items-demand-card .items-extra-controls{grid-column:1 / -1!important;display:flex!important;gap:6px!important;flex-wrap:wrap!important}
+  .items-demand-card .items-extra-controls select{width:100%!important;max-width:none!important}
+  .items-pager-top{position:sticky!important;top:0!important;z-index:2!important;background:#ecfeff!important;border-radius:14px!important;padding:7px!important;margin:8px 0!important}
+}

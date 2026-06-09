@@ -4,8 +4,8 @@
   "use strict";
   const VERSION = "1.0.87";
   const BUILD_CODE = 87;
-  const TARGET_VERSION = "1.0.92";
-  const TARGET_BUILD = 92;
+  const TARGET_VERSION = "1.0.93";
+  const TARGET_BUILD = 93;
   const CRITICAL_CHECKS = [
     ["full-runtime", "hesabiFullRuntimeSmokeSelfCheck"],
     ["apk-version-final", "hesabiApkVersionFinalCheckSelfCheck"],
