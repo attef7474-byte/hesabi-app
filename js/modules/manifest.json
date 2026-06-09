@@ -1,6 +1,6 @@
 {
-  "version": "1.0.90",
-  "buildCode": 90,
+  "version": "1.0.91",
+  "buildCode": 91,
   "parts": [
     {
       "file": "js/modules/00_core_update_auth.js",
@@ -176,6 +176,11 @@
       "file": "js/modules/70_settings_owner_items_bridge.js",
       "lines": 717,
       "description": "الإعدادات والمالك والأصناف والأسعار والمخزون مع تفويض آمن لمساعدات الإعدادات والرسائل"
+    },
+    {
+      "file": "js/modules/29_items_mobile_table_fix.js",
+      "lines": 151,
+      "description": "Items page mobile table/search fix: settings-style top icons, 10-row paging, no keyboard-closing live rerender, and contained horizontal table scroll"
     },
     {
       "file": "js/modules/99_runtime_missing_functions_fix.js",

@@ -1,10 +1,10 @@
-/* Hesabi 1.0.89 - Full runtime smoke stabilization.
+/* Hesabi 1.0.91 - Full runtime smoke stabilization.
    Non-intrusive checks only: no Firestore writes, no order/payment/catalog mutations. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.89";
-  const BUILD_CODE = 89;
+  const VERSION = "1.0.91";
+  const BUILD_CODE = 91;
 
   const EXPECTED_MODULES = [
     "js/modules/00_core_update_auth.js",
@@ -42,6 +42,7 @@
     "js/modules/50_auth_order_approval.js",
     "js/modules/60_payments_returns_policies.js",
     "js/modules/70_settings_owner_items_bridge.js",
+    "js/modules/29_items_mobile_table_fix.js",
     "js/modules/99_runtime_missing_functions_fix.js"
   ];
 
@@ -67,6 +68,7 @@
     { name: "payments-statements-real-data", fn: "hesabiPaymentsStatementsRealDataSelfCheck", required: true },
     { name: "reports-helpers", fn: "hesabiReportsHelpersSelfCheck", required: true },
     { name: "catalog-helpers", fn: "hesabiCatalogHelpersSelfCheck", required: true },
+    { name: "items-mobile-table-fix", fn: "hesabiItemsMobileTableFixSelfCheck", required: true },
     { name: "items-helpers", fn: "hesabiItemsHelpersSelfCheck", required: true },
     { name: "excel-import-export", fn: "hesabiExcelImportExportSelfCheck", required: true },
     { name: "utils-helpers", fn: "hesabiUtilsHelpersSelfCheck", required: true },
