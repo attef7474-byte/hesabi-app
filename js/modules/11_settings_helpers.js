@@ -316,12 +316,20 @@
           <h2>المتجر</h2>
           <div class="grid">
             <div class="metric"><span class="muted">كود المتجر</span><b dir="ltr">${escSafe(shopId || "-")}</b></div>
-            <div class="metric"><span class="muted">اسم المتجر</span><b>${escSafe(s.shopName || shop.name || "-")}</b></div>
-            <div class="metric"><span class="muted">هاتف المتجر</span><b dir="ltr">${escSafe(shop.phone || s.shopPhone || "-")}</b></div>
+          </div>
+          <div class="field"><label>اسم المتجر</label><input id="settingsShopName" value="${escSafe(s.shopName || shop.name || "")}"></div>
+          <div class="field"><label>هاتف المتجر</label><input id="settingsShopPhone" value="${escSafe(shop.phone || s.shopPhone || "")}"></div>
+          <div class="field"><label>مواعيد العمل</label><input id="settingsShopHours" value="${escSafe(shop.hours || "")}"></div>
+          <div class="field"><label>سياسة الظهور للعميل</label><select id="settingsShopVisibility">
+            <option value="public"${selected(shop.visibility, "public")}>عامة</option>
+            <option value="private"${selected(shop.visibility, "private")}>خاصة</option>
+          </select></div>
+          <div class="grid">
             <div class="metric"><span class="muted">الحالة</span><b>${escSafe(shop.subscriptionStatus || shop.status || "نشط")}</b></div>
             <div class="metric"><span class="muted">تاريخ الاستحقاق</span><b>${escSafe(shop.subscriptionDueDate || "-")}</b></div>
           </div>
           <div class="settings-compact-actions">
+            <button class="btn ok" id="settingsSaveShop" type="button">حفظ بيانات المتجر</button>
             <button class="btn secondary" id="settingsPolicies" type="button">السياسات</button>
             <button class="btn secondary" id="settingsItems" type="button">الأصناف</button>
             <button class="btn light" id="settingsShopCode" type="button">كود التاجر</button>
@@ -361,11 +369,14 @@
           <div class="notice">كل العمليات هنا آمنة ولا تنفذ حذفًا مباشرًا.</div>
           <div class="grid">
             <div class="metric"><span class="muted">آخر نسخة محلية</span><b>${escSafe(s.lastBackupAt || "-")}</b></div>
+            <div class="metric"><span class="muted">آخر استيراد</span><b>${escSafe(s.lastImportAt || "-")}</b></div>
             <div class="metric"><span class="muted">البيانات المحملة</span><b>${escSafe(((c.items||[]).length) + " صنف / " + ((c.customers||[]).length) + " عميل")}</b></div>
           </div>
+          <input type="file" id="settingsImportFile" accept=".json" style="display: none;">
           <div class="settings-compact-actions">
             <button class="btn ok" id="settingsExportFull" type="button">تصدير نسخة كاملة JSON</button>
-            <button class="btn secondary" id="settingsExportItems" type="button">تصدير الأصناف</button>
+            <button class="btn secondary" id="settingsImportFull" type="button">استيراد نسخة كاملة JSON</button>
+            <button class="btn light" id="settingsExportItems" type="button">تصدير الأصناف</button>
             <button class="btn light" id="settingsExportReports" type="button">التقارير</button>
             <button class="btn light" id="settingsStatement" type="button">كشف الحساب</button>
             <button class="btn light" id="settingsInvoices" type="button">الفواتير</button>
@@ -475,6 +486,65 @@
     }
   }
 
+  let pendingImportData = null;
+
+  function importJsonPreview(file) {
+    try {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          pendingImportData = data;
+          const previewHtml = `
+            <div class="card">
+              <h2>معاينة الاستيراد</h2>
+              <div class="grid">
+                <div class="metric"><span class="muted">تاريخ التصدير</span><b>${escSafe(data.exportedAt || "-")}</b></div>
+                <div class="metric"><span class="muted">إصدار النسخة</span><b>${escSafe(data.version || "-")}</b></div>
+                <div class="metric"><span class="muted">أصناف</span><b>${escSafe((data.cache && data.cache.items && data.cache.items.length) || 0)}</b></div>
+                <div class="metric"><span class="muted">عملاء</span><b>${escSafe((data.cache && data.cache.customers && data.cache.customers.length) || 0)}</b></div>
+              </div>
+              <div class="settings-compact-actions">
+                <button class="btn ok" id="settingsConfirmImport" type="button">تأكيد الاستيراد</button>
+                <button class="btn secondary" id="settingsCancelImport" type="button">إلغاء</button>
+              </div>
+            </div>`;
+          if (typeof showAppDialog === "function") {
+            showAppDialog("معاينة النسخة الاحتياطية", previewHtml);
+            const confirmBtn = byId("settingsConfirmImport");
+            if (confirmBtn) confirmBtn.onclick = function() { confirmImport(); };
+            const cancelBtn = byId("settingsCancelImport");
+            if (cancelBtn) cancelBtn.onclick = function() { pendingImportData = null; if (typeof hideAppDialog === "function") hideAppDialog(); };
+          }
+        } catch (parseErr) {
+          notify("ملف JSON غير صالح: " + safeString(parseErr && parseErr.message || parseErr), "error");
+        }
+      };
+      reader.readAsText(file);
+    } catch(error) {
+      notify("تعذر قراءة الملف: " + safeString(error && error.message || error), "error");
+    }
+  }
+
+  function confirmImport() {
+    try {
+      if (!pendingImportData) return;
+      const s = getState();
+      const c = getCache();
+      if (pendingImportData.state) Object.assign(s, pendingImportData.state);
+      if (pendingImportData.cache) Object.assign(c, pendingImportData.cache);
+      s.lastImportAt = new Date().toLocaleString("ar");
+      saveSafe();
+      pendingImportData = null;
+      if (typeof hideAppDialog === "function") hideAppDialog();
+      resetLiveData();
+      renderSafe();
+      notify("تم استيراد النسخة بنجاح.", "success");
+    } catch(error) {
+      notify("تعذر استيراد النسخة: " + safeString(error && error.message || error), "error");
+    }
+  }
+
   function saveSecurity(){
     const s = getState();
     const pin = byId("settingsPinInput");
@@ -563,8 +633,57 @@
 
     bind("settingsSmartUpdate", "تحديث التطبيق", smartUpdate);
     bind("settingsExportFull", "تصدير النسخة", exportJson);
+    bind("settingsImportFull", "استيراد النسخة", function() {
+      const fileInput = byId("settingsImportFile");
+      if (fileInput) fileInput.click();
+    });
+    const fileInput = byId("settingsImportFile");
+    if (fileInput) {
+      fileInput.onchange = function(ev) {
+        if (ev.target.files && ev.target.files[0]) {
+          importJsonPreview(ev.target.files[0]);
+          ev.target.value = "";
+        }
+      };
+    }
     bind("settingsLogout", "تسجيل الخروج", safeLogout);
 
+    bind("settingsSaveShop", "حفظ بيانات المتجر", async function() {
+      const s = getState();
+      const shop = c.shop || {};
+      const nameInput = byId("settingsShopName");
+      const phoneInput = byId("settingsShopPhone");
+      const hoursInput = byId("settingsShopHours");
+      const visibilityInput = byId("settingsShopVisibility");
+      const updates = {
+        name: nameInput ? nameInput.value : shop.name || s.shopName,
+        phone: phoneInput ? phoneInput.value : shop.phone || s.shopPhone,
+        hours: hoursInput ? hoursInput.value : shop.hours,
+        visibility: visibilityInput ? visibilityInput.value : shop.visibility || "public",
+        updatedAt: new Date().toISOString(),
+        updatedMs: Date.now()
+      };
+      try {
+        if (typeof db !== "undefined" && typeof updateDoc === "function" && s.shopId) {
+          const shopRef = doc(db, "shops", s.shopId);
+          await updateDoc(shopRef, updates);
+          s.shopName = updates.name;
+          s.shopPhone = updates.phone;
+          saveSafe();
+          notify("تم حفظ بيانات المتجر بنجاح.", "success");
+        } else {
+          s.shopName = updates.name;
+          s.shopPhone = updates.phone;
+          if (!c.shop) c.shop = {};
+          Object.assign(c.shop, updates);
+          saveSafe();
+          notify("تم حفظ بيانات المتجر محليًا.", "success");
+        }
+        if (typeof renderSettingsFn === "function") renderSettingsFn();
+      } catch (error) {
+        notify("تعذر حفظ بيانات المتجر: " + safeString(error && error.message || error), "error");
+      }
+    });
     bind("settingsSwitchTrader", "الدخول كتاجر", function(){ applyRole("trader", false); });
     bind("settingsSwitchCustomer", "الدخول كعميل", function(){ applyRole("customer", false); });
     bind("settingsSetupTrader", "تهيئة تاجر", function(){ applyRole("trader", true); });
