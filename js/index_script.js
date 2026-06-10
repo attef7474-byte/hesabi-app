@@ -1,7 +1,7 @@
-// Hesabi App 1.0.113
+// Hesabi App 1.0.114
 // Stable module loader + runtime self check.
-const HESABI_APP_VERSION = '1.0.113';
-const HESABI_APP_BUILD_CODE = 113;
+const HESABI_APP_VERSION = '1.0.114';
+const HESABI_APP_BUILD_CODE = 114;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -215,6 +215,11 @@ function runPostImportChecks() {
     catch (error) { results.push({ name: 'ui-cleanup-header-home-nav', ok: false, error: String(error && error.message || error) }); }
   }
 
+  if (typeof window.hesabiSettingsRoleUnifiedUpdateSelfCheck === 'function') {
+    try { const r = window.hesabiSettingsRoleUnifiedUpdateSelfCheck(); results.push({ name: 'settings-role-unified-update', ok: !!r.ok, result: r }); }
+    catch (error) { results.push({ name: 'settings-role-unified-update', ok: false, error: String(error && error.message || error) }); }
+  }
+
   window.__hesabiRuntime.checks = results;
   const failed = results.filter(item => item.ok === false);
   if (failed.length) {
@@ -239,7 +244,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.113.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.114.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);

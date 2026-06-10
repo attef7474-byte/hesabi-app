@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 113,
-  "latestVersionName": "1.0.113",
+  "latestVersionCode": 114,
+  "latestVersionName": "1.0.114",
   "required": false,
-  "title": "تحديث حسابي التجاري 1.0.113",
-  "message": "تنظيف الواجهة: إصلاح مكان وعمل قائمة الثلاث نقاط، حذف أزرار تحديث/CSV/فحص الزائدة من الصفحات، حذف ملخصات الرئيسية، وحذف زر البحث من الشريط السفلي.",
+  "title": "تحديث حسابي التجاري 1.0.114",
+  "message": "إرجاع التبديل بين تاجر/عميل وإدارة المتاجر من الإعدادات، وتوحيد زر التحديث بزر ذكي واحد لا يعمل إلا عند وجود نسخة أحدث.",
   "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "UI cleanup only: header overflow menu rebind/reposition, remove repeated sweep toolbars, home icons only, remove bottom navigation search tab.",
-  "notes": "تنظيف الواجهة الرئيسية والشريط السفلي والقائمة العلوية.",
-  "versionName": "1.0.113",
-  "versionCode": 113,
+  "releaseNotes": "Restore dual-role/store access from settings and replace separate cache/UI/APK update buttons with one smart update button.",
+  "notes": "تبديل تاجر/عميل + متاجري + زر تحديث موحد ذكي.",
+  "versionName": "1.0.114",
+  "versionCode": 114,
   "minimumSupportedVersionCode": 60,
   "forceRefresh": true
 }
