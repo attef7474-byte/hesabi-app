@@ -1,7 +1,7 @@
-// Hesabi App 1.0.115
+// Hesabi App 1.0.116
 // Stable module loader + runtime self check.
-const HESABI_APP_VERSION = '1.0.115';
-const HESABI_APP_BUILD_CODE = 115;
+const HESABI_APP_VERSION = '1.0.116';
+const HESABI_APP_BUILD_CODE = 116;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -63,7 +63,8 @@ const HESABI_MODULE_PARTS = [
   'js/modules/52_top_overflow_menu_actions.js',
   'js/modules/53_ui_cleanup_header_home_nav.js',
   'js/modules/54_settings_role_unified_update.js',
-  'js/modules/55_utf8_recovery_115.js'
+  'js/modules/55_utf8_recovery_115.js',
+  'js/modules/56_sms_auth_no_hang.js'
 ];
 
 const HESABI_REQUIRED_GLOBALS = [
@@ -121,7 +122,8 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiTopOverflowMenuActionsSelfCheck',
   'hesabiUiCleanupHeaderHomeNavSelfCheck',
   'hesabiSettingsRoleUnifiedUpdateSelfCheck',
-  'hesabiUtf8Recovery115SelfCheck'
+  'hesabiUtf8Recovery115SelfCheck',
+  'hesabiSmsAuthNoHangSelfCheck'
 ];
 
 const HESABI_RUNTIME_TIMEOUT_MS = 25000;
@@ -229,6 +231,11 @@ function runPostImportChecks() {
     catch (error) { results.push({ name: 'utf8-recovery-115', ok: false, error: String(error && error.message || error) }); }
   }
 
+  if (typeof window.hesabiSmsAuthNoHangSelfCheck === 'function') {
+    try { const r = window.hesabiSmsAuthNoHangSelfCheck(); results.push({ name: 'sms-auth-no-hang', ok: !!r.ok, result: r }); }
+    catch (error) { results.push({ name: 'sms-auth-no-hang', ok: false, error: String(error && error.message || error) }); }
+  }
+
   window.__hesabiRuntime.checks = results;
   const failed = results.filter(item => item.ok === false);
   if (failed.length) {
@@ -253,7 +260,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.115.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.116.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
