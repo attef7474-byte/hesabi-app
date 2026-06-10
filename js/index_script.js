@@ -1,7 +1,7 @@
-// Hesabi App 1.0.123
+// Hesabi App 1.0.122
 // Stable module loader + runtime self check.
-const HESABI_APP_VERSION = '1.0.123';
-const HESABI_APP_BUILD_CODE = 123;
+const HESABI_APP_VERSION = '1.0.122';
+const HESABI_APP_BUILD_CODE = 122;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
