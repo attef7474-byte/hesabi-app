@@ -3,8 +3,8 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.120";
-  const BUILD_CODE = 120;
+  const VERSION = "1.0.121";
+  const BUILD_CODE = 121;
 
   function byId(id){ try { return document.getElementById(id); } catch(_) { return null; } }
   function qsa(sel, root){ try { return Array.from((root || document).querySelectorAll(sel)); } catch(_) { return []; } }
@@ -165,9 +165,32 @@
     }) || null;
   }
 
+  function currentSettingsTabForRole115(){
+    try {
+      if(typeof pageTabState === "function") return pageTabState("settings", "security");
+    } catch(_) {}
+    try {
+      if(typeof state === "object" && state){
+        if(state.pageTabs && state.pageTabs.settings) return String(state.pageTabs.settings || "security");
+        if(state.settingsTab) return String(state.settingsTab || "security");
+      }
+    } catch(_) {}
+    try {
+      const active = document.querySelector("#page_settings .page-tab.active,[data-page-tab].active,.page-tabs .active");
+      const val = active && (active.dataset.tab || active.dataset.pageTab || active.getAttribute("data-tab"));
+      if(val) return String(val);
+    } catch(_) {}
+    return "security";
+  }
   function ensureRoleCard(){
     const page = byId("page_settings");
     if(!page) return false;
+    const roleAccountOnly115 = currentSettingsTabForRole115() === "account";
+    if(!roleAccountOnly115){
+      const oldRoleCard115 = byId("hesabiRoleSettings115");
+      if(oldRoleCard115) oldRoleCard115.remove();
+      return true;
+    }
 
     const tab = currentSettingsTab115();
     let card = byId("hesabiRoleSettings115");
