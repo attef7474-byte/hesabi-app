@@ -1,4 +1,4 @@
-﻿import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,writeBatch, onSnapshot, query, where, serverTimestamp, enableIndexedDbPersistence, increment, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, updatePhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
@@ -24,44 +24,44 @@ let appUnlockedSession=false;
 let listenersStartedKey='';
 let cache={shop:null,items:[],customers:[],orders:[],payments:[],messages:[],invoices:[],customerLedger:[],auditLogs:[],stockLedger:[],returns:[],schedules:[]};
 
-// 氐賱丕丨賷丕鬲 丕賱鬲胤亘賷賯 丨爻亘 丕賱丿賵乇: 丕賱毓賲賷賱 賱丕 賷爻鬲胤賷毓 鬲毓丿賷賱 亘賷丕賳丕鬲 丕賱鬲丕噩乇 兀賵 丕賱兀氐賳丕賮 兀賵 丕賱兀爻毓丕乇 兀賵 丕賱賲禺夭賵賳.
+// صلاحيات التطبيق حسب الدور: العميل لا يستطيع تعديل بيانات التاجر أو الأصناف أو الأسعار أو المخزون.
 function isTrader(){ return state.role==='trader'; }
 function isCustomer(){ return state.role==='customer'; }
-function roleName(){ return isTrader()?'鬲丕噩乇':(isCustomer()?'毓賲賷賱':'睾賷乇 賲丨丿丿'); }
+function roleName(){ return isTrader()?'تاجر':(isCustomer()?'عميل':'غير محدد'); }
 
 const APP_OWNER_EMAIL='attef7474@gmail.com';
 function isAppOwner(){
   const email=(currentUser?.email||state.authEmail||'').toLowerCase();
   return !!(uid() && email===APP_OWNER_EMAIL);
 }
-function requireAppOwnerAction(action='賴匕賴 丕賱毓賲賱賷丞'){
-  if(!isAppOwner()){ msg(action+' 禺丕氐丞 亘賲丕賱賰 丕賱鬲胤亘賷賯 賮賯胤.','error'); return false; }
+function requireAppOwnerAction(action='هذه العملية'){
+  if(!isAppOwner()){ msg(action+' خاصة بمالك التطبيق فقط.','error'); return false; }
   return true;
 }
 function shopSubscriptionText(s){
-  return ({active:'賳卮胤',trial:'鬲噩乇賷亘賷',warning:'廿賳匕丕乇',suspended:'賲賵賯賵賮',expired:'賲賳鬲賴賷'}[s]||s||'鬲噩乇賷亘賷');
+  return ({active:'نشط',trial:'تجريبي',warning:'إنذار',suspended:'موقوف',expired:'منتهي'}[s]||s||'تجريبي');
 }
 function shopSubscriptionClass(s){return s==='suspended'?'rejected':(s==='warning'||s==='expired'?'pending':'approved')}
 function lastSeenText(ms){
-  ms=Number(ms||0); if(!ms) return '睾賷乇 賲毓乇賵賮';
+  ms=Number(ms||0); if(!ms) return 'غير معروف';
   const diff=Date.now()-ms;
-  if(diff<120000) return '賲鬲氐賱 丕賱丌賳';
-  if(diff<3600000) return '賯亘賱 '+Math.max(2,Math.round(diff/60000))+' 丿賯賷賯丞';
-  if(diff<86400000) return '賯亘賱 '+Math.round(diff/3600000)+' 爻丕毓丞';
+  if(diff<120000) return 'متصل الآن';
+  if(diff<3600000) return 'قبل '+Math.max(2,Math.round(diff/60000))+' دقيقة';
+  if(diff<86400000) return 'قبل '+Math.round(diff/3600000)+' ساعة';
   return dateText(ms);
 }
 function isOnlineMs(ms){return Number(ms||0) && (Date.now()-Number(ms)<120000)}
-function permissionDenied(action='賴匕賴 丕賱毓賲賱賷丞'){
-  msg(action+' 禺丕氐丞 亘丨爻丕亘 丕賱鬲丕噩乇 賮賯胤. 丨爻丕亘 丕賱毓賲賷賱 賱賱胤賱亘 賵丕賱爻丿丕丿 賵丕賱賲乇丕爻賱丞 賵賲鬲丕亘毓丞 丕賱丨爻丕亘 賮賯胤.','error');
+function permissionDenied(action='هذه العملية'){
+  msg(action+' خاصة بحساب التاجر فقط. حساب العميل للطلب والسداد والمراسلة ومتابعة الحساب فقط.','error');
   return false;
 }
-function requireTraderAction(action='賴匕賴 丕賱毓賲賱賷丞'){
+function requireTraderAction(action='هذه العملية'){
   if(!isTrader()) return permissionDenied(action);
-  if(!state.shopId){ msg('賱丕 賷賵噩丿 賲鬲噩乇 賳卮胤 賱丨爻丕亘 丕賱鬲丕噩乇','error'); return false; }
+  if(!state.shopId){ msg('لا يوجد متجر نشط لحساب التاجر','error'); return false; }
   return true;
 }
 function customerReadonlyNotice(){
-  return `<div class="notice">兀賳鬲 丿丕禺賱 丕賱鬲胤亘賷賯 賰毓賲賷賱. 賷賲賰賳賰 賲卮丕賴丿丞 丕賱兀氐賳丕賮 丕賱賲鬲丕丨丞 賵丕賱胤賱亘 賵丕賱爻丿丕丿 賮賯胤. 鬲毓丿賷賱 丕賱兀氐賳丕賮 賵丕賱兀爻毓丕乇 賵丕賱賲禺夭賵賳 賵丕賱爻賷丕爻丕鬲 禺丕氐 亘丕賱鬲丕噩乇.</div>`;
+  return `<div class="notice">أنت داخل التطبيق كعميل. يمكنك مشاهدة الأصناف المتاحة والطلب والسداد فقط. تعديل الأصناف والأسعار والمخزون والسياسات خاص بالتاجر.</div>`;
 }
 function isTraderOnlyPage(p){
   return ['customers','audit','stock','collections','policies','reports'].includes(p);
@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.114';
-const APP_BUILD_CODE = 114;
+const APP_VERSION='1.0.111';
+const APP_BUILD_CODE = 111;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -95,12 +95,12 @@ function markAppUnlocked(){
 }
 function renderAppLockScreen(){
   const el=$('appLockScreen'); if(!el) return;
-  el.innerHTML=`<div class="security-lock-card"><div class="security-lock-icon">馃攼</div><h2>賯賮賱 丕賱鬲胤亘賷賯</h2><p class="muted">兀丿禺賱 乇賲夭 丕賱賯賮賱 兀賵 丕爻鬲禺丿賲 賮鬲丨 丕賱噩賴丕夭 廿匕丕 賰丕賳 賲賮毓賾賱賸丕.</p><div class="field"><input id="appLockPinInput" type="password" inputmode="numeric" placeholder="乇賲夭 丕賱賯賮賱"></div><div class="security-lock-actions"><button class="btn ok" id="unlockAppBtn">賮鬲丨</button><button class="btn light" id="skipLockBtn">廿賱睾丕亍 丕賱賯賮賱 賱賴匕賴 丕賱噩賱爻丞</button></div></div>`;
+  el.innerHTML=`<div class="security-lock-card"><div class="security-lock-icon">🔐</div><h2>قفل التطبيق</h2><p class="muted">أدخل رمز القفل أو استخدم فتح الجهاز إذا كان مفعّلًا.</p><div class="field"><input id="appLockPinInput" type="password" inputmode="numeric" placeholder="رمز القفل"></div><div class="security-lock-actions"><button class="btn ok" id="unlockAppBtn">فتح</button><button class="btn light" id="skipLockBtn">إلغاء القفل لهذه الجلسة</button></div></div>`;
   setTimeout(()=>{
     const pinEl=$('appLockPinInput');
     const sec=state.security||state.appSecurity||{};
     const expected=String(sec.pin||state.appLockPin||state.lockPin||'');
-    const unlock=()=>{ const v=String(pinEl?.value||''); if(expected && v!==expected){msg('乇賲夭 丕賱賯賮賱 睾賷乇 氐丨賷丨','error'); return;} markAppUnlocked(); render(); };
+    const unlock=()=>{ const v=String(pinEl?.value||''); if(expected && v!==expected){msg('رمز القفل غير صحيح','error'); return;} markAppUnlocked(); render(); };
     if($('unlockAppBtn')) $('unlockAppBtn').onclick=unlock;
     if($('skipLockBtn')) $('skipLockBtn').onclick=()=>{markAppUnlocked();render();};
     if(pinEl){pinEl.focus(); pinEl.onkeydown=e=>{if(e.key==='Enter') unlock();};}
@@ -153,7 +153,7 @@ function nativeVersionLabel(){
   const name=nativeVersionName();
   const code=nativeVersionCode();
   if(name || code) return `${name||'APK'} (${code||'-'})`;
-  return nativeAndroidAvailable()?'APK 睾賷乇 賲毓乇賵賮':'賲鬲氐賮丨 / Web';
+  return nativeAndroidAvailable()?'APK غير معروف':'متصفح / Web';
 }
 async function fetchAndroidUpdateInfo(){
   const urls=['android-update.json','/android-update.json'];
@@ -179,20 +179,20 @@ function latestApkUrlFromInfo(info){return String((info&&info.apkUrl)||'https://
 async function checkApkUpdateOnly(showIfNoUpdate=true){
   const info=await fetchAndroidUpdateInfo();
   if(!info){
-    msg('鬲毓匕乇 賮丨氐 丕賱鬲丨丿賷孬. 鬲兀賰丿 賲賳 丕賱廿賳鬲乇賳鬲 孬賲 丕囟睾胤 鬲丨丿賷孬 APK 賲乇丞 兀禺乇賶.','error');
+    msg('تعذر فحص التحديث. تأكد من الإنترنت ثم اضغط تحديث APK مرة أخرى.','error');
     return null;
   }
   const current=nativeVersionCode();
   const latest=latestVersionCodeFromInfo(info);
   const latestName=latestVersionNameFromInfo(info)||latest;
   if(!nativeAndroidAvailable()){
-    msg(`兀賳鬲 鬲爻鬲禺丿賲 賳爻禺丞 Web. 丌禺乇 APK 賲鬲丕丨: ${latestName}.`, 'notice');
+    msg(`أنت تستخدم نسخة Web. آخر APK متاح: ${latestName}.`, 'notice');
   }else if(!current){
-    msg(`賱賲 兀爻鬲胤毓 賯乇丕亍丞 廿氐丿丕乇 APK 丕賱賲孬亘鬲. 丌禺乇 廿氐丿丕乇 賲鬲丕丨: ${latestName}.`, 'notice');
+    msg(`لم أستطع قراءة إصدار APK المثبت. آخر إصدار متاح: ${latestName}.`, 'notice');
   }else if(latest && latest>current){
-    msg(`賷賵噩丿 鬲丨丿賷孬 APK 噩丿賷丿: ${latestName}. 爻賷鬲賲 鬲賳夭賷賱 丌禺乇 賳爻禺丞 賲鬲賵賮乇丞 賵賱賷爻 賳爻禺丞 賯丿賷賲丞.`, 'notice');
+    msg(`يوجد تحديث APK جديد: ${latestName}. سيتم تنزيل آخر نسخة متوفرة وليس نسخة قديمة.`, 'notice');
   }else if(showIfNoUpdate){
-    msg(`賱丕 賷賵噩丿 鬲丨丿賷孬 APK 兀丨丿孬. 丕賱賲孬亘鬲: ${nativeVersionLabel()}貙 丕賱賲鬲丕丨: ${latestName||'-'}.`, 'success');
+    msg(`لا يوجد تحديث APK أحدث. المثبت: ${nativeVersionLabel()}، المتاح: ${latestName||'-'}.`, 'success');
   }
   return info;
 }
@@ -245,11 +245,11 @@ async function forceApkUpdate(){
     await prepareFullUpdateRefresh();
     const current=nativeVersionCode();
     const latest=latestVersionCodeFromInfo(info);
-    const latestName=latestVersionNameFromInfo(info)||'丌禺乇 廿氐丿丕乇';
-    msg(`噩丕乇賷 鬲賳夭賷賱 ${latestName}. 廿匕丕 賰丕賳 丕賱賴丕鬲賮 賯丿賷賲賸丕 賵乇賮囟 丕賱鬲孬亘賷鬲 亘爻亘亘 丕禺鬲賱丕賮 丕賱鬲賵賯賷毓貙 丕丨匕賮 丕賱賳爻禺丞 丕賱賯丿賷賲丞 賲乇丞 賵丕丨丿丞 孬賲 孬亘鬲 丕賱賳爻禺丞 丕賱噩丿賷丿丞貙 賵賱賳 鬲鬲賰乇乇 丕賱賲卮賰賱丞 亘毓丿 鬲孬亘賷鬲 丕賱賳爻禺丞 丕賱賲賵賯毓丞 丕賱孬丕亘鬲丞.`, 'notice');
+    const latestName=latestVersionNameFromInfo(info)||'آخر إصدار';
+    msg(`جاري تنزيل ${latestName}. إذا كان الهاتف قديمًا ورفض التثبيت بسبب اختلاف التوقيع، احذف النسخة القديمة مرة واحدة ثم ثبت النسخة الجديدة، ولن تتكرر المشكلة بعد تثبيت النسخة الموقعة الثابتة.`, 'notice');
     setTimeout(()=>openApkDownloadUrl(apkUrl), 450);
   }catch(e){
-    msg('鬲毓匕乇 亘丿亍 鬲丨丿賷孬 APK: '+(e.message||e),'error');
+    msg('تعذر بدء تحديث APK: '+(e.message||e),'error');
   }
 }
 async function autoCheckCriticalApkUpdate(){
@@ -258,13 +258,13 @@ async function autoCheckCriticalApkUpdate(){
     const current=nativeVersionCode(); const latest=latestVersionCodeFromInfo(info);
     const minRequired=Number(info.minimumSupportedVersionCode||0);
     if(nativeAndroidAvailable() && current && ((latest && latest>current && info.required) || (minRequired && current<minRequired))){
-      msg('賷賵噩丿 鬲丨丿賷孬 賲賴賲 賱賱鬲胤亘賷賯. 賲賳 丕賱兀賮囟賱 鬲丨丿賷孬 APK 丕賱丌賳 賱賱丨氐賵賱 毓賱賶 丌禺乇 丕賱賵丕噩賴丕鬲 賵丕賱氐賱丕丨賷丕鬲 亘丿賵賳 賲卮丕賰賱.', 'notice');
+      msg('يوجد تحديث مهم للتطبيق. من الأفضل تحديث APK الآن للحصول على آخر الواجهات والصلاحيات بدون مشاكل.', 'notice');
     }
   }catch(e){}
 }
 async function refreshWebOnly(){
   try{
-    msg('噩丕乇賷 鬲丨丿賷孬 丕賱賵丕噩賴丕鬲 賮賯胤 亘丿賵賳 鬲孬亘賷鬲 APK...', 'notice');
+    msg('جاري تحديث الواجهات فقط بدون تثبيت APK...', 'notice');
     state.lastManualUpdateAt = Date.now();
     save();
     const updater=window.hesabiUpdateCacheStability;
@@ -288,7 +288,7 @@ async function refreshWebOnly(){
     const nextUrl = updater && typeof updater.buildRefreshUrl==='function' ? updater.buildRefreshUrl({refresh:'1'}) : (()=>{const url = new URL(location.href); url.searchParams.set('v', String(Date.now())); url.searchParams.set('refresh','1'); return url.toString();})();
     setTimeout(()=>location.replace(nextUrl), 450);
   }catch(e){
-    msg('鬲毓匕乇 鬲丨丿賷孬 丕賱賵丕噩賴丕鬲: '+(e.message||e),'error');
+    msg('تعذر تحديث الواجهات: '+(e.message||e),'error');
   }
 }
 
@@ -337,18 +337,18 @@ function showAppDialog(title, body, type='notice', buttons){
   if(!back||!ttl||!bdy||!acts){ if($('msg')) $('msg').innerHTML=`<div class="notice ${type}">${esc(body||title)}</div>`; return; }
   const kind=type==='error'?'dialog-error':(type==='success'?'dialog-success':(type==='warn'?'dialog-warn':''));
   back.className='hesabi-dialog-backdrop '+kind;
-  ttl.textContent=title||'鬲賳亘賷賴'; bdy.textContent=body||''; icon.textContent=type==='error'?'鈿狅笍':(type==='success'?'鉁?:(type==='warn'?'馃Ч':'鈩癸笍'));
-  const list=buttons&&buttons.length?buttons:[{text:'賲賵丕賮賯',cls:type==='error'?'danger':'ok',fn:hideAppDialog}];
+  ttl.textContent=title||'تنبيه'; bdy.textContent=body||''; icon.textContent=type==='error'?'⚠️':(type==='success'?'✅':(type==='warn'?'🧹':'ℹ️'));
+  const list=buttons&&buttons.length?buttons:[{text:'موافق',cls:type==='error'?'danger':'ok',fn:hideAppDialog}];
   acts.className='hesabi-dialog-actions '+(list.length===1?'one':(list.length===3?'three':''));
-  acts.innerHTML=list.map((x,i)=>`<button type="button" class="btn ${esc(x.cls||'secondary')}" data-dialog-action="${i}">${esc(x.text||'賲賵丕賮賯')}</button>`).join('');
+  acts.innerHTML=list.map((x,i)=>`<button type="button" class="btn ${esc(x.cls||'secondary')}" data-dialog-action="${i}">${esc(x.text||'موافق')}</button>`).join('');
   acts.querySelectorAll('[data-dialog-action]').forEach(btn=>{btn.onclick=()=>{const x=list[Number(btn.dataset.dialogAction)]; try{ if(x.close!==false) hideAppDialog(); if(typeof x.fn==='function') x.fn(); }catch(e){console.warn('dialog action failed',e)} };});
 }
 function msg(t,type='notice'){
   const dialogs=window.hesabiDialogsToasts;
   if(dialogs&&typeof dialogs.msg==='function') return dialogs.msg(t,type);
   const text=String(t||'');
-  const isErr=type==='error'||/禺胤兀|賮卮賱|鬲毓匕乇|Missing|Firebase|Uncaught|Error|ReferenceError/i.test(text);
-  showAppDialog(isErr?'鬲賳亘賷賴 賲賴賲':(type==='success'?'鬲賲 亘賳噩丕丨':'鬲賳亘賷賴'), text, isErr?'error':type);
+  const isErr=type==='error'||/خطأ|فشل|تعذر|Missing|Firebase|Uncaught|Error|ReferenceError/i.test(text);
+  showAppDialog(isErr?'تنبيه مهم':(type==='success'?'تم بنجاح':'تنبيه'), text, isErr?'error':type);
 }
 function safeMsg(t,type='notice'){
   const dialogs=window.hesabiDialogsToasts;
@@ -356,36 +356,36 @@ function safeMsg(t,type='notice'){
   try{msg(t,type)}catch(e){console.warn('safeMsg failed',e,t)}
 }
 function showStartupRecoveryDialog(errorText=''){
-  const details=errorText?('\n\n丕賱鬲賮丕氐賷賱: '+String(errorText).slice(0,180)):'';
-  showAppDialog('鬲毓匕乇 鬲卮睾賷賱 丕賱氐賮丨丞', '丨氐賱 禺賱賱 賮賷 鬲丨賲賷賱 丕賱賵丕噩賴丞. 賷賲賰賳賰 廿氐賱丕丨賴 丕賱丌賳 亘丿賵賳 丕賱禺乇賵噩 賲賳 丕賱鬲胤亘賷賯.'+details, 'warn', [
-    {text:'鬲丨丿賷孬 丕賱賵丕噩賴丕鬲',cls:'ok',fn:async()=>{try{await refreshWebUiNow()}catch(e){} try{location.replace(location.pathname+'?v='+Date.now())}catch(e){location.reload()}}},
-    {text:'鬲賳馗賷賮 丕賱賰丕卮',cls:'warn',fn:async()=>{try{await refreshWebUiNow()}catch(e){} try{location.replace(location.pathname+'?clean='+Date.now())}catch(e){location.reload()}}},
-    {text:'鬲丨丿賷孬 APK',cls:'secondary',fn:()=>{try{downloadApkUpdate()}catch(e){location.href=latestApkDirectUrl()}}}
+  const details=errorText?('\n\nالتفاصيل: '+String(errorText).slice(0,180)):'';
+  showAppDialog('تعذر تشغيل الصفحة', 'حصل خلل في تحميل الواجهة. يمكنك إصلاحه الآن بدون الخروج من التطبيق.'+details, 'warn', [
+    {text:'تحديث الواجهات',cls:'ok',fn:async()=>{try{await refreshWebUiNow()}catch(e){} try{location.replace(location.pathname+'?v='+Date.now())}catch(e){location.reload()}}},
+    {text:'تنظيف الكاش',cls:'warn',fn:async()=>{try{await refreshWebUiNow()}catch(e){} try{location.replace(location.pathname+'?clean='+Date.now())}catch(e){location.reload()}}},
+    {text:'تحديث APK',cls:'secondary',fn:()=>{try{downloadApkUpdate()}catch(e){location.href=latestApkDirectUrl()}}}
   ]);
 }
 
-function money(n){const u=hesabiUtils(); if(typeof u.formatMoney==='function') return u.formatMoney(n,'乇賷丕賱'); return Number(n||0).toLocaleString('ar-YE')+' 乇賷丕賱'}
+function money(n){const u=hesabiUtils(); if(typeof u.formatMoney==='function') return u.formatMoney(n,'ريال'); return Number(n||0).toLocaleString('ar-YE')+' ريال'}
 function todayIso(){const u=hesabiUtils(); if(typeof u.todayIso==='function') return u.todayIso(); return new Date().toISOString().slice(0,10)}
 function fileToDataUrl(file, maxBytes=700000){
   const u=hesabiUtils();
   if(typeof u.fileToDataUrl==='function') return u.fileToDataUrl(file,maxBytes);
   return new Promise((resolve,reject)=>{
     if(!file){resolve(null);return}
-    if(file.size>maxBytes){reject(new Error('丨噩賲 氐賵乇丞 丕賱廿賷氐丕賱 賰亘賷乇 噩丿賸丕. 丕禺鬲乇 氐賵乇丞 兀賯賱 賲賳 700KB 兀賵 氐睾賾乇賴丕 賯亘賱 丕賱廿乇爻丕賱.'));return}
-    const r=new FileReader(); r.onload=()=>resolve({name:file.name,type:file.type,size:file.size,dataUrl:r.result}); r.onerror=()=>reject(new Error('鬲毓匕乇 賯乇丕亍丞 氐賵乇丞 丕賱廿賷氐丕賱')); r.readAsDataURL(file);
+    if(file.size>maxBytes){reject(new Error('حجم صورة الإيصال كبير جدًا. اختر صورة أقل من 700KB أو صغّرها قبل الإرسال.'));return}
+    const r=new FileReader(); r.onload=()=>resolve({name:file.name,type:file.type,size:file.size,dataUrl:r.result}); r.onerror=()=>reject(new Error('تعذر قراءة صورة الإيصال')); r.readAsDataURL(file);
   })
 }
 function id(prefix){const u=hesabiUtils(); if(typeof u.makeId==='function') return u.makeId(prefix); return prefix+'-'+Math.random().toString(36).slice(2,7).toUpperCase()+Date.now().toString().slice(-4)}
-function statusText(s){return ({pending:'賲毓賱賾賯',pending_trader:'亘丕賳鬲馗丕乇 賲賵丕賮賯丞 丕賱鬲丕噩乇',pending_customer:'亘丕賳鬲馗丕乇 賲賵丕賮賯丞 丕賱毓賲賷賱',approved:'賲賯亘賵賱',rejected:'賲乇賮賵囟',cancelled:'賲賱睾賷'}[s]||s||'賲毓賱賾賯')}
-function payTypeText(v){return v==='credit'?'丌噩賱':'賰丕卮'}
-function ledgerTypeText(v){return ({debit_invoice:'賮丕鬲賵乇丞 丌噩賱',cash_invoice:'賮丕鬲賵乇丞 賰丕卮',payment:'爻丿丕丿',return_credit:'賲乇鬲噩毓 丌噩賱',return_cash:'賲乇鬲噩毓 賰丕卮',adjustment:'鬲爻賵賷丞'}[v]||v||'丨乇賰丞')}
-function onlineBadge(){const on=navigator.onLine;$('netBadge').className='badge '+(on?'online':'offline');$('netBadge').textContent=on?'賲鬲氐賱 亘丕賱廿賳鬲乇賳鬲':'睾賷乇 賲鬲氐賱'}
+function statusText(s){return ({pending:'معلّق',pending_trader:'بانتظار موافقة التاجر',pending_customer:'بانتظار موافقة العميل',approved:'مقبول',rejected:'مرفوض',cancelled:'ملغي'}[s]||s||'معلّق')}
+function payTypeText(v){return v==='credit'?'آجل':'كاش'}
+function ledgerTypeText(v){return ({debit_invoice:'فاتورة آجل',cash_invoice:'فاتورة كاش',payment:'سداد',return_credit:'مرتجع آجل',return_cash:'مرتجع كاش',adjustment:'تسوية'}[v]||v||'حركة')}
+function onlineBadge(){const on=navigator.onLine;$('netBadge').className='badge '+(on?'online':'offline');$('netBadge').textContent=on?'متصل بالإنترنت':'غير متصل'}
 function normalizePhone(v){
   const u=hesabiUtils();
   if(typeof u.normalizePhone==='function') return u.normalizePhone(v);
   let x=String(v||'').trim();
-  const ar='贍佟佗伲伽佶佴侑侉侃'; const fa='郯郾鄄鄢鄞鄣鄱鄯鄹酃';
-  x=x.replace(/[贍-侃]/g,d=>String(ar.indexOf(d))).replace(/[郯-酃]/g,d=>String(fa.indexOf(d)));
+  const ar='٠١٢٣٤٥٦٧٨٩'; const fa='۰۱۲۳۴۵۶۷۸۹';
+  x=x.replace(/[٠-٩]/g,d=>String(ar.indexOf(d))).replace(/[۰-۹]/g,d=>String(fa.indexOf(d)));
   x=x.replace(/[^0-9]/g,'');
   if(x.startsWith('00')) x=x.slice(2);
   if(x.startsWith('967') && x.length>=12) x='0'+x.slice(3);
@@ -404,8 +404,8 @@ function toInternationalPhone(v){
   const u=hesabiUtils();
   if(typeof u.toInternationalPhone==='function') return u.toInternationalPhone(v);
   let raw=String(v||'').trim();
-  const ar='贍佟佗伲伽佶佴侑侉侃'; const fa='郯郾鄄鄢鄞鄣鄱鄯鄹酃';
-  raw=raw.replace(/[贍-侃]/g,d=>String(ar.indexOf(d))).replace(/[郯-酃]/g,d=>String(fa.indexOf(d)));
+  const ar='٠١٢٣٤٥٦٧٨٩'; const fa='۰۱۲۳۴۵۶۷۸۹';
+  raw=raw.replace(/[٠-٩]/g,d=>String(ar.indexOf(d))).replace(/[۰-۹]/g,d=>String(fa.indexOf(d)));
   let x=raw.replace(/[^0-9+]/g,'');
   if(x.startsWith('+')) return x;
   x=x.replace(/[^0-9]/g,'');
@@ -449,19 +449,19 @@ function notificationPermissionState(){
 }
 async function requestNotificationPermission(showResult=true){
   try{
-    if(!('Notification' in window)){ if(showResult) msg('賴匕丕 丕賱噩賴丕夭 賱丕 賷丿毓賲 廿卮毓丕乇丕鬲 Web 丿丕禺賱 賴匕賴 丕賱賳爻禺丞. 爻賷亘賯賶 毓丿丕丿 丕賱鬲胤亘賷賯 丕賱丿丕禺賱賷 賷毓賲賱.', 'notice'); return false; }
+    if(!('Notification' in window)){ if(showResult) msg('هذا الجهاز لا يدعم إشعارات Web داخل هذه النسخة. سيبقى عداد التطبيق الداخلي يعمل.', 'notice'); return false; }
     let p=Notification.permission;
     if(p==='default') p=await Notification.requestPermission();
     state.notifyEnabled = p==='granted';
     state.notifyPermission = p;
     save();
     if(showResult){
-      if(p==='granted') showAppDialog('鬲賲 鬲賮毓賷賱 丕賱鬲賳亘賷賴丕鬲','鬲賲 鬲賮毓賷賱 丕賱鬲賳亘賷賴丕鬲 丿丕禺賱 丕賱鬲胤亘賷賯. 馗賴賵乇 丕賱乇賯賲 賮賵賯 兀賷賯賵賳丞 丕賱鬲胤亘賷賯 賷毓鬲賲丿 毓賱賶 賳賵毓 丕賱賴丕鬲賮 賵丕賱賱丕賳卮乇.', 'success', [{text:'賲賵丕賮賯',cls:'ok'}]);
-      else showAppDialog('丕賱鬲賳亘賷賴丕鬲 睾賷乇 賲賮毓賱丞','賱賲 賷鬲賲 賲賳丨 氐賱丕丨賷丞 丕賱鬲賳亘賷賴丕鬲. 賷賲賰賳賰 鬲賮毓賷賱賴丕 賲賳 廿毓丿丕丿丕鬲 丕賱賴丕鬲賮貙 賵爻賷亘賯賶 毓丿丕丿 丕賱鬲賳亘賷賴丕鬲 丿丕禺賱 丕賱鬲胤亘賷賯 馗丕賴乇賸丕.', 'warn', [{text:'賲賵丕賮賯',cls:'ok'}]);
+      if(p==='granted') showAppDialog('تم تفعيل التنبيهات','تم تفعيل التنبيهات داخل التطبيق. ظهور الرقم فوق أيقونة التطبيق يعتمد على نوع الهاتف واللانشر.', 'success', [{text:'موافق',cls:'ok'}]);
+      else showAppDialog('التنبيهات غير مفعلة','لم يتم منح صلاحية التنبيهات. يمكنك تفعيلها من إعدادات الهاتف، وسيبقى عداد التنبيهات داخل التطبيق ظاهرًا.', 'warn', [{text:'موافق',cls:'ok'}]);
     }
     updateAndroidLauncherBadge();
     return p==='granted';
-  }catch(e){ console.warn('notification permission failed',e); if(showResult) msg('鬲毓匕乇 胤賱亘 氐賱丕丨賷丞 丕賱鬲賳亘賷賴丕鬲: '+(e.message||e),'error'); return false; }
+  }catch(e){ console.warn('notification permission failed',e); if(showResult) msg('تعذر طلب صلاحية التنبيهات: '+(e.message||e),'error'); return false; }
 }
 function appNotificationCounters(){
   try{ return unreadCounters(); }catch(e){ return {orders:0,messages:0,payments:0,returns:0,schedules:0,notifications:0}; }
@@ -472,19 +472,19 @@ function updateAndroidLauncherBadge(){
     const c=appNotificationCounters();
     const total=Number(c.notifications||0);
     const parts=[];
-    if(c.messages) parts.push('乇爻丕卅賱: '+c.messages);
-    if(c.orders) parts.push('胤賱亘丕鬲: '+c.orders);
-    if(c.payments) parts.push('爻丿丕丿: '+c.payments);
-    if(c.returns) parts.push('賲乇鬲噩毓丕鬲: '+c.returns);
-    if(c.schedules) parts.push('丕爻鬲丨賯丕賯丕鬲: '+c.schedules);
-    const detail=parts.length?parts.join(' | '):'賱丕 鬲賵噩丿 賲乇丕噩毓丕鬲 噩丿賷丿丞';
+    if(c.messages) parts.push('رسائل: '+c.messages);
+    if(c.orders) parts.push('طلبات: '+c.orders);
+    if(c.payments) parts.push('سداد: '+c.payments);
+    if(c.returns) parts.push('مرتجعات: '+c.returns);
+    if(c.schedules) parts.push('استحقاقات: '+c.schedules);
+    const detail=parts.length?parts.join(' | '):'لا توجد مراجعات جديدة';
     if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.updateLauncherBadge==='function') window.hesabiAndroidBridge.updateLauncherBadge(total, detail);
     try{ document.querySelectorAll('[data-home-page="notifications"] .qbadge,[data-tab="notifications"] .nav-badge').forEach(el=>{el.textContent=total>99?'99+':String(total);}); }catch(e){}
   }catch(e){console.warn('Android badge update skipped',e)}
 }
 function clearAllNotificationCounters(){
   markNotificationsRead();
-  try{ if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.updateLauncherBadge==='function') window.hesabiAndroidBridge.updateLauncherBadge(0, '賱丕 鬲賵噩丿 賲乇丕噩毓丕鬲 噩丿賷丿丞'); }catch(e){}
+  try{ if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.updateLauncherBadge==='function') window.hesabiAndroidBridge.updateLauncherBadge(0, 'لا توجد مراجعات جديدة'); }catch(e){}
   renderNav();
   if(active==='notifications') renderNotifications();
 }
@@ -525,10 +525,10 @@ window.hesabiOpenFromNotification = function(page){
   }catch(e){console.warn('open notification failed',e)}
 };
 
-function requireAuth(){ if(!uid()){msg('賷噩亘 鬲爻噩賷賱 丕賱丿禺賵賱 兀賵賱賸丕','error'); return false} return true }
-function validPhoneOrWarn(phone,label='乇賯賲 丕賱賴丕鬲賮'){
+function requireAuth(){ if(!uid()){msg('يجب تسجيل الدخول أولًا','error'); return false} return true }
+function validPhoneOrWarn(phone,label='رقم الهاتف'){
   const key=normalizePhone(phone);
-  if(key.length<7){msg(label+' 睾賷乇 氐丨賷丨 兀賵 賯氐賷乇 噩丿賸丕','error'); return null}
+  if(key.length<7){msg(label+' غير صحيح أو قصير جدًا','error'); return null}
   return key;
 }
 function verifiedCurrentPhoneKey(){
@@ -548,12 +548,12 @@ function verifiedPhoneDisplay(){
   const k=verifiedCurrentPhoneKey() || normalizePhone(state.authPhoneNumber || state.authPhoneKey || '');
   return k ? phoneKeyToInternational(k) : '';
 }
-function requireVerifiedPhoneInput(phone,label='乇賯賲 丕賱賴丕鬲賮'){
+function requireVerifiedPhoneInput(phone,label='رقم الهاتف'){
   const key=validPhoneOrWarn(phone,label);
   if(!key) return null;
   const verified=verifiedCurrentPhoneKey();
   if(isPhoneAuthSession() && verified && key!==verified){
-    msg(`${label} 賷噩亘 兀賳 賷賰賵賳 賳賮爻 丕賱乇賯賲 丕賱匕賷 鬲賲 丕賱鬲丨賯賯 賲賳賴 亘賰賵丿 SMS: ${phoneKeyToInternational(verified)}`,'error');
+    msg(`${label} يجب أن يكون نفس الرقم الذي تم التحقق منه بكود SMS: ${phoneKeyToInternational(verified)}`,'error');
     return null;
   }
   return key;
@@ -645,7 +645,7 @@ function normalizeCustomerLinks(){
   if(state.role==='customer'){
     if(!Array.isArray(state.customerLinks)) state.customerLinks=[];
     if(state.customerId && state.shopId && !state.customerLinks.some(x=>x.shopId===state.shopId && x.customerId===state.customerId)){
-      state.customerLinks.push({shopId:state.shopId,customerId:state.customerId,customerName:state.customerName||'毓賲賷賱',customerPhone:state.customerPhone||'',shopName:state.shopName||state.shopId});
+      state.customerLinks.push({shopId:state.shopId,customerId:state.customerId,customerName:state.customerName||'عميل',customerPhone:state.customerPhone||'',shopName:state.shopName||state.shopId});
     }
     if(state.customerLinks.length && (!state.activeShopId || !state.customerLinks.some(x=>x.shopId===state.activeShopId))){
       state.activeShopId=state.customerLinks[0].shopId;
@@ -658,8 +658,8 @@ function normalizeCustomerLinks(){
 function currentCustomerLink(){return (state.customerLinks||[]).find(x=>x.shopId===state.activeShopId) || (state.customerLinks||[])[0] || null}
 function setActiveCustomerShop(shopId){
   const link=(state.customerLinks||[]).find(x=>x.shopId===shopId);
-  if(!link){msg('賱賲 賷鬲賲 丕賱毓孬賵乇 毓賱賶 賴匕丕 丕賱鬲丕噩乇 賮賷 乇賵丕亘胤賰','error');return}
-  state.activeShopId=shopId; state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||''; state.shopName=link.shopName||shopId; save(); resetCacheForLiveData(); listenersStartedKey=''; startListeners(); active='home'; render(); msg('鬲賲 丕賱鬲亘丿賷賱 廿賱賶 丨爻丕亘: '+(link.shopName||shopId),'success');
+  if(!link){msg('لم يتم العثور على هذا التاجر في روابطك','error');return}
+  state.activeShopId=shopId; state.shopId=link.shopId; state.customerId=link.customerId; state.customerName=link.customerName; state.customerPhone=link.customerPhone||''; state.shopName=link.shopName||shopId; save(); resetCacheForLiveData(); listenersStartedKey=''; startListeners(); active='home'; render(); msg('تم التبديل إلى حساب: '+(link.shopName||shopId),'success');
 }
 function beep(kind='notification'){
   if(!state.soundEnabled) return;
@@ -707,34 +707,34 @@ function ensureNotifyState(){
 function notificationKey(n){return n.id}
 function getNotifications(){
   const notes=[];
-  const shopName=state.role==='customer' ? (state.shopName||state.shopId||'丕賱鬲丕噩乇') : (cache.shop?.name||'丕賱賲丨賱');
+  const shopName=state.role==='customer' ? (state.shopName||state.shopId||'التاجر') : (cache.shop?.name||'المحل');
   for(const o of cache.orders||[]){
     if(state.role==='trader' && (o.status==='pending'||o.status==='pending_trader') && o.source!=='trader'){
-      notes.push({id:`order:${state.shopId}:${o.id}:${o.status}`,type:'order',page:'orders',createdMs:Number(o.createdMs||0),title:'胤賱亘 卮乇丕亍 噩丿賷丿',body:`${o.customerName||'毓賲賷賱'} - ${money(o.total)} - ${payTypeText(o.paymentType)}`});
+      notes.push({id:`order:${state.shopId}:${o.id}:${o.status}`,type:'order',page:'orders',createdMs:Number(o.createdMs||0),title:'طلب شراء جديد',body:`${o.customerName||'عميل'} - ${money(o.total)} - ${payTypeText(o.paymentType)}`});
     }
     if(state.role==='customer'){
       if(o.status==='pending_customer' && o.source==='trader'){
-        notes.push({id:`order:${state.shopId}:${o.id}:pending_customer`,type:'order',page:'orders',createdMs:Number(o.createdMs||0),title:'胤賱亘 亘賷毓 賲賳 丕賱鬲丕噩乇',body:`${shopName} - ${money(o.total)} - 賷丨鬲丕噩 賲賵丕賮賯鬲賰`});
+        notes.push({id:`order:${state.shopId}:${o.id}:pending_customer`,type:'order',page:'orders',createdMs:Number(o.createdMs||0),title:'طلب بيع من التاجر',body:`${shopName} - ${money(o.total)} - يحتاج موافقتك`});
       }
       if((o.status==='approved'||o.status==='rejected'||o.status==='cancelled') && o.source!=='customer_ack'){
-        notes.push({id:`order:${state.shopId}:${o.id}:${o.status}`,type:'order',page:'orders',createdMs:Number(o.createdMs||Date.now()),title:o.status==='approved'?'鬲賲 賯亘賵賱 胤賱亘賰':(o.status==='cancelled'?'鬲賲 廿賱睾丕亍 丕賱胤賱亘':'鬲賲 乇賮囟 胤賱亘賰'),body:`${shopName} - ${money(o.total)}${o.traderNote?' - '+o.traderNote:''}`});
+        notes.push({id:`order:${state.shopId}:${o.id}:${o.status}`,type:'order',page:'orders',createdMs:Number(o.createdMs||Date.now()),title:o.status==='approved'?'تم قبول طلبك':(o.status==='cancelled'?'تم إلغاء الطلب':'تم رفض طلبك'),body:`${shopName} - ${money(o.total)}${o.traderNote?' - '+o.traderNote:''}`});
       }
     }
   }
   for(const p of cache.payments||[]){
     if(state.role==='trader' && p.status==='pending'){
-      notes.push({id:`payment:${state.shopId}:${p.id}:pending`,type:'payment',page:'payments',createdMs:Number(p.createdMs||0),title:'胤賱亘 爻丿丕丿 噩丿賷丿',body:`${p.customerName||'毓賲賷賱'} - ${money(p.amount)}`});
+      notes.push({id:`payment:${state.shopId}:${p.id}:pending`,type:'payment',page:'payments',createdMs:Number(p.createdMs||0),title:'طلب سداد جديد',body:`${p.customerName||'عميل'} - ${money(p.amount)}`});
     }
     if(state.role==='customer' && (p.status==='approved'||p.status==='rejected')){
-      notes.push({id:`payment:${state.shopId}:${p.id}:${p.status}`,type:'payment',page:'payments',createdMs:Number(p.createdMs||Date.now()),title:p.status==='approved'?'鬲賲 賯亘賵賱 丕賱爻丿丕丿':'鬲賲 乇賮囟 丕賱爻丿丕丿',body:`${money(p.amount)}${p.traderNote?' - '+p.traderNote:''}`});
+      notes.push({id:`payment:${state.shopId}:${p.id}:${p.status}`,type:'payment',page:'payments',createdMs:Number(p.createdMs||Date.now()),title:p.status==='approved'?'تم قبول السداد':'تم رفض السداد',body:`${money(p.amount)}${p.traderNote?' - '+p.traderNote:''}`});
     }
   }
   for(const r of cache.returns||[]){
     if(state.role==='trader' && r.status==='pending'){
-      notes.push({id:`return:${state.shopId}:${r.id}:pending`,type:'return',page:'returns',createdMs:Number(r.createdMs||0),title:'胤賱亘 賲乇鬲噩毓 噩丿賷丿',body:`${r.customerName||'毓賲賷賱'} - ${esc(r.itemName||'氐賳賮')} - ${money(r.amount)}`});
+      notes.push({id:`return:${state.shopId}:${r.id}:pending`,type:'return',page:'returns',createdMs:Number(r.createdMs||0),title:'طلب مرتجع جديد',body:`${r.customerName||'عميل'} - ${esc(r.itemName||'صنف')} - ${money(r.amount)}`});
     }
     if(state.role==='customer' && (r.status==='approved'||r.status==='rejected')){
-      notes.push({id:`return:${state.shopId}:${r.id}:${r.status}`,type:'return',page:'returns',createdMs:Number(r.reviewedMs||r.createdMs||Date.now()),title:r.status==='approved'?'鬲賲 賯亘賵賱 丕賱賲乇鬲噩毓':'鬲賲 乇賮囟 丕賱賲乇鬲噩毓',body:`${esc(r.itemName||'氐賳賮')} - ${money(r.amount)}${r.traderNote?' - '+r.traderNote:''}`});
+      notes.push({id:`return:${state.shopId}:${r.id}:${r.status}`,type:'return',page:'returns',createdMs:Number(r.reviewedMs||r.createdMs||Date.now()),title:r.status==='approved'?'تم قبول المرتجع':'تم رفض المرتجع',body:`${esc(r.itemName||'صنف')} - ${money(r.amount)}${r.traderNote?' - '+r.traderNote:''}`});
     }
   }
   const todayIso=new Date().toISOString().slice(0,10);
@@ -743,14 +743,14 @@ function getNotifications(){
     const due=String(sch.dueDate||'');
     if(due && due<=todayIso){
       const late=due<todayIso;
-      if(state.role==='customer') notes.push({id:`schedule:${state.shopId}:${sch.id}:${due}:${sch.status}`,type:'schedule',page:'schedules',createdMs:Number(sch.createdMs||Date.now()),title:late?'賯爻胤 賲鬲兀禺乇':'賯爻胤 賲爻鬲丨賯 丕賱賷賵賲',body:`${shopName} - ${money(sch.amount)} - 鬲丕乇賷禺 丕賱丕爻鬲丨賯丕賯 ${due}`});
-      if(state.role==='trader') notes.push({id:`schedule:${state.shopId}:${sch.id}:${due}:${sch.status}`,type:'schedule',page:'schedules',createdMs:Number(sch.createdMs||Date.now()),title:late?'賯爻胤 毓賲賷賱 賲鬲兀禺乇':'賯爻胤 毓賲賷賱 賲爻鬲丨賯 丕賱賷賵賲',body:`${sch.customerName||'毓賲賷賱'} - ${money(sch.amount)} - ${due}`});
+      if(state.role==='customer') notes.push({id:`schedule:${state.shopId}:${sch.id}:${due}:${sch.status}`,type:'schedule',page:'schedules',createdMs:Number(sch.createdMs||Date.now()),title:late?'قسط متأخر':'قسط مستحق اليوم',body:`${shopName} - ${money(sch.amount)} - تاريخ الاستحقاق ${due}`});
+      if(state.role==='trader') notes.push({id:`schedule:${state.shopId}:${sch.id}:${due}:${sch.status}`,type:'schedule',page:'schedules',createdMs:Number(sch.createdMs||Date.now()),title:late?'قسط عميل متأخر':'قسط عميل مستحق اليوم',body:`${sch.customerName||'عميل'} - ${money(sch.amount)} - ${due}`});
     }
   }
   for(const m of cache.messages||[]){
     const other = state.role==='trader' ? m.fromRole==='customer' : m.fromRole==='trader';
     if(other){
-      notes.push({id:`message:${state.shopId}:${m.id}`,type:'message',page:'messages',createdMs:Number(m.createdMs||0),title:'乇爻丕賱丞 噩丿賷丿丞',body:`${m.fromName||''}: ${String(m.text||'').slice(0,90)}`});
+      notes.push({id:`message:${state.shopId}:${m.id}`,type:'message',page:'messages',createdMs:Number(m.createdMs||0),title:'رسالة جديدة',body:`${m.fromName||''}: ${String(m.text||'').slice(0,90)}`});
     }
   }
   return notes.sort((a,b)=>(b.createdMs||0)-(a.createdMs||0));
@@ -786,9 +786,9 @@ function checkNotifications(){
   if(fresh.length){
     for(const n of fresh) state.knownNotifyIds[notificationKey(n)]=Date.now();
     save();
-    // 賱丕 賳氐丿乇 氐賵鬲賸丕 毓賳丿 丕賱鬲丨賲賷賱 丕賱兀賵賱 賱賱丨爻丕亘 丨鬲賶 賱丕 賷乇賳 丕賱鬲胤亘賷賯 毓賱賶 亘賷丕賳丕鬲 賯丿賷賲丞 賰孬賷乇丞.
+    // لا نصدر صوتًا عند التحميل الأول للحساب حتى لا يرن التطبيق على بيانات قديمة كثيرة.
     if(state.notifyInitialized){
-      notifyLocal('丨爻丕亘賷 丕賱鬲噩丕乇賷', fresh[0].title + (fresh.length>1 ? ` + ${fresh.length-1}` : ''), fresh[0].body || '');
+      notifyLocal('حسابي التجاري', fresh[0].title + (fresh.length>1 ? ` + ${fresh.length-1}` : ''), fresh[0].body || '');
     }
   }
   if(!state.notifyInitialized){state.notifyInitialized=true; save();}
@@ -807,5 +807,4 @@ function openNotificationPage(page){
   if(p!=='notifications') markPageNotificationsRead(p);
   updateAndroidLauncherBadge();
 }
-
 
