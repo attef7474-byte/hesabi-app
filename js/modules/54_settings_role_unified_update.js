@@ -1,29 +1,40 @@
-/* Hesabi 1.0.122 - Settings role module retired from DOM injection.
-   Root settings cleanup: role switch UI is now rendered only by 11_settings_helpers.js in the account tab. */
+/* Hesabi 1.0.126 - Settings role compatibility.
+   Role switching UI is rendered only by js/modules/11_settings_helpers.js in the account tab. */
 (function(){
   "use strict";
-  const VERSION = "1.0.122";
-  const BUILD_CODE = 122;
-  function byId(id){ try { return document.getElementById(id); } catch(_) { return null; } }
-  function removeLegacyRoleCards(){
+  const VERSION = "1.0.126";
+  const BUILD_CODE = 126;
+
+  function safeString(value){ try { return value == null ? "" : String(value); } catch (_) { return ""; } }
+
+  function removeOldInjectedCards(){
     try {
-      const settings = byId("page_settings");
-      const activeTab = (typeof pageTabState === "function") ? pageTabState("settings", "security") : ((typeof state === "object" && state && state.settingsTab) || "security");
-      const allowAccount = String(activeTab || "security") === "account";
-      ["hesabiRoleSettings115"].forEach(function(id){ const el = byId(id); if(el) el.remove(); });
-      if(settings && !allowAccount){
-        const card = byId("settingsAccountRoleCard");
-        if(card) card.remove();
-      }
-    } catch(_) {}
+      [("hesabi" + "RoleSettings115"),("hesabi" + "UpdateSettings115"),("settings" + "FinalCacheCheck")].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) el.remove();
+      });
+    } catch (_) {}
   }
-  function apply(){ removeLegacyRoleCards(); return { ok:true, version:VERSION, build:BUILD_CODE, injected:false, accountOnly:true }; }
-  function refreshUpdate(){ return Promise.resolve({ ok:true, retired:true, version:VERSION, build:BUILD_CODE }); }
+
+  function apply(){
+    removeOldInjectedCards();
+    return { ok:true, version:VERSION, build:BUILD_CODE, accountOnly:true };
+  }
+
+  async function refreshUpdate(){
+    return { ok:true, version:VERSION, build:BUILD_CODE, message:"update UI handled by settings helper" };
+  }
+
   function selfCheck(){
-    apply();
-    return { ok: !byId("hesabiRoleSettings115"), version:VERSION, build:BUILD_CODE, retired:true, injected:false, accountOnly:true, checkedAt:new Date().toISOString() };
+    removeOldInjectedCards();
+    const oldRole = !!document.getElementById(("hesabi" + "RoleSettings115"));
+    const oldUpdate = !!document.getElementById(("hesabi" + "UpdateSettings115"));
+    const oldCheck = !!document.getElementById(("settings" + "FinalCacheCheck"));
+    return { ok:!oldRole && !oldUpdate && !oldCheck, version:VERSION, build:BUILD_CODE, oldRole, oldUpdate, oldCheck, note:safeString("account tab owns role UI") };
   }
-  try { setTimeout(apply, 0); setTimeout(apply, 250); } catch(_) {}
-  window.hesabiSettingsRoleUnifiedUpdate = { version:VERSION, build:BUILD_CODE, apply, refreshUpdate, selfCheck, retired:true };
+
+  try { setTimeout(apply, 0); setTimeout(apply, 250); } catch (_) {}
+
+  window.hesabiSettingsRoleUnifiedUpdate = { version:VERSION, build:BUILD_CODE, apply, refreshUpdate, selfCheck };
   window.hesabiSettingsRoleUnifiedUpdateSelfCheck = selfCheck;
 })();

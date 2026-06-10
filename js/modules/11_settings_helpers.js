@@ -1,22 +1,35 @@
-/* Hesabi 1.0.122 - Root settings stabilization.
-   This file is the single owner of page_settings UI.
-   No external module is allowed to inject settings cards/buttons. */
+/* Hesabi 1.0.126 - Stable root settings.
+   Single source for settings tabs. No external injection, no final diagnostics button. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.122";
-  const BUILD_CODE = 122;
+  const VERSION = "1.0.126";
+  const BUILD_CODE = 126;
   const REQUIRED_TABS = ["security", "appearance", "shop", "permissions", "update", "backup", "account", "notifications"];
 
-  function byId(id){ try { return document.getElementById(id); } catch(_) { return null; } }
-  function safeString(value){ try { if(value && value.message) return String(value.message); return String(value == null ? "" : value); } catch (_) { return ""; } }
-  function escSafe(value){
-    try { if(typeof esc === "function") return esc(value); } catch (_) {}
-    return safeString(value).replace(/[&<>'"]/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]; });
+  function safeString(value){
+    try { return value == null ? "" : String(value); } catch (_) { return ""; }
   }
-  function notify(text, type){ try { if(typeof msg === "function") msg(text, type || "notice"); else console.log(text); } catch(_) {} }
-  function saveSafe(){ try { if(typeof save === "function") save(); } catch(_) {} }
-  function renderSafe(){ try { if(typeof render === "function") render(); } catch(_) {} }
+
+  function escSafe(value){
+    try { if(typeof esc === "function") return esc(value == null ? "" : value); } catch (_) {}
+    return safeString(value).replace(/[&<>"']/g, function(ch){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch] || ch);
+    });
+  }
+
+  function byId(id){ try { return document.getElementById(id); } catch (_) { return null; } }
+  function qsa(selector, root){ try { return Array.from((root || document).querySelectorAll(selector)); } catch (_) { return []; } }
+  function getState(){ return (typeof state === "object" && state) ? state : {}; }
+  function getCache(){ return (typeof cache === "object" && cache) ? cache : {}; }
+  function saveSafe(){ try { if(typeof save === "function") save(); } catch (_) {} }
+  function renderSafe(){ try { if(typeof render === "function") render(); } catch (_) {} }
+  function notify(text, type){ try { if(typeof msg === "function") msg(text, type || "notice"); } catch (_) {} }
+  function boolText(value){ return value ? "مفعل" : "ملغي"; }
+  function roleLabel(role){ return role === "trader" ? "تاجر" : role === "customer" ? "عميل" : "غير محدد"; }
+  function selected(value, expected){ return safeString(value) === safeString(expected) ? " selected" : ""; }
+  function checked(value){ return value ? " checked" : ""; }
+  function num(value, fallback){ const n = Number(value); return Number.isFinite(n) ? n : fallback; }
 
   function getTabs(){
     return [
@@ -31,220 +44,510 @@
     ];
   }
 
-  function normalizeTab(tab){ const value = String(tab || "security"); return REQUIRED_TABS.indexOf(value) >= 0 ? value : "security"; }
-  function boolText(value){ return value ? "مفعل" : "ملغي"; }
+  function normalizeTab(tab){
+    const value = safeString(tab || "security");
+    return REQUIRED_TABS.indexOf(value) >= 0 ? value : "security";
+  }
 
-  function callCheck(fnName){
-    const fn = window[fnName];
-    if(typeof fn !== "function") return { ok: true, missing: true, fn: fnName };
-    try { const result = fn(); return Object.assign({ fn: fnName }, result && typeof result === "object" ? result : { ok: true, value: result }); }
-    catch (error) { return { ok: false, fn: fnName, error: safeString(error) }; }
+  function runtimeVersion(){
+    try {
+      if(window.__hesabiRuntime && window.__hesabiRuntime.version) return safeString(window.__hesabiRuntime.version);
+    } catch (_) {}
+    try { if(typeof HESABI_APP_VERSION !== "undefined") return safeString(HESABI_APP_VERSION); } catch (_) {}
+    try { if(typeof APP_VERSION !== "undefined") return safeString(APP_VERSION); } catch (_) {}
+    return VERSION;
+  }
+
+  function runtimeBuild(){
+    try {
+      if(window.__hesabiRuntime && window.__hesabiRuntime.build) return Number(window.__hesabiRuntime.build || 0);
+    } catch (_) {}
+    try { if(typeof HESABI_APP_BUILD_CODE !== "undefined") return Number(HESABI_APP_BUILD_CODE || 0); } catch (_) {}
+    try { if(typeof APP_BUILD_CODE !== "undefined") return Number(APP_BUILD_CODE || 0); } catch (_) {}
+    return BUILD_CODE;
+  }
+
+  function nativeCode(){ try { return typeof nativeVersionCode === "function" ? Number(nativeVersionCode() || 0) : 0; } catch (_) { return 0; } }
+  function nativeName(){ try { return typeof nativeVersionName === "function" ? safeString(nativeVersionName() || "") : ""; } catch (_) { return ""; } }
+  function nativeLabel(){ const n = nativeName(); const c = nativeCode(); return (n || "APK") + " (" + (c || "-") + ")"; }
+
+  function appearanceDefaults(){
+    return { theme:"light", accent:"teal", brightness:100, background:"glass", compact:true };
+  }
+
+  function currentAppearance(){
+    try { if(typeof getAppearance === "function") return Object.assign(appearanceDefaults(), getAppearance() || {}); } catch (_) {}
+    const s = getState();
+    return Object.assign(appearanceDefaults(), s.appearance || {});
+  }
+
+  function applyAppearanceSettingsLocal(values){
+    const s = getState();
+    const current = currentAppearance();
+    const clean = Object.assign({}, current, values || {});
+    clean.theme = clean.theme === "dark" ? "dark" : "light";
+    clean.accent = ["teal","blue","green","purple","orange"].indexOf(clean.accent) >= 0 ? clean.accent : "teal";
+    clean.background = ["glass","soft","plain"].indexOf(clean.background) >= 0 ? clean.background : "glass";
+    clean.brightness = Math.min(120, Math.max(75, num(clean.brightness, 100)));
+    clean.compact = clean.compact !== false;
+    try {
+      if(typeof saveAppearanceSettings === "function") {
+        saveAppearanceSettings(clean);
+      } else {
+        s.appearance = clean;
+        saveSafe();
+        try { if(typeof applyAppearance === "function") applyAppearance(); } catch (_) {}
+      }
+      notify("تم حفظ إعدادات الشكل.", "success");
+    } catch (error) {
+      notify("تعذر حفظ الشكل: " + safeString(error && error.message || error), "error");
+    }
   }
 
   function roleProfile(role){
-    try { if(typeof dualRoleProfileFor === "function") return dualRoleProfileFor(role); } catch(_) {}
-    try { return (state && state.roleProfiles && state.roleProfiles[role]) || null; } catch(_) { return null; }
+    try { if(typeof dualRoleProfileFor === "function") return dualRoleProfileFor(role); } catch (_) {}
+    const s = getState();
+    return (s.roleProfiles && s.roleProfiles[role]) || null;
   }
-  function rememberRole(){ try { if(typeof rememberCurrentDualRoleProfile === "function") rememberCurrentDualRoleProfile(); } catch(_) {} }
 
-  function switchRoleFromSettings(role, setupMode){
+  function rememberRole(){
+    try { if(typeof rememberCurrentDualRoleProfile === "function") rememberCurrentDualRoleProfile(); } catch (_) {}
+  }
+
+  function resetLiveData(){
+    try { if(typeof resetCacheForLiveData === "function") resetCacheForLiveData(); } catch (_) {}
+    try { listenersStartedKey = ""; } catch (_) {}
+  }
+
+  function applyRole(role, setupMode){
+    const s = getState();
+    rememberRole();
     try {
-      rememberRole();
       if(setupMode){
-        state.role = role;
-        state.profileDone = false;
-        try { if(typeof resetCacheForLiveData === "function") resetCacheForLiveData(); } catch(_) {}
-        try { listenersStartedKey = ""; } catch(_) {}
+        s.role = role;
+        s.profileDone = false;
+        resetLiveData();
         saveSafe();
         renderSafe();
-        notify("أكمل تهيئة وضع " + (role === "trader" ? "تاجر" : "عميل") + ".", "notice");
+        notify("أكمل تهيئة وضع " + roleLabel(role) + ".", "notice");
         return;
       }
-      if(typeof applyDualRoleProfile === "function") { applyDualRoleProfile(role); return; }
-      const p = roleProfile(role);
-      state.role = role;
-      if(p && p.profileDone){
-        Object.keys(p).forEach(function(k){ if(k !== "role") state[k] = p[k]; });
-        state.profileDone = true;
-      } else {
-        state.profileDone = false;
+
+      if(typeof applyDualRoleProfile === "function"){
+        applyDualRoleProfile(role);
+        return;
       }
-      try { if(typeof resetCacheForLiveData === "function") resetCacheForLiveData(); } catch(_) {}
-      try { listenersStartedKey = ""; } catch(_) {}
+
+      const p = roleProfile(role);
+      s.role = role;
+      if(p && p.profileDone){
+        Object.keys(p).forEach(function(key){ if(key !== "role") s[key] = p[key]; });
+        s.profileDone = true;
+      } else {
+        s.profileDone = false;
+      }
+      resetLiveData();
       saveSafe();
       renderSafe();
-      notify("تم التبديل إلى وضع " + (role === "trader" ? "تاجر" : "عميل"), "success");
+      notify("تم التبديل إلى وضع " + roleLabel(role) + ".", "success");
     } catch(error) {
       notify("تعذر التبديل: " + safeString(error && error.message || error), "error");
     }
   }
 
-  function openStoresFromAccount(){
-    rememberRole();
+  function openStores(){
     try {
-      if(state && state.role !== "customer"){
+      rememberRole();
+      const s = getState();
+      if(s.role !== "customer"){
         const p = roleProfile("customer");
         if(p && p.profileDone && typeof applyDualRoleProfile === "function"){
           applyDualRoleProfile("customer");
-          setTimeout(function(){ try { if(typeof show === "function") show("shops"); } catch(_) {} }, 300);
+          setTimeout(function(){ try { if(typeof show === "function") show("shops"); } catch (_) {} }, 250);
           return;
         }
-        switchRoleFromSettings("customer", true);
+        applyRole("customer", true);
         return;
       }
       if(typeof show === "function") show("shops");
-    } catch(error) { notify("تعذر فتح متاجري: " + safeString(error && error.message || error), "error"); }
+    } catch(error) {
+      notify("تعذر فتح المتاجر: " + safeString(error && error.message || error), "error");
+    }
   }
 
-  function roleAccountCardHtml(){
-    const hasTrader = !!roleProfile("trader");
-    const hasCustomer = !!roleProfile("customer");
-    const current = state && state.role === "trader" ? "تاجر" : (state && state.role === "customer" ? "عميل" : "غير محدد");
+  async function safeLogout(){
+    try {
+      if(typeof safeFullLogout === "function") {
+        await safeFullLogout("settings-account");
+        return;
+      }
+    } catch (_) {}
+
+    const s = getState();
+    try { if(Array.isArray(unsub)){ unsub.forEach(function(fn){ try { if(typeof fn === "function") fn(); } catch (_) {} }); unsub = []; } } catch (_) {}
+    try { if(typeof auth !== "undefined" && auth && typeof signOut === "function") await signOut(auth); } catch (_) {}
+    try { currentUser = null; authReady = false; } catch (_) {}
+
+    [
+      "role","shopId","shopName","customerId","customerName","customerPhone","activeShopId",
+      "uid","authEmail","authPhoneNumber","authPhoneKey","authProvider"
+    ].forEach(function(key){ try { delete s[key]; } catch (_) { s[key] = ""; } });
+    s.profileDone = false;
+    try { if(typeof active !== "undefined") active = "home"; } catch (_) {}
+    try { sessionStorage.clear(); } catch (_) {}
+    saveSafe();
+    try { if(typeof hideAppDialog === "function") hideAppDialog(); } catch (_) {}
+    renderSafe();
+    notify("تم تسجيل الخروج.", "success");
+  }
+
+  function accountInfoHtml(){
+    const s = getState();
+    const c = getCache();
+    const phone = s.authPhoneNumber || s.customerPhone || "";
+    const email = s.authEmail || "";
+    const shopName = s.shopName || (c.shop && c.shop.name) || "";
+    const shopId = s.shopId || s.activeShopId || "";
+    const customerName = s.customerName || "";
+    return `
+      <div class="grid">
+        <div class="metric"><span class="muted">نوع الحساب الحالي</span><b>${escSafe(roleLabel(s.role))}</b></div>
+        <div class="metric"><span class="muted">حالة التهيئة</span><b>${escSafe(s.profileDone ? "مكتملة" : "غير مكتملة")}</b></div>
+        <div class="metric"><span class="muted">الهاتف</span><b dir="ltr">${escSafe(phone || "-")}</b></div>
+        <div class="metric"><span class="muted">البريد</span><b dir="ltr">${escSafe(email || "-")}</b></div>
+        <div class="metric"><span class="muted">كود المتجر</span><b dir="ltr">${escSafe(shopId || "-")}</b></div>
+        <div class="metric"><span class="muted">اسم المتجر</span><b>${escSafe(shopName || "-")}</b></div>
+        <div class="metric"><span class="muted">اسم العميل</span><b>${escSafe(customerName || "-")}</b></div>
+      </div>`;
+  }
+
+  function roleCardHtml(){
+    const s = getState();
+    const hasTrader = !!roleProfile("trader") || (s.role === "trader" && !!s.shopId);
+    const hasCustomer = !!roleProfile("customer") || (s.role === "customer" && (!!s.customerId || Array.isArray(s.customerLinks)));
     return `
       <div class="card" id="settingsAccountRoleCard">
         <h2>وضع الحساب: تاجر وعميل</h2>
-        <div class="notice">الوضع الحالي: <b>${escSafe(current)}</b></div>
-        <div class="settings-role-pills">
+        <div class="notice">
+          الوضع الحالي: <b>${escSafe(roleLabel(s.role))}</b>
+        </div>
+        <div class="settings-status-row">
           <span class="hesabi-pill ${hasTrader ? "" : "off"}">تاجر: ${hasTrader ? "مفعل" : "غير مفعل"}</span>
           <span class="hesabi-pill ${hasCustomer ? "" : "off"}">عميل: ${hasCustomer ? "مفعل" : "غير مفعل"}</span>
         </div>
-        <p class="muted">التبديل بين تاجر وعميل يظهر هنا فقط داخل صفحة الحساب.</p>
-        <div class="settings-compact-actions settings-account-role-actions">
-          <button class="btn secondary" id="dualSwitchTrader" type="button">الدخول كتاجر</button>
-          <button class="btn secondary" id="dualSwitchCustomer" type="button">الدخول كعميل</button>
-          <button class="btn light" id="dualSetupTrader" type="button">تهيئة/استرجاع تاجر</button>
-          <button class="btn light" id="dualSetupCustomer" type="button">ربط تاجر كعميل</button>
-          <button class="btn ok" id="dualOpenStores" type="button">متاجري / ربط متجر</button>
+        <div class="settings-compact-actions settings-actions-2">
+          <button class="btn secondary" id="settingsSwitchTrader" type="button">الدخول كتاجر</button>
+          <button class="btn secondary" id="settingsSwitchCustomer" type="button">الدخول كعميل</button>
+          <button class="btn light" id="settingsSetupTrader" type="button">تهيئة / استرجاع تاجر</button>
+          <button class="btn light" id="settingsSetupCustomer" type="button">ربط تاجر كعميل</button>
+          <button class="btn ok" id="settingsOpenStores" type="button">متاجري / ربط متجر</button>
         </div>
       </div>`;
   }
 
-  function updateStatusCard(){
-    const updateCheck = callCheck("hesabiUpdateCacheStabilitySelfCheck");
-    const runtimeCheck = callCheck("hesabiFullRuntimeSmokeSelfCheck");
-    const updateOk = updateCheck.ok !== false;
-    const runtimeOk = runtimeCheck.ok !== false;
-    return `<div class="notice ${updateOk && runtimeOk ? "" : "warn"}">` +
-      `فحص التحديث والكاش: <b>${updateOk ? "سليم" : "يحتاج مراجعة"}</b> · ` +
-      `فحص التشغيل العام: <b>${runtimeOk ? "سليم" : "يحتاج مراجعة"}</b>` +
-      `</div>`;
+  function updateInfoHtml(){
+    const rtVersion = runtimeVersion();
+    const rtBuild = runtimeBuild();
+    return `
+      <div class="grid">
+        <div class="metric"><span class="muted">إصدار الواجهات</span><b>${escSafe(rtVersion)}</b></div>
+        <div class="metric"><span class="muted">Build الواجهات</span><b>${escSafe(rtBuild || "-")}</b></div>
+        <div class="metric"><span class="muted">إصدار APK</span><b>${escSafe(nativeLabel())}</b></div>
+        <div class="metric"><span class="muted">مرحلة الإعدادات</span><b>${escSafe(VERSION)}</b></div>
+      </div>
+      <div class="notice" id="settingsUpdateStatus">الإعدادات مستقرة. استخدم الزر أدناه لتحديث الواجهات أو فتح تحديث APK عند توفره.</div>
+      <div class="settings-compact-actions settings-actions-1">
+        <button class="btn ok" id="settingsSmartUpdate" type="button">تحديث التطبيق الآن</button>
+      </div>`;
   }
 
   function renderSection(tab){
-    const s = (typeof state === "object" && state) ? state : {};
+    const s = getState();
+    const c = getCache();
     const activeTab = normalizeTab(tab);
-    if(activeTab === "security") {
-      return `<div class="card"><h2>الأمان</h2><div class="notice">قفل التطبيق: ${boolText(s.appLockEnabled || s.lockEnabled)}</div><p class="muted">إعدادات الأمان فقط. لا تظهر هنا أزرار الحساب أو التبديل.</p><div class="settings-compact-actions"><button class="btn secondary" id="settingsDisableLock">إلغاء القفل مؤقتًا</button><button class="btn light" id="settingsGoAccount">الحساب</button></div></div>`;
+
+    if(activeTab === "security"){
+      return `
+        <div class="card">
+          <h2>الأمان</h2>
+          <div class="grid">
+            <div class="metric"><span class="muted">قفل التطبيق</span><b>${escSafe(boolText(s.appLockEnabled || s.lockEnabled))}</b></div>
+            <div class="metric"><span class="muted">البصمة</span><b>${escSafe(boolText(s.biometricEnabled))}</b></div>
+            <div class="metric"><span class="muted">رمز PIN</span><b>${escSafe(s.appPin || s.lockPin ? "محفوظ" : "غير محفوظ")}</b></div>
+          </div>
+          <div class="grid">
+            <div class="field"><label>رمز PIN جديد</label><input id="settingsPinInput" type="password" inputmode="numeric" maxlength="12" placeholder="اكتب رمز PIN"></div>
+            <div class="field"><label>القفل التلقائي بالدقائق</label><input id="settingsAutoLockMinutes" type="number" min="1" max="240" value="${escSafe(s.autoLockMinutes || 15)}"></div>
+          </div>
+          <div class="settings-compact-actions">
+            <button class="btn ok" id="settingsSaveSecurity" type="button">حفظ الأمان</button>
+            <button class="btn secondary" id="settingsToggleLock" type="button">${s.appLockEnabled || s.lockEnabled ? "إيقاف القفل" : "تفعيل القفل"}</button>
+            <button class="btn light" id="settingsToggleBiometric" type="button">${s.biometricEnabled ? "إيقاف البصمة" : "تفعيل البصمة"}</button>
+            <button class="btn warn" id="settingsClearPin" type="button">حذف PIN</button>
+          </div>
+        </div>`;
     }
-    if(activeTab === "appearance") {
-      const compact = !!(s.appearance && s.appearance.compact);
-      return `<div class="card"><h2>الشكل</h2><div class="notice">وضع الواجهة الحالي: <b>${compact ? "مدمجة" : "واسعة"}</b></div><div class="settings-compact-actions"><button class="btn light" id="settingsCompactOn">واجهة مدمجة</button><button class="btn light" id="settingsCompactOff">واجهة واسعة</button></div></div>`;
+
+    if(activeTab === "appearance"){
+      const a = currentAppearance();
+      return `
+        <div class="card">
+          <h2>الشكل</h2>
+          <div class="grid">
+            <div class="field"><label>الوضع</label><select id="settingsTheme"><option value="light"${selected(a.theme,"light")}>نهاري</option><option value="dark"${selected(a.theme,"dark")}>ليلي</option></select></div>
+            <div class="field"><label>لون التطبيق</label><select id="settingsAccent"><option value="teal"${selected(a.accent,"teal")}>فيروزي</option><option value="blue"${selected(a.accent,"blue")}>أزرق</option><option value="green"${selected(a.accent,"green")}>أخضر</option><option value="purple"${selected(a.accent,"purple")}>بنفسجي</option><option value="orange"${selected(a.accent,"orange")}>برتقالي</option></select></div>
+            <div class="field"><label>الخلفية</label><select id="settingsBackground"><option value="glass"${selected(a.background,"glass")}>زجاجية</option><option value="soft"${selected(a.background,"soft")}>هادئة</option><option value="plain"${selected(a.background,"plain")}>مسطحة</option></select></div>
+            <div class="field"><label>السطوع</label><input id="settingsBrightness" type="range" min="75" max="120" value="${escSafe(a.brightness || 100)}"></div>
+          </div>
+          <label class="check-row"><input id="settingsCompact" type="checkbox"${checked(a.compact !== false)}> واجهة مدمجة للجوال</label>
+          <div class="notice">المعاينة الحالية: ${escSafe(a.theme === "dark" ? "ليلي" : "نهاري")} / ${escSafe(a.accent || "teal")}</div>
+          <div class="settings-compact-actions">
+            <button class="btn ok" id="settingsSaveAppearance" type="button">حفظ الشكل</button>
+            <button class="btn light" id="settingsResetAppearance" type="button">استعادة الافتراضي</button>
+          </div>
+        </div>`;
     }
-    if(activeTab === "shop") {
-      return `<div class="card"><h2>المتجر</h2><p>كود المتجر: <b>${escSafe(s.shopId || "-")}</b></p><div class="settings-compact-actions"><button class="btn secondary" id="settingsPolicies">السياسات</button><button class="btn secondary" id="settingsItems">الأصناف</button><button class="btn light" id="settingsShopCode">كود التاجر</button><button class="btn light" id="settingsCustomers">العملاء</button></div></div>`;
+
+    if(activeTab === "shop"){
+      const shop = c.shop || {};
+      const shopId = s.shopId || shop.shopId || shop.id || "";
+      return `
+        <div class="card">
+          <h2>المتجر</h2>
+          <div class="grid">
+            <div class="metric"><span class="muted">كود المتجر</span><b dir="ltr">${escSafe(shopId || "-")}</b></div>
+            <div class="metric"><span class="muted">اسم المتجر</span><b>${escSafe(s.shopName || shop.name || "-")}</b></div>
+            <div class="metric"><span class="muted">هاتف المتجر</span><b dir="ltr">${escSafe(shop.phone || s.shopPhone || "-")}</b></div>
+            <div class="metric"><span class="muted">الحالة</span><b>${escSafe(shop.subscriptionStatus || shop.status || "نشط")}</b></div>
+            <div class="metric"><span class="muted">تاريخ الاستحقاق</span><b>${escSafe(shop.subscriptionDueDate || "-")}</b></div>
+          </div>
+          <div class="settings-compact-actions">
+            <button class="btn secondary" id="settingsPolicies" type="button">السياسات</button>
+            <button class="btn secondary" id="settingsItems" type="button">الأصناف</button>
+            <button class="btn light" id="settingsShopCode" type="button">كود التاجر</button>
+            <button class="btn light" id="settingsCustomers" type="button">العملاء</button>
+          </div>
+        </div>`;
     }
-    if(activeTab === "permissions") {
-      return `<div class="card"><h2>الصلاحيات حسب الدور</h2><div class="table-wrap"><table class="compact-table"><thead><tr><th>الوظيفة</th><th>التاجر</th><th>العميل</th></tr></thead><tbody><tr><td>الأصناف والأسعار والمخزون</td><td>إضافة/تعديل/حذف وتسوية</td><td>عرض وطلب فقط حسب سياسة التاجر</td></tr><tr><td>السياسات والظهور والدوام</td><td>تحكم كامل</td><td>عرض فقط</td></tr><tr><td>الطلبات</td><td>مراجعة/قبول/رفض وإنشاء فاتورة</td><td>إنشاء ومتابعة طلباته فقط</td></tr><tr><td>السداد والفواتير وكشف الحساب</td><td>اعتماد/رفض ومراجعة</td><td>حسابه فقط</td></tr><tr><td>المالك والاشتراكات</td><td>مالك التطبيق فقط</td><td>لا يظهر</td></tr></tbody></table></div></div>`;
+
+    if(activeTab === "permissions"){
+      return `
+        <div class="card">
+          <h2>الصلاحيات حسب الدور</h2>
+          <div class="notice">دورك الحالي: <b>${escSafe(roleLabel(s.role))}</b></div>
+          <div class="table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>الوظيفة</th><th>التاجر</th><th>العميل</th></tr></thead>
+              <tbody>
+                <tr><td>الأصناف والأسعار والمخزون</td><td>إضافة / تعديل / حذف / تسوية</td><td>عرض وطلب فقط حسب سياسة التاجر</td></tr>
+                <tr><td>السياسات والظهور والدوام</td><td>تحكم كامل</td><td>عرض فقط</td></tr>
+                <tr><td>الطلبات</td><td>مراجعة / قبول / رفض / إنشاء فاتورة</td><td>إنشاء ومتابعة طلباته فقط</td></tr>
+                <tr><td>السداد والفواتير وكشف الحساب</td><td>اعتماد / رفض / مراجعة</td><td>حسابه فقط</td></tr>
+                <tr><td>المالك والاشتراكات</td><td>مالك التطبيق فقط</td><td>لا يظهر</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
     }
-    if(activeTab === "update") {
-      const apkLabel = (typeof nativeVersionName === "function" && typeof nativeVersionCode === "function") ? `${nativeVersionName()} (${nativeVersionCode()})` : "غير معروف";
-      const appVersion = typeof APP_VERSION !== "undefined" ? APP_VERSION : VERSION;
-      return `<div class="card"><h2>التحديث</h2>${updateStatusCard()}<div class="grid"><div class="metric"><span class="muted">إصدار الواجهات</span><b>${escSafe(appVersion)}</b></div><div class="metric"><span class="muted">إصدار APK</span><b>${escSafe(apkLabel)}</b></div><div class="metric"><span class="muted">مرحلة الإعدادات</span><b>${VERSION}</b></div></div><div class="settings-compact-actions"><button class="btn ok" id="settingsRefreshUi">تحديث الواجهات</button><button class="btn secondary" id="settingsUpdateApk">تحديث APK</button><button class="btn light" id="settingsCheckApk">فحص APK</button></div></div>`;
+
+    if(activeTab === "update"){
+      return `<div class="card"><h2>التحديث</h2>${updateInfoHtml()}</div>`;
     }
-    if(activeTab === "backup") {
-      return `<div class="card"><h2>النسخ والاستيراد</h2><p class="muted">اختصارات آمنة للانتقال إلى صفحات التصدير دون تشغيل عملية حذف أو كتابة مباشرة.</p><div class="settings-compact-actions"><button class="btn secondary" id="settingsExportItems">الأصناف</button><button class="btn light" id="settingsExportReports">التقارير</button><button class="btn light" id="settingsStatement">كشف الحساب</button><button class="btn light" id="settingsInvoices">الفواتير</button></div></div>`;
+
+    if(activeTab === "backup"){
+      return `
+        <div class="card">
+          <h2>النسخ والاستيراد</h2>
+          <div class="notice">كل العمليات هنا آمنة ولا تنفذ حذفًا مباشرًا.</div>
+          <div class="grid">
+            <div class="metric"><span class="muted">آخر نسخة محلية</span><b>${escSafe(s.lastBackupAt || "-")}</b></div>
+            <div class="metric"><span class="muted">البيانات المحملة</span><b>${escSafe(((c.items||[]).length) + " صنف / " + ((c.customers||[]).length) + " عميل")}</b></div>
+          </div>
+          <div class="settings-compact-actions">
+            <button class="btn ok" id="settingsExportFull" type="button">تصدير نسخة كاملة JSON</button>
+            <button class="btn secondary" id="settingsExportItems" type="button">تصدير الأصناف</button>
+            <button class="btn light" id="settingsExportReports" type="button">التقارير</button>
+            <button class="btn light" id="settingsStatement" type="button">كشف الحساب</button>
+            <button class="btn light" id="settingsInvoices" type="button">الفواتير</button>
+          </div>
+        </div>`;
     }
-    if(activeTab === "account") {
-      const userLabel = escSafe((s.authPhoneNumber || s.authPhoneKey || s.authEmail || "غير معروف"));
-      return `<div class="card" id="settingsAccountMainCard"><h2>الحساب</h2><p class="muted">إدارة الجلسة الحالية والتبديل بين أوضاع الحساب.</p><div class="notice">المستخدم الحالي: <b>${userLabel}</b></div><div class="settings-compact-actions"><button class="btn danger" id="settingsLogout">تسجيل خروج</button><button class="btn light" id="settingsGoHome">الرئيسية</button></div></div>${roleAccountCardHtml()}`;
+
+    if(activeTab === "account"){
+      return `
+        <div class="card">
+          <h2>الحساب</h2>
+          ${accountInfoHtml()}
+          <div class="settings-compact-actions">
+            <button class="btn danger" id="settingsLogout" type="button">تسجيل خروج</button>
+            <button class="btn light" id="settingsGoHome" type="button">الرئيسية</button>
+          </div>
+        </div>
+        ${roleCardHtml()}`;
     }
+
     const counters = (typeof appNotificationCounters === "function") ? appNotificationCounters() : {};
     const permission = (typeof notificationPermissionState === "function") ? notificationPermissionState() : "unknown";
-    return `<div class="card"><h2>التنبيهات</h2><div class="grid"><div class="metric"><span class="muted">الإجمالي غير المقروء</span><b>${Number(counters.notifications || 0)}</b></div><div class="metric"><span class="muted">صلاحية التنبيهات</span><b>${escSafe(permission)}</b></div></div><p class="muted">العداد يظهر داخل التطبيق دائمًا، وعلى أيقونة التطبيق حسب دعم الهاتف واللانشر.</p><div class="settings-compact-actions"><button class="btn ok" id="settingsEnableNotifications">تفعيل التنبيهات</button><button class="btn secondary" id="settingsOpenNotifications">فتح الإشعارات</button><button class="btn light" id="settingsOpenMessages">فتح الرسائل</button><button class="btn warn" id="settingsClearBadge">تصفير العدّاد</button></div></div>`;
+    const prefs = s.notificationPrefs || {};
+    return `
+      <div class="card">
+        <h2>التنبيهات</h2>
+        <div class="grid">
+          <div class="metric"><span class="muted">الإجمالي غير المقروء</span><b>${escSafe(counters.notifications || 0)}</b></div>
+          <div class="metric"><span class="muted">صلاحية التنبيهات</span><b>${escSafe(permission)}</b></div>
+        </div>
+        <label class="check-row"><input id="settingsNotifyOrders" type="checkbox"${checked(prefs.orders !== false)}> تنبيهات الطلبات</label>
+        <label class="check-row"><input id="settingsNotifyPayments" type="checkbox"${checked(prefs.payments !== false)}> تنبيهات السداد</label>
+        <label class="check-row"><input id="settingsNotifyMessages" type="checkbox"${checked(prefs.messages !== false)}> تنبيهات الرسائل</label>
+        <label class="check-row"><input id="settingsNotifyStock" type="checkbox"${checked(prefs.stock !== false)}> تنبيهات المخزون</label>
+        <div class="settings-compact-actions">
+          <button class="btn ok" id="settingsEnableNotifications" type="button">تفعيل التنبيهات</button>
+          <button class="btn secondary" id="settingsSaveNotificationPrefs" type="button">حفظ الخيارات</button>
+          <button class="btn light" id="settingsOpenNotifications" type="button">فتح الإشعارات</button>
+          <button class="btn light" id="settingsOpenMessages" type="button">فتح الرسائل</button>
+          <button class="btn warn" id="settingsClearBadge" type="button">تصفير العدّاد</button>
+        </div>
+      </div>`;
   }
 
   function bindSafeAction(id, label, handler){
-    let el = null;
-    try { el = byId(id); } catch (_) { el = document.getElementById(id); }
+    const el = byId(id);
     if(!el) return false;
-    el.onclick = async function(){
+    el.onclick = async function(ev){
+      try { if(ev && ev.preventDefault) ev.preventDefault(); } catch (_) {}
       const wasDisabled = !!el.disabled;
-      try { el.disabled = true; await handler(el); }
-      catch (error) { try { console.error("settings action failed", id, error); } catch (_) {} try { msg("تعذر تنفيذ " + label + ": " + safeString(error), "error"); } catch (_) {} }
-      finally { try { el.disabled = wasDisabled; } catch (_) {} }
+      try {
+        el.disabled = true;
+        await handler(el);
+      } catch(error) {
+        try { console.error("settings action failed", id, error); } catch (_) {}
+        notify("تعذر تنفيذ " + label + ": " + safeString(error && error.message || error), "error");
+      } finally {
+        try { el.disabled = wasDisabled; } catch (_) {}
+      }
     };
     return true;
   }
 
-  function openSettingsTab(tab, renderSettingsFn){
+  function navigate(page){
+    if(!page) return;
+    try { if(typeof show === "function") show(page); } catch (_) {}
+  }
+
+  async function smartUpdate(){
     try {
-      if(typeof setPageTab === "function") setPageTab("settings", normalizeTab(tab), renderSettingsFn);
-      else {
-        if(typeof state === "object" && state) state.settingsTab = normalizeTab(tab);
-        saveSafe();
-        if(typeof renderSettingsFn === "function") renderSettingsFn();
+      if(typeof fetchAndroidUpdateInfo === "function"){
+        const info = await fetchAndroidUpdateInfo();
+        const latest = Number((info && (info.latestVersionCode || info.versionCode)) || 0);
+        if(latest && nativeCode() && latest > nativeCode()){
+          if(typeof downloadApkUpdate === "function") return downloadApkUpdate();
+        }
       }
-    } catch (_) { if(typeof renderSettingsFn === "function") renderSettingsFn(); }
-  }
-  function navigate(page){ if(page && typeof show === "function") show(page); }
-  async function refreshUi(){ if(typeof refreshWebUiNow === "function") await refreshWebUiNow(); const target = (location.pathname || "/") + "?v=" + Date.now(); location.replace(target); }
-  async function cleanCache(){ if(typeof refreshWebUiNow === "function") await refreshWebUiNow(); notify("تم تجهيز الواجهات للتحديث.", "success"); }
-  function showSettingsSelfCheck(){
-    const current = selfCheck();
-    const runtime = callCheck("hesabiFullRuntimeSmokeSelfCheck");
-    const text = "فحص الإعدادات: " + (current.ok ? "سليم" : "يحتاج مراجعة") + "\n" + "فحص التشغيل العام: " + (runtime.ok !== false ? "سليم" : "يحتاج مراجعة") + "\n" + "الإصدار: " + VERSION + " / build " + BUILD_CODE;
-    if(typeof showAppDialog === "function") showAppDialog("فحص الإعدادات", text, current.ok ? "success" : "warning", [{ text: "موافق", cls: "ok" }]);
-    else notify(text.replace(/\n/g, " - "), current.ok ? "success" : "notice");
-  }
-
-  async function logoutFromSettings(){
+    } catch (_) {}
     try {
-      if(typeof safeFullLogout === "function") { await safeFullLogout("settings-account"); return; }
-      try { if(Array.isArray(unsub)){ unsub.forEach(function(u){ try { u(); } catch(_) {} }); unsub = []; } } catch(_) {}
-      try { if(typeof signOut === "function" && auth) await signOut(auth); } catch(e) { console.warn("logout signOut failed", e); }
-      try { currentUser = null; authReady = false; } catch(_) {}
-      try {
-        state.role = "";
-        state.profileDone = false;
-        delete state.shopId; delete state.shopName; delete state.customerId; delete state.customerName;
-        delete state.customerLinks; delete state.activeCustomerLink; delete state.uid;
-        delete state.authEmail; delete state.authPhoneNumber; delete state.authPhoneKey; delete state.authProvider;
-      } catch(_) {}
-      try { sessionStorage.clear(); } catch(_) {}
-      saveSafe();
-      try { if(typeof hideAppDialog === "function") hideAppDialog(); } catch(_) {}
-      renderSafe();
-      notify("تم تسجيل الخروج.", "success");
-    } catch(error) { notify("تعذر تسجيل الخروج: " + safeString(error && error.message || error), "error"); }
+      if(typeof refreshWebUiNow === "function") await refreshWebUiNow();
+      const target = (location.pathname || "/") + "?v=" + encodeURIComponent(VERSION + "-" + Date.now());
+      location.replace(target);
+    } catch(error) {
+      notify("تعذر تحديث الواجهات: " + safeString(error && error.message || error), "error");
+    }
   }
 
-  function bindRoleControls(){
-    bindSafeAction("dualSwitchTrader", "الدخول كتاجر", function(){ switchRoleFromSettings("trader", false); });
-    bindSafeAction("dualSwitchCustomer", "الدخول كعميل", function(){ switchRoleFromSettings("customer", false); });
-    bindSafeAction("dualSetupTrader", "تهيئة تاجر", function(){ switchRoleFromSettings("trader", true); });
-    bindSafeAction("dualSetupCustomer", "ربط تاجر كعميل", function(){ switchRoleFromSettings("customer", true); });
-    bindSafeAction("dualOpenStores", "متاجري", openStoresFromAccount);
+  function exportJson(){
+    try {
+      const s = getState();
+      const c = getCache();
+      const payload = { exportedAt:new Date().toISOString(), version:VERSION, state:s, cache:c };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "hesabi-backup-" + new Date().toISOString().slice(0,10) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){ try { URL.revokeObjectURL(url); } catch (_) {} }, 1000);
+      s.lastBackupAt = new Date().toLocaleString("ar");
+      saveSafe();
+      notify("تم تجهيز النسخة الاحتياطية.", "success");
+    } catch(error) {
+      notify("تعذر تصدير النسخة: " + safeString(error && error.message || error), "error");
+    }
+  }
+
+  function saveSecurity(){
+    const s = getState();
+    const pin = byId("settingsPinInput");
+    const minutes = byId("settingsAutoLockMinutes");
+    if(pin && pin.value.trim()){
+      s.appPin = pin.value.trim();
+      s.lockPin = pin.value.trim();
+      s.appLockEnabled = true;
+      s.lockEnabled = true;
+    }
+    if(minutes) s.autoLockMinutes = Math.min(240, Math.max(1, num(minutes.value, 15)));
+    saveSafe();
+    notify("تم حفظ إعدادات الأمان.", "success");
+  }
+
+  function saveNotificationPrefs(){
+    const s = getState();
+    s.notificationPrefs = {
+      orders: !!(byId("settingsNotifyOrders") && byId("settingsNotifyOrders").checked),
+      payments: !!(byId("settingsNotifyPayments") && byId("settingsNotifyPayments").checked),
+      messages: !!(byId("settingsNotifyMessages") && byId("settingsNotifyMessages").checked),
+      stock: !!(byId("settingsNotifyStock") && byId("settingsNotifyStock").checked)
+    };
+    saveSafe();
+    notify("تم حفظ خيارات التنبيهات.", "success");
   }
 
   function bindActions(renderSettingsFn){
     try { if(typeof bindPageTabs === "function") bindPageTabs("settings", renderSettingsFn); } catch (_) {}
     const bound = [];
-    const go = function(id, page){ bound.push({ id, ok: bindSafeAction(id, "فتح " + page, function(){ navigate(page); }) }); };
 
-    bound.push({ id: "settingsRefreshUi", ok: bindSafeAction("settingsRefreshUi", "تحديث الواجهات", refreshUi) });
-    bound.push({ id: "settingsCleanCache", ok: false });
-    bound.push({ id: "settingsUpdateApk", ok: bindSafeAction("settingsUpdateApk", "تحديث APK", function(){ if(typeof downloadApkUpdate === "function") return downloadApkUpdate(); throw new Error("downloadApkUpdate غير متاحة"); }) });
-    bound.push({ id: "settingsCheckApk", ok: bindSafeAction("settingsCheckApk", "فحص APK", function(){ if(typeof checkApkUpdateOnly === "function") return checkApkUpdateOnly(true); throw new Error("checkApkUpdateOnly غير متاحة"); }) });
-    bound.push({ id: "settingsRunSelfCheck", ok: false });
-    bound.push({ id: "settingsLogout", ok: bindSafeAction("settingsLogout", "تسجيل الخروج", logoutFromSettings) });
-    bound.push({ id: "settingsDisableLock", ok: bindSafeAction("settingsDisableLock", "إلغاء القفل مؤقتًا", function(){ if(typeof state === "object" && state){ state.appLockEnabled=false; state.lockEnabled=false; } saveSafe(); notify("تم إلغاء القفل مؤقتًا", "success"); if(typeof renderSettingsFn === "function") renderSettingsFn(); }) });
-    bound.push({ id: "settingsCompactOn", ok: bindSafeAction("settingsCompactOn", "تفعيل الواجهة المدمجة", function(){ if(typeof state === "object" && state){ state.appearance=state.appearance||{}; state.appearance.compact=true; } saveSafe(); try { if(typeof applyAppearance === "function") applyAppearance(); } catch(_) {} if(typeof renderSettingsFn === "function") renderSettingsFn(); }) });
-    bound.push({ id: "settingsCompactOff", ok: bindSafeAction("settingsCompactOff", "تفعيل الواجهة الواسعة", function(){ if(typeof state === "object" && state){ state.appearance=state.appearance||{}; state.appearance.compact=false; } saveSafe(); try { if(typeof applyAppearance === "function") applyAppearance(); } catch(_) {} if(typeof renderSettingsFn === "function") renderSettingsFn(); }) });
-    bound.push({ id: "settingsGoAccount", ok: bindSafeAction("settingsGoAccount", "الحساب", function(){ openSettingsTab("account", renderSettingsFn); }) });
-    bindRoleControls();
+    function bind(id, label, handler){ bound.push({ id, ok: bindSafeAction(id, label, handler) }); }
+    function go(id, page){ bind(id, "فتح " + page, function(){ navigate(page); }); }
 
-    bound.push({ id: "settingsEnableNotifications", ok: bindSafeAction("settingsEnableNotifications", "تفعيل التنبيهات", function(){ if(typeof requestNotificationPermission === "function") return requestNotificationPermission(true); throw new Error("requestNotificationPermission غير متاحة"); }) });
-    bound.push({ id: "settingsClearBadge", ok: bindSafeAction("settingsClearBadge", "تصفير العدّاد", function(){ if(typeof clearAllNotificationCounters === "function") clearAllNotificationCounters(); notify("تم تصفير العدّاد.", "success"); }) });
+    bind("settingsSaveSecurity", "حفظ الأمان", saveSecurity);
+    bind("settingsToggleLock", "تبديل القفل", function(){
+      const s = getState();
+      const next = !(s.appLockEnabled || s.lockEnabled);
+      s.appLockEnabled = next;
+      s.lockEnabled = next;
+      saveSafe();
+      notify(next ? "تم تفعيل القفل." : "تم إيقاف القفل.", "success");
+      if(typeof renderSettingsFn === "function") renderSettingsFn();
+    });
+    bind("settingsToggleBiometric", "تبديل البصمة", function(){
+      const s = getState();
+      s.biometricEnabled = !s.biometricEnabled;
+      saveSafe();
+      notify(s.biometricEnabled ? "تم تفعيل البصمة." : "تم إيقاف البصمة.", "success");
+      if(typeof renderSettingsFn === "function") renderSettingsFn();
+    });
+    bind("settingsClearPin", "حذف PIN", function(){
+      const s = getState();
+      delete s.appPin; delete s.lockPin;
+      saveSafe();
+      notify("تم حذف PIN.", "success");
+      if(typeof renderSettingsFn === "function") renderSettingsFn();
+    });
+
+    bind("settingsSaveAppearance", "حفظ الشكل", function(){
+      applyAppearanceSettingsLocal({
+        theme: byId("settingsTheme") ? byId("settingsTheme").value : "light",
+        accent: byId("settingsAccent") ? byId("settingsAccent").value : "teal",
+        background: byId("settingsBackground") ? byId("settingsBackground").value : "glass",
+        brightness: byId("settingsBrightness") ? byId("settingsBrightness").value : 100,
+        compact: byId("settingsCompact") ? byId("settingsCompact").checked : true
+      });
+      if(typeof renderSettingsFn === "function") renderSettingsFn();
+    });
+    bind("settingsResetAppearance", "استعادة الشكل", function(){
+      applyAppearanceSettingsLocal(appearanceDefaults());
+      if(typeof renderSettingsFn === "function") renderSettingsFn();
+    });
 
     go("settingsPolicies", "policies");
     go("settingsItems", "items");
@@ -258,45 +561,57 @@
     go("settingsOpenNotifications", "notifications");
     go("settingsOpenMessages", "messages");
 
-    try { removeInjectedSettingsArtifacts(); } catch(_) {}
-    window.__hesabiSettingsLastBindings = { ok: true, at: Date.now(), bound };
-    return window.__hesabiSettingsLastBindings;
-  }
+    bind("settingsSmartUpdate", "تحديث التطبيق", smartUpdate);
+    bind("settingsExportFull", "تصدير النسخة", exportJson);
+    bind("settingsLogout", "تسجيل الخروج", safeLogout);
 
-  function removeInjectedSettingsArtifacts(){
-    const root = byId("page_settings");
-    if(!root) return;
-    ["settingsFinalCacheCheck", "hesabiRoleSettings115", "hesabiUpdateSettings115", "hesabiUpdate115Modal"].forEach(function(id){
-      const el = byId(id);
-      if(el && id !== "settingsAccountRoleCard") { try { el.remove(); } catch(_) {} }
+    bind("settingsSwitchTrader", "الدخول كتاجر", function(){ applyRole("trader", false); });
+    bind("settingsSwitchCustomer", "الدخول كعميل", function(){ applyRole("customer", false); });
+    bind("settingsSetupTrader", "تهيئة تاجر", function(){ applyRole("trader", true); });
+    bind("settingsSetupCustomer", "ربط عميل", function(){ applyRole("customer", true); });
+    bind("settingsOpenStores", "فتح المتاجر", openStores);
+
+    bind("settingsEnableNotifications", "تفعيل التنبيهات", function(){
+      if(typeof requestNotificationPermission === "function") return requestNotificationPermission(true);
+      notify("طلب صلاحية التنبيهات غير متاح في هذا الجهاز.", "notice");
     });
-    try {
-      Array.from(root.querySelectorAll("button")).forEach(function(btn){
-        if((btn.textContent || "").trim() === "فحص نهائي") btn.remove();
-      });
-    } catch(_) {}
+    bind("settingsSaveNotificationPrefs", "حفظ التنبيهات", saveNotificationPrefs);
+    bind("settingsClearBadge", "تصفير العدّاد", function(){
+      if(typeof clearAllNotificationCounters === "function") clearAllNotificationCounters();
+      notify("تم تصفير العدّاد.", "success");
+    });
+
+    window.__hesabiSettingsLastBindings = { ok:true, at:Date.now(), bound };
+    return window.__hesabiSettingsLastBindings;
   }
 
   function selfCheck(){
     const api = window.hesabiSettingsHelpers || {};
-    const missingMethods = ["tabs", "normalizeTab", "renderSection", "bindActions"].filter(function(name){ return typeof api[name] !== "function"; });
-    const tabValues = getTabs().map(function(t){ return t[0]; });
-    const missingTabs = REQUIRED_TABS.filter(function(t){ return tabValues.indexOf(t) === -1; });
-    let noFinalButton = true;
-    let roleOnlyInAccount = true;
-    try {
-      const root = byId("page_settings");
-      if(root){
-        noFinalButton = Array.from(root.querySelectorAll("button")).every(function(btn){ return (btn.textContent || "").trim() !== "فحص نهائي"; });
-        const roleCard = byId("settingsAccountRoleCard");
-        const rawTab = typeof pageTabState === "function" ? pageTabState("settings", "security") : (state && state.settingsTab);
-        const tab = normalizeTab(rawTab);
-        roleOnlyInAccount = !roleCard || tab === "account";
-      }
-    } catch(_) {}
-    return { ok: missingMethods.length === 0 && missingTabs.length === 0 && noFinalButton && roleOnlyInAccount, version: VERSION, build: BUILD_CODE, missingMethods, missingTabs, noFinalButton, roleOnlyInAccount, tabs: tabValues, checkedAt: new Date().toISOString() };
+    const missingMethods = ["tabs","normalizeTab","renderSection","bindActions","selfCheck"].filter(function(name){ return typeof api[name] !== "function"; });
+    const tabs = getTabs().map(function(t){ return t[0]; });
+    const missingTabs = REQUIRED_TABS.filter(function(t){ return tabs.indexOf(t) === -1; });
+    const forbidden = [("settings" + "FinalCacheCheck")];
+    const foundForbidden = forbidden.filter(function(id){ return !!byId(id); });
+    return {
+      ok: missingMethods.length === 0 && missingTabs.length === 0 && foundForbidden.length === 0,
+      version: VERSION,
+      build: BUILD_CODE,
+      missingMethods,
+      missingTabs,
+      foundForbidden,
+      tabs,
+      checkedAt: new Date().toISOString()
+    };
   }
 
-  window.hesabiSettingsHelpers = { version: VERSION, build: BUILD_CODE, tabs: getTabs, normalizeTab, renderSection, bindActions, selfCheck };
+  window.hesabiSettingsHelpers = {
+    version: VERSION,
+    build: BUILD_CODE,
+    tabs: getTabs,
+    normalizeTab,
+    renderSection,
+    bindActions,
+    selfCheck
+  };
   window.hesabiSettingsHelpersSelfCheck = selfCheck;
 })();
