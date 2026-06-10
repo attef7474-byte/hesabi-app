@@ -1,10 +1,10 @@
-/* Hesabi 1.0.115 - Settings role/store recovery + one smart update button.
+/* Hesabi 1.0.120 - Settings role/store recovery + one smart update button.
    Web UI hotfix only. UTF-8 safe. No Firestore write logic is changed. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.115";
-  const BUILD_CODE = 115;
+  const VERSION = "1.0.120";
+  const BUILD_CODE = 120;
 
   function byId(id){ try { return document.getElementById(id); } catch(_) { return null; } }
   function qsa(sel, root){ try { return Array.from((root || document).querySelectorAll(sel)); } catch(_) { return []; } }
@@ -141,18 +141,60 @@
       if(el) el.onclick = pair[1];
     });
   }
+  function currentSettingsTab115(){
+    try {
+      if(typeof pageTabState === "function") return String(pageTabState("settings", "security") || "security");
+    } catch(_) {}
+    try {
+      if(typeof state === "object" && state) {
+        if(state.pageTabs && state.pageTabs.settings) return String(state.pageTabs.settings || "security");
+        if(state.settingsTab) return String(state.settingsTab || "security");
+      }
+    } catch(_) {}
+    return "security";
+  }
+
+  function settingsAccountCard115(page){
+    const logout = byId("settingsLogout");
+    if(logout && logout.closest) {
+      const card = logout.closest(".card");
+      if(card) return card;
+    }
+    return qsa(".card", page).find(function(c){
+      return /الحساب|تسجيل خروج/.test(c.textContent || "");
+    }) || null;
+  }
 
   function ensureRoleCard(){
     const page = byId("page_settings");
     if(!page) return false;
-    if(!byId("hesabiRoleSettings115")){
-      page.insertAdjacentHTML("afterbegin", roleCardHtml());
+
+    const tab = currentSettingsTab115();
+    let card = byId("hesabiRoleSettings115");
+
+    if(tab !== "account"){
+      if(card) card.remove();
+      return true;
     }
+
+    const accountCard = settingsAccountCard115(page);
+    if(!accountCard) return false;
+
+    if(!card){
+      accountCard.insertAdjacentHTML("beforeend", roleCardHtml());
+      card = byId("hesabiRoleSettings115");
+    }
+
+    if(card && card.parentNode !== accountCard){
+      const actions = qsa(".settings-compact-actions", accountCard)[0];
+      if(actions) accountCard.insertBefore(card, actions);
+      else accountCard.appendChild(card);
+    }
+
     bindRoleControls();
     return true;
   }
-
-  function nativeCode(){
+function nativeCode(){
     try {
       const n = typeof nativeVersionCode === "function" ? Number(nativeVersionCode() || 0) : 0;
       if(n) return n;
@@ -356,13 +398,16 @@
     window.__hesabiSettingsUpdate115Wrapped = w;
   }
 
-  function selfCheck(){
+    function selfCheck(){
     apply();
     const old = byId("settingsRefreshUi");
     let oldVisible = false;
     try { oldVisible = !!old && getComputedStyle(old).display !== "none"; } catch(_) {}
-    const ok = !!byId("hesabiRoleSettings115") && !!byId("hesabiUpdateSettings115") && !oldVisible;
-    return { ok, version:VERSION, build:BUILD_CODE, hasRole:!!byId("hesabiRoleSettings115"), hasUpdate:!!byId("hesabiUpdateSettings115"), oldVisible, checkedAt:new Date().toISOString() };
+    const tab = currentSettingsTab115();
+    const hasRole = !!byId("hesabiRoleSettings115");
+    const roleOk = tab === "account" ? hasRole : !hasRole;
+    const ok = roleOk && !!byId("hesabiUpdateSettings115") && !oldVisible;
+    return { ok, version:VERSION, build:BUILD_CODE, settingsTab:tab, hasRole, roleAccountOnly:true, hasUpdate:!!byId("hesabiUpdateSettings115"), oldVisible, checkedAt:new Date().toISOString() };
   }
 
   ensureStyle();

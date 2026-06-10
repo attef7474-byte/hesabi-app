@@ -1,7 +1,7 @@
-// Hesabi App 1.0.119
+// Hesabi App 1.0.120
 // Stable module loader + runtime self check.
-const HESABI_APP_VERSION = '1.0.119';
-const HESABI_APP_BUILD_CODE = 119;
+const HESABI_APP_VERSION = '1.0.120';
+const HESABI_APP_BUILD_CODE = 120;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -66,7 +66,8 @@ const HESABI_MODULE_PARTS = [
   'js/modules/55_utf8_recovery_115.js',
   'js/modules/56_sms_auth_no_hang.js',
   'js/modules/57_visible_recaptcha_phone_auth.js',
-  'js/modules/58_native_phone_auth_bridge.js'
+  'js/modules/58_native_phone_auth_bridge.js',
+  'js/modules/59_settings_account_role_logout_fix.js'
 ];
 
 const HESABI_REQUIRED_GLOBALS = [
@@ -127,7 +128,8 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiUtf8Recovery115SelfCheck',
   'hesabiSmsAuthNoHangSelfCheck',
   'hesabiVisibleRecaptchaPhoneAuthSelfCheck',
-  'hesabiNativePhoneAuthBridgeSelfCheck'
+  'hesabiNativePhoneAuthBridgeSelfCheck',
+  'hesabiSettingsAccountRoleLogoutFixSelfCheck'
 ];
 
 const HESABI_RUNTIME_TIMEOUT_MS = 25000;
