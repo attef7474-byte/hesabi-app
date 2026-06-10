@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "669487458406",
+    "project_id": "hesabi-app-edc7e",
+    "storage_bucket": "hesabi-app-edc7e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669487458406:android:adda3ac98181c0cb9365a7",
+        "android_client_info": {
+          "package_name": "com.hesabi.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE2xe9qNcoe2D8PXaoPyvye7SGzmqcTwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669487458406:android:76b736d59a8f51629365a7",
+        "android_client_info": {
+          "package_name": "com.hesabi.trader"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE2xe9qNcoe2D8PXaoPyvye7SGzmqcTwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

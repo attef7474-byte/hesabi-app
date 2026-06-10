@@ -1,5 +1,4 @@
-plugins {
-    id "com.android.application"
+plugins {`r`n    id "com.android.application"`r`n    id "com.google.gms.google-services"
 }
 
 android {
@@ -10,8 +9,8 @@ android {
         applicationId "com.hesabi.app"
         minSdk 23
         targetSdk 35
-        versionCode 118
-        versionName "1.0.118"
+        versionCode 119
+        versionName "1.0.119"
     }
 
     signingConfigs {
@@ -49,7 +48,7 @@ configurations.all {
     }
 }
 
-dependencies {
+dependencies {`r`n    implementation platform("com.google.firebase:firebase-bom:34.14.0")`r`n    implementation "com.google.firebase:firebase-auth"
     implementation "androidx.biometric:biometric:1.1.0"
     implementation "androidx.core:core:1.13.1"
     implementation "androidx.fragment:fragment:1.8.5"

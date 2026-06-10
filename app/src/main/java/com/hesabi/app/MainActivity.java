@@ -47,13 +47,21 @@ import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.common.InputImage;
 
-import java.io.File;
+
+import com.google.firebase.FirebaseException;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthOptions;
+import com.google.firebase.auth.PhoneAuthProvider;
+import org.json.JSONObject;import java.io.File;
 import java.util.Objects;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 
+import java.util.concurrent.TimeUnit;
 public class MainActivity extends FragmentActivity {
     private static final String APP_URL = "https://hesabi-app-edc7e.web.app/";
     private static final String LATEST_APK_URL = "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk";
@@ -76,7 +84,11 @@ public class MainActivity extends FragmentActivity {
     private boolean postInstallWebRefreshDone = false;
 
 
-    private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
+        private FirebaseAuth firebaseAuth;
+    private PhoneAuthProvider.ForceResendingToken nativeSmsResendToken;
+    private String nativeSmsVerificationId = "";
+    private String nativeSmsPhone = "";
+private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
@@ -100,6 +112,9 @@ public class MainActivity extends FragmentActivity {
         } else {
             registerReceiver(downloadReceiver, filter);
         }
+
+        initNativeFirebaseAuth();
+
 
         webView = new WebView(this);
         setContentView(webView);
@@ -161,7 +176,89 @@ public class MainActivity extends FragmentActivity {
         return APP_URL + "?apkVersion=" + versionCode + "&nativeTs=" + System.currentTimeMillis();
     }
 
-    private class HesabiWebViewClient extends WebViewClient {
+    
+    private void initNativeFirebaseAuth() {
+        try {
+            FirebaseApp.initializeApp(this);
+            firebaseAuth = FirebaseAuth.getInstance();
+        } catch (Exception e) {
+            firebaseAuth = null;
+        }
+    }
+
+    private String friendlyNativeSmsError(Exception e) {
+        String message = e == null ? "" : String.valueOf(e.getMessage());
+        String lower = message.toLowerCase(Locale.US);
+        if (lower.contains("too many") || lower.contains("quota")) return "鬲賲 廿乇爻丕賱 賲丨丕賵賱丕鬲 賰孬賷乇丞. 丕賳鬲馗乇 賯賱賷賱賸丕 孬賲 丨丕賵賱 賲乇丞 兀禺乇賶.";
+        if (lower.contains("network") || lower.contains("timeout")) return "賮卮賱 丕賱丕鬲氐丕賱 賲毓 Firebase. 鬲兀賰丿 賲賳 丕賱廿賳鬲乇賳鬲 孬賲 丨丕賵賱 賲乇丞 兀禺乇賶.";
+        if (lower.contains("invalid") && lower.contains("phone")) return "乇賯賲 丕賱賴丕鬲賮 睾賷乇 氐丨賷丨. 丕爻鬲禺丿賲 丕賱氐賷睾丞 丕賱丿賵賱賷丞 賲孬賱 +967771749776.";
+        if (lower.contains("app") && lower.contains("not authorized")) return "鬲胤亘賷賯 Android 睾賷乇 賲氐乇丨 賮賷 Firebase. 鬲兀賰丿 賲賳 廿囟丕賮丞 SHA-1 賵 SHA-256 賱賱丨夭賲丞 com.hesabi.app 賵鬲賳夭賷賱 google-services.json 丕賱噩丿賷丿.";
+        return message == null || message.trim().isEmpty() ? "鬲毓匕乇 廿乇爻丕賱 賰賵丿 SMS 賲賳 Firebase Android Auth." : message;
+    }
+
+    private void sendNativeSmsAuthEvent(String type, String phone, String verificationId, String smsCode, String message) {
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("type", type == null ? "" : type);
+            payload.put("phone", phone == null ? "" : phone);
+            payload.put("verificationId", verificationId == null ? "" : verificationId);
+            payload.put("smsCode", smsCode == null ? "" : smsCode);
+            payload.put("message", message == null ? "" : message);
+            String js = "window.hesabiReceiveNativeSmsAuth && window.hesabiReceiveNativeSmsAuth(" + jsQuote(payload.toString()) + ")";
+            runOnUiThread(() -> {
+                try { if (webView != null) webView.evaluateJavascript(js, null); } catch (Exception ignored) {}
+            });
+        } catch (Exception ignored) {}
+    }
+
+    private void startNativeSmsCode(String phone) {
+        runOnUiThread(() -> {
+            try {
+                if (firebaseAuth == null) initNativeFirebaseAuth();
+                if (firebaseAuth == null) {
+                    sendNativeSmsAuthEvent("failed", phone, "", "", "Firebase Android Auth 睾賷乇 噩丕賴夭. 鬲兀賰丿 賲賳 google-services.json 賵亘賳丕亍 APK 噩丿賷丿.");
+                    return;
+                }
+                String safePhone = phone == null ? "" : phone.trim();
+                if (!safePhone.startsWith("+") || safePhone.length() < 8) {
+                    sendNativeSmsAuthEvent("failed", safePhone, "", "", "乇賯賲 丕賱賴丕鬲賮 賷噩亘 兀賳 賷賰賵賳 亘丕賱氐賷睾丞 丕賱丿賵賱賷丞 賲孬賱 +967771749776.");
+                    return;
+                }
+                nativeSmsPhone = safePhone;
+                nativeSmsVerificationId = "";
+                sendNativeSmsAuthEvent("sending", safePhone, "", "", "噩丕乇賷 廿乇爻丕賱 賰賵丿 丕賱鬲丨賯賯 毓亘乇 Firebase Android Auth...");
+                PhoneAuthOptions options = PhoneAuthOptions.newBuilder(firebaseAuth)
+                        .setPhoneNumber(safePhone)
+                        .setTimeout(60L, TimeUnit.SECONDS)
+                        .setActivity(MainActivity.this)
+                        .setCallbacks(new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                            @Override
+                            public void onVerificationCompleted(@NonNull PhoneAuthCredential credential) {
+                                String smsCode = "";
+                                try { smsCode = credential.getSmsCode(); } catch (Exception ignored) {}
+                                sendNativeSmsAuthEvent("autoCompleted", nativeSmsPhone, nativeSmsVerificationId, smsCode, smsCode == null || smsCode.isEmpty() ? "鬲賲 丕賱鬲丨賯賯 鬲賱賯丕卅賷賸丕 賲賳 Android. 廿匕丕 賱賲 賷賰鬲賲賱 丕賱丿禺賵賱貙 兀丿禺賱 丕賱賰賵丿 賷丿賵賷賸丕." : "鬲賲 丕賱鬲賯丕胤 賰賵丿 丕賱鬲丨賯賯 鬲賱賯丕卅賷賸丕.");
+                            }
+
+                            @Override
+                            public void onVerificationFailed(@NonNull FirebaseException e) {
+                                sendNativeSmsAuthEvent("failed", nativeSmsPhone, "", "", friendlyNativeSmsError(e));
+                            }
+
+                            @Override
+                            public void onCodeSent(@NonNull String verificationId, @NonNull PhoneAuthProvider.ForceResendingToken token) {
+                                nativeSmsVerificationId = verificationId;
+                                nativeSmsResendToken = token;
+                                sendNativeSmsAuthEvent("codeSent", nativeSmsPhone, verificationId, "", "鬲賲 廿乇爻丕賱 賰賵丿 丕賱鬲丨賯賯 廿賱賶 " + nativeSmsPhone);
+                            }
+                        })
+                        .build();
+                PhoneAuthProvider.verifyPhoneNumber(options);
+            } catch (Exception e) {
+                sendNativeSmsAuthEvent("failed", phone, "", "", friendlyNativeSmsError(e));
+            }
+        });
+    }
+private class HesabiWebViewClient extends WebViewClient {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
@@ -509,6 +606,21 @@ public class MainActivity extends FragmentActivity {
         public void scanItemOcrNative() {
             runOnUiThread(MainActivity.this::startItemOcrCamera);
         }
+        @JavascriptInterface
+        public boolean hasNativePhoneAuth() {
+            return firebaseAuth != null;
+        }
+
+        @JavascriptInterface
+        public void sendNativeSmsCode(String phone) {
+            startNativeSmsCode(phone);
+        }
+
+        @JavascriptInterface
+        public String getNativeSmsVerificationId() {
+            return nativeSmsVerificationId == null ? "" : nativeSmsVerificationId;
+        }
+
 
         @JavascriptInterface
         public void openAppInExternalBrowser() {
