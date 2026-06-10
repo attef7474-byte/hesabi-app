@@ -1,236 +1,375 @@
-/* Hesabi 1.0.114 - Restore role/store settings + unified smart update button. */
+/* Hesabi 1.0.115 - Settings role/store recovery + one smart update button.
+   Web UI hotfix only. UTF-8 safe. No Firestore write logic is changed. */
 (function(){
   "use strict";
-  const VERSION="1.0.114", BUILD_CODE=114;
 
-  function byId(id){try{return document.getElementById(id)}catch(_){return null}}
-  function qsa(sel,root){try{return Array.from((root||document).querySelectorAll(sel))}catch(_){return[]}}
-  function s(v){try{return v==null?"":String(v)}catch(_){return""}}
-  function esc(v){return s(v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]||ch))}
-  function msgSafe(t,type){try{if(typeof msg==="function")msg(t,type||"notice");else console.log(t)}catch(_){}}
-  function saveSafe(){try{if(typeof save==="function")save()}catch(_){}}
-  function renderSafe(){try{if(typeof render==="function")render()}catch(_){}}
-  function showSafe(p){try{if(typeof show==="function")show(p)}catch(_){}}
-  function text(el){try{return s(el&&el.textContent).replace(/\s+/g," ").trim()}catch(_){return""}}
+  const VERSION = "1.0.115";
+  const BUILD_CODE = 115;
+
+  function byId(id){ try { return document.getElementById(id); } catch(_) { return null; } }
+  function qsa(sel, root){ try { return Array.from((root || document).querySelectorAll(sel)); } catch(_) { return []; } }
+  function safeString(v){ try { return v == null ? "" : String(v); } catch(_) { return ""; } }
+  function esc(v){
+    return safeString(v).replace(/[&<>"']/g, function(ch){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch] || ch);
+    });
+  }
+  function notify(text, type){
+    try { if(typeof msg === "function") msg(text, type || "notice"); else console.log(text); } catch(_) {}
+  }
+  function saveSafe(){ try { if(typeof save === "function") save(); } catch(_) {} }
+  function renderSafe(){ try { if(typeof render === "function") render(); } catch(_) {} }
+  function showSafe(page){ try { if(typeof show === "function") show(page); } catch(_) {} }
 
   function ensureStyle(){
-    if(byId("hesabiSettingsRoleUnifiedUpdate114Style")) return true;
-    const st=document.createElement("style");
-    st.id="hesabiSettingsRoleUnifiedUpdate114Style";
-    st.textContent=`
-      .dual-role-card{border:1px solid #dbe7ee;border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);padding:10px;display:grid;gap:9px}
-      .dual-role-pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid #99f6e4;background:#ecfeff;color:#0f766e;border-radius:999px;padding:5px 9px;margin:2px 3px;font-size:12px;font-weight:900}
-      .dual-role-pill.off{background:#f8fafc;color:#64748b;border-color:#e2e8f0}
-      .dual-role-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-      .dual-role-actions .btn{width:100%!important;min-height:38px!important}
-      .hesabi-unified-update-box{border:1px solid #99f6e4;background:#f0fdfa;color:#115e59;border-radius:16px;padding:10px;font-weight:900;line-height:1.65;margin:8px 0;white-space:pre-wrap}
-      .hesabi-unified-update-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin-top:8px!important}
-      .hesabi-unified-update-actions .btn{width:100%!important;min-height:42px!important;font-size:14px!important;border-radius:14px!important}
-      .hesabi-unified-update-actions .btn:disabled{opacity:.55!important;filter:grayscale(.3);cursor:not-allowed!important}
-      #settingsRefreshUi,#settingsCleanCache,#settingsUpdateApk,#settingsCheckApk,#settingsRunSelfCheck,
-      #hesabi113RefreshUi,#hesabi113DownloadApk,#hesabi113CheckVersion,
-      #hesabiMenuRefreshUi,#hesabiMenuDownloadApk,#hesabiMenuCheckVersion{display:none!important}
-      @media(max-width:460px){.dual-role-actions{grid-template-columns:1fr 1fr}.dual-role-actions .btn{font-size:12px!important;padding:8px 7px!important}}
+    if(byId("hesabiSettingsRoleUnifiedUpdate115Style")) return true;
+    const style = document.createElement("style");
+    style.id = "hesabiSettingsRoleUnifiedUpdate115Style";
+    style.textContent = `
+      .hesabi-role-card,.hesabi-update-card{background:var(--card,#fff);border:1px solid var(--line,#dbe7ee);border-radius:20px;padding:14px;margin:12px 0;box-shadow:var(--shadow,0 8px 24px rgba(16,24,40,.08));}
+      .hesabi-role-card h2,.hesabi-update-card h2{margin-top:0;}
+      .hesabi-role-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}
+      .hesabi-role-actions .btn,.hesabi-update-actions .btn{width:100%!important;min-height:42px!important;border-radius:14px!important;}
+      .hesabi-pill{display:inline-flex;border:1px solid #99f6e4;background:#ecfeff;color:#0f766e;border-radius:999px;padding:5px 9px;margin:2px;font-size:12px;font-weight:900;}
+      .hesabi-pill.off{background:#f8fafc;color:#64748b;border-color:#e2e8f0;}
+      .hesabi-update-status{border:1px solid #99f6e4;background:#f0fdfa;color:#115e59;border-radius:16px;padding:10px;margin:9px 0;font-weight:900;white-space:pre-wrap;line-height:1.65;}
+      .hesabi-update-actions{display:grid;grid-template-columns:1fr;gap:8px;}
+      .hesabi-update-actions .btn:disabled{opacity:.55!important;filter:grayscale(.3);cursor:not-allowed!important;}
+      #settingsRefreshUi,#settingsCleanCache,#settingsUpdateApk,#settingsCheckApk,#settingsRunSelfCheck{display:none!important;}
+      @media(max-width:460px){.hesabi-role-actions{grid-template-columns:1fr 1fr}.hesabi-role-actions .btn{font-size:12px!important;padding:8px 6px!important}}
     `;
-    document.head.appendChild(st);
+    document.head.appendChild(style);
     return true;
   }
 
-  function currentRoleLabel(){try{return state.role==="trader"?"تاجر":(state.role==="customer"?"عميل":"غير محدد")}catch(_){return"غير محدد"}}
-  function roleProfile(role){try{return typeof dualRoleProfileFor==="function"?dualRoleProfileFor(role):((state.roleProfiles&&state.roleProfiles[role])||null)}catch(_){return null}}
-  function rememberRole(){try{if(typeof rememberCurrentDualRoleProfile==="function")rememberCurrentDualRoleProfile()}catch(_){}}
+  function roleProfile(role){
+    try {
+      if(typeof dualRoleProfileFor === "function") return dualRoleProfileFor(role);
+      return (state && state.roleProfiles && state.roleProfiles[role]) || null;
+    } catch(_) { return null; }
+  }
 
-  function switchRole(role,forceSetup){
+  function rememberRole(){
+    try { if(typeof rememberCurrentDualRoleProfile === "function") rememberCurrentDualRoleProfile(); } catch(_) {}
+  }
+
+  function switchRole(role, setupMode){
     rememberRole();
-    try{
-      if(forceSetup){
-        state.role=role; state.profileDone=false;
-        try{if(typeof resetCacheForLiveData==="function")resetCacheForLiveData()}catch(_){}
-        try{listenersStartedKey=""}catch(_){}
-        saveSafe(); renderSafe();
-        msgSafe("أكمل تهيئة وضع "+(role==="trader"?"تاجر":"عميل")+".","notice");
+    try {
+      if(setupMode){
+        state.role = role;
+        state.profileDone = false;
+        try { if(typeof resetCacheForLiveData === "function") resetCacheForLiveData(); } catch(_) {}
+        try { listenersStartedKey = ""; } catch(_) {}
+        saveSafe();
+        renderSafe();
+        notify("أكمل تهيئة وضع " + (role === "trader" ? "تاجر" : "عميل") + ".", "notice");
         return;
       }
-      if(typeof applyDualRoleProfile==="function"){applyDualRoleProfile(role);return}
-      const p=roleProfile(role); state.role=role;
-      if(p&&p.profileDone){Object.keys(p).forEach(k=>{if(k!=="role")state[k]=p[k]});state.profileDone=true}else state.profileDone=false;
-      saveSafe(); renderSafe();
-    }catch(e){msgSafe("تعذر التبديل: "+s(e&&e.message||e),"error")}
+
+      if(typeof applyDualRoleProfile === "function"){
+        applyDualRoleProfile(role);
+        return;
+      }
+
+      const p = roleProfile(role);
+      state.role = role;
+      if(p && p.profileDone){
+        Object.keys(p).forEach(function(k){ if(k !== "role") state[k] = p[k]; });
+        state.profileDone = true;
+      } else {
+        state.profileDone = false;
+      }
+      saveSafe();
+      renderSafe();
+    } catch(error) {
+      notify("تعذر التبديل: " + safeString(error && error.message || error), "error");
+    }
   }
 
   function openStores(){
     rememberRole();
-    try{
-      if(state.role!=="customer"){
-        const p=roleProfile("customer");
-        if(p&&p.profileDone&&typeof applyDualRoleProfile==="function"){
+    try {
+      if(state && state.role !== "customer"){
+        const p = roleProfile("customer");
+        if(p && p.profileDone && typeof applyDualRoleProfile === "function"){
           applyDualRoleProfile("customer");
-          setTimeout(()=>showSafe("shops"),350);
+          setTimeout(function(){ showSafe("shops"); }, 300);
           return;
         }
-        switchRole("customer",true);
+        switchRole("customer", true);
         return;
       }
       showSafe("shops");
-    }catch(e){msgSafe("تعذر فتح متاجري: "+s(e&&e.message||e),"error")}
-  }
-
-  function dualRoleHtml(){
-    let base="";
-    try{if(typeof renderDualRoleSettingsBlock==="function")base=renderDualRoleSettingsBlock()}catch(_){}
-    if(!base){
-      const ht=!!roleProfile("trader"), hc=!!roleProfile("customer");
-      base=`<div class="card" id="hesabiDualRoleSettingsCard"><h2>وضع الحساب: تاجر وعميل</h2><div class="dual-role-card"><div class="row"><b>الوضع الحالي</b><span class="dual-role-pill">${esc(currentRoleLabel())}</span></div><div><span class="dual-role-pill ${ht?"":"off"}">تاجر: ${ht?"مفعل":"غير مفعل"}</span><span class="dual-role-pill ${hc?"":"off"}">عميل: ${hc?"مفعل":"غير مفعل"}</span></div><div class="dual-role-actions"><button class="btn secondary" id="dualSwitchTrader">الدخول كتاجر</button><button class="btn secondary" id="dualSwitchCustomer">الدخول كعميل</button><button class="btn light" id="dualSetupTrader">تهيئة/استرجاع تاجر</button><button class="btn light" id="dualSetupCustomer">ربط تاجر كعميل</button></div></div></div>`;
+    } catch(error) {
+      notify("تعذر فتح متاجري: " + safeString(error && error.message || error), "error");
     }
-    if(base.indexOf("dualOpenStores")<0) base=base.replace("</div></div>",`<button class="btn ok" id="dualOpenStores" type="button">متاجري / ربط متجر</button></div></div>`);
-    return base;
   }
 
-  function bindDualRoleControls(){
-    try{if(typeof bindDualRoleSettingsControls==="function")bindDualRoleSettingsControls()}catch(_){}
-    const map=[
-      ["dualSwitchTrader",()=>switchRole("trader",false)],
-      ["dualSwitchCustomer",()=>switchRole("customer",false)],
-      ["dualSetupTrader",()=>switchRole("trader",true)],
-      ["dualSetupCustomer",()=>switchRole("customer",true)],
-      ["dualOpenStores",openStores]
+  function roleCardHtml(){
+    const hasTrader = !!roleProfile("trader");
+    const hasCustomer = !!roleProfile("customer");
+    const current = state && state.role === "trader" ? "تاجر" : (state && state.role === "customer" ? "عميل" : "غير محدد");
+    return `
+      <div class="hesabi-role-card" id="hesabiRoleSettings115">
+        <h2>وضع الحساب: تاجر وعميل</h2>
+        <div><b>الوضع الحالي: </b><span class="hesabi-pill">${esc(current)}</span></div>
+        <div>
+          <span class="hesabi-pill ${hasTrader ? "" : "off"}">تاجر: ${hasTrader ? "مفعل" : "غير مفعل"}</span>
+          <span class="hesabi-pill ${hasCustomer ? "" : "off"}">عميل: ${hasCustomer ? "مفعل" : "غير مفعل"}</span>
+        </div>
+        <div class="hesabi-role-actions">
+          <button class="btn secondary" id="dualSwitchTrader" type="button">الدخول كتاجر</button>
+          <button class="btn secondary" id="dualSwitchCustomer" type="button">الدخول كعميل</button>
+          <button class="btn light" id="dualSetupTrader" type="button">تهيئة/استرجاع تاجر</button>
+          <button class="btn light" id="dualSetupCustomer" type="button">ربط تاجر كعميل</button>
+          <button class="btn ok" id="dualOpenStores" type="button">متاجري / ربط متجر</button>
+        </div>
+      </div>`;
+  }
+
+  function bindRoleControls(){
+    const map = [
+      ["dualSwitchTrader", function(){ switchRole("trader", false); }],
+      ["dualSwitchCustomer", function(){ switchRole("customer", false); }],
+      ["dualSetupTrader", function(){ switchRole("trader", true); }],
+      ["dualSetupCustomer", function(){ switchRole("customer", true); }],
+      ["dualOpenStores", openStores]
     ];
-    map.forEach(([id,fn])=>{const el=byId(id);if(el)el.onclick=fn});
-  }
-
-  function ensureDualRoleInSettings(){
-    ensureStyle();
-    const page=byId("page_settings"); if(!page)return false;
-    if(byId("dualSwitchTrader")||byId("hesabiDualRoleSettingsCard")){
-      if(!byId("dualOpenStores")){
-        const actions=page.querySelector(".dual-role-actions");
-        if(actions){const b=document.createElement("button");b.className="btn ok";b.id="dualOpenStores";b.type="button";b.textContent="متاجري / ربط متجر";actions.appendChild(b)}
-      }
-      bindDualRoleControls(); return true;
-    }
-    const host=page.querySelector(".card");
-    if(host) host.insertAdjacentHTML("beforebegin",dualRoleHtml()); else page.insertAdjacentHTML("afterbegin",dualRoleHtml());
-    bindDualRoleControls(); return true;
-  }
-
-  function currentCode(){
-    try{const n=typeof nativeVersionCode==="function"?Number(nativeVersionCode()||0):0;if(n)return n}catch(_){}
-    try{if(typeof APP_BUILD_CODE!=="undefined")return Number(APP_BUILD_CODE||0)}catch(_){}
-    try{return Number((window.__hesabiRuntime&&window.__hesabiRuntime.build)||0)}catch(_){}
-    return 0;
-  }
-  function currentName(){
-    try{const n=typeof nativeVersionName==="function"?s(nativeVersionName()||""):"";if(n)return n}catch(_){}
-    try{if(typeof APP_VERSION!=="undefined")return s(APP_VERSION)}catch(_){}
-    try{return s(window.__hesabiRuntime&&window.__hesabiRuntime.version)}catch(_){}
-    return "";
-  }
-
-  async function fetchInfo(){
-    try{if(typeof fetchAndroidUpdateInfo==="function"){const i=await fetchAndroidUpdateInfo();if(i)return i}}catch(_){}
-    for(const u of ["android-update.json","/android-update.json"]){
-      try{const r=await fetch(u+"?v="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}});if(r.ok)return await r.json()}catch(_){}
-    }
-    return null;
-  }
-  function latestCode(i){return Number((i&&(i.latestVersionCode||i.versionCode))||0)}
-  function latestName(i){return s((i&&(i.latestVersionName||i.versionName))||"")}
-
-  async function getUpdateState(){
-    const info=await fetchInfo(), cc=currentCode(), cn=currentName(), lc=latestCode(info), ln=latestName(info);
-    return {ok:!!info,info,currentCode:cc,currentName:cn,latestCode:lc,latestName:ln,hasUpdate:!!(lc&&cc&&lc>cc)};
-  }
-
-  function setStatus(t){qsa("[data-hesabi-unified-update-status]").forEach(el=>el.textContent=t)}
-  function setBtn(btn,st){
-    if(!btn)return;
-    if(!st.ok){btn.disabled=true;btn.textContent="تعذر فحص التحديث";return}
-    if(st.hasUpdate){btn.disabled=false;btn.textContent="تحديث التطبيق الآن";return}
-    btn.disabled=true;btn.textContent="أنت على آخر نسخة";
-  }
-  async function refreshUnifiedUpdateUi(){
-    const st=await getUpdateState();
-    const status=st.ok?(st.hasUpdate?`يوجد تحديث جديد: ${st.latestName||st.latestCode}\nنسختك الحالية: ${st.currentName||"-"} / build ${st.currentCode||"-"}`:`لا يوجد تحديث جديد.\nنسختك الحالية: ${st.currentName||"-"} / build ${st.currentCode||"-"}\nآخر نسخة متاحة: ${st.latestName||"-"} / build ${st.latestCode||"-"}`):"تعذر فحص التحديث. تأكد من الإنترنت.";
-    setStatus(status);
-    qsa("[data-hesabi-unified-update-btn]").forEach(btn=>{btn.__hesabiUpdateState=st;setBtn(btn,st)});
-    return st;
-  }
-  async function runUnifiedUpdate(btn){
-    let st=btn&&btn.__hesabiUpdateState; if(!st||!st.ok)st=await getUpdateState();
-    if(!st.hasUpdate){setStatus("لا يوجد تحديث جديد. لن يتم تنظيف الكاش أو تنزيل APK لأن التطبيق على آخر نسخة.");msgSafe("أنت على آخر نسخة.","success");setBtn(btn,st);return st}
-    try{
-      if(btn){btn.disabled=true;btn.textContent="جاري التحديث..."}
-      setStatus("يوجد تحديث جديد. جاري تنظيف الكاش وتجهيز الواجهات ثم فتح تحديث APK...");
-      try{if(typeof prepareFullUpdateRefresh==="function")await prepareFullUpdateRefresh()}catch(_){}
-      try{if(typeof refreshWebUiNow==="function")await refreshWebUiNow()}catch(_){}
-      if(typeof downloadApkUpdate==="function")await downloadApkUpdate();
-      else if(st.info&&st.info.apkUrl)location.href=s(st.info.apkUrl);
-      setStatus("تم فتح تحديث APK. بعد تثبيت النسخة الجديدة افتح التطبيق مرة أخرى.");
-      return st;
-    }catch(e){setStatus("تعذر تنفيذ التحديث: "+s(e&&e.message||e));msgSafe("تعذر تنفيذ التحديث","error");if(btn)btn.disabled=false;return st}
-  }
-  function unifiedHtml(){return `<div class="hesabi-unified-update-box" data-hesabi-unified-update-status>جاري فحص التحديث...</div><div class="hesabi-unified-update-actions"><button class="btn ok" type="button" data-hesabi-unified-update-btn disabled>جاري الفحص...</button></div>`}
-  function bindUnified(root){
-    qsa("[data-hesabi-unified-update-btn]",root||document).forEach(btn=>{if(btn.__bound114)return;btn.__bound114=true;btn.onclick=()=>runUnifiedUpdate(btn)});
-    refreshUnifiedUpdateUi();
-  }
-
-  function ensureSettingsUnifiedUpdate(){
-    const page=byId("page_settings"); if(!page)return false;
-    const ids=["settingsRefreshUi","settingsCleanCache","settingsUpdateApk","settingsCheckApk","settingsRunSelfCheck"].map(byId).filter(Boolean);
-    if(!ids.length)return false;
-    const actions=ids[0].closest(".settings-compact-actions,.actions,div");
-    if(actions&&!actions.__unified114){actions.__unified114=true;actions.classList.add("hesabi-unified-update-actions");actions.innerHTML=unifiedHtml()}
-    ids.forEach(b=>{try{b.style.setProperty("display","none","important")}catch(_){}});
-    bindUnified(page); return true;
-  }
-
-  function closeModal(){const b=byId("hesabi114UnifiedUpdateBackdrop");if(b)b.remove()}
-  function openUnifiedUpdateModal(){
-    closeModal();
-    const back=document.createElement("div");
-    back.id="hesabi114UnifiedUpdateBackdrop"; back.className="hesabi113-modal-backdrop";
-    back.innerHTML=`<div class="hesabi113-modal" role="dialog" aria-modal="true"><div class="hesabi113-modal-head"><h2>تحديث التطبيق</h2><button class="hesabi113-close" id="hesabi114UnifiedUpdateClose" type="button">×</button></div><div class="hesabi113-modal-body">${unifiedHtml()}</div></div>`;
-    document.body.appendChild(back);
-    const x=byId("hesabi114UnifiedUpdateClose"); if(x)x.onclick=closeModal;
-    back.onclick=ev=>{if(ev.target===back)closeModal()};
-    bindUnified(back);
-  }
-
-  function rebindTopMenuUpdate(){
-    try{if(window.hesabiUiCleanupHeaderHomeNav&&typeof window.hesabiUiCleanupHeaderHomeNav.ensureHeaderMenu==="function")window.hesabiUiCleanupHeaderHomeNav.ensureHeaderMenu()}catch(_){}
-    qsa('[data-top-menu-action="update"]').forEach(old=>{
-      if(old.__unified114)return;
-      const item=old.cloneNode(true); item.__unified114=true;
-      old.parentNode.replaceChild(item,old);
-      item.onclick=ev=>{ev.preventDefault();ev.stopPropagation();try{byId("hesabiTopOverflowMenu")?.classList.add("hidden")}catch(_){} openUnifiedUpdateModal(); return false};
+    map.forEach(function(pair){
+      const el = byId(pair[0]);
+      if(el) el.onclick = pair[1];
     });
   }
 
-  function applyAll(){ensureStyle();ensureDualRoleInSettings();ensureSettingsUnifiedUpdate();rebindTopMenuUpdate()}
-  function installWrappers(){
-    const w=window.__hesabiSettingsRoleUnifiedUpdate114Wrapped||{};
-    if(typeof render==="function"&&!w.render){const b=render;render=function(){const o=b.apply(this,arguments);schedule();return o};w.render=true}
-    if(typeof show==="function"&&!w.show){const b=show;show=function(){const o=b.apply(this,arguments);schedule();return o};w.show=true}
-    if(typeof renderSettings==="function"&&!w.renderSettings){const b=renderSettings;renderSettings=function(){const o=b.apply(this,arguments);schedule();return o};w.renderSettings=true}
-    window.__hesabiSettingsRoleUnifiedUpdate114Wrapped=w;
-  }
-  function schedule(){setTimeout(applyAll,0);setTimeout(applyAll,150);setTimeout(applyAll,500)}
-  function installObserver(){
-    if(window.__hesabiSettingsRoleUnifiedUpdate114Observer)return true;
-    try{let p=false;const o=new MutationObserver(()=>{if(p)return;p=true;setTimeout(()=>{p=false;applyAll()},80)});o.observe(document.documentElement,{childList:true,subtree:true});window.__hesabiSettingsRoleUnifiedUpdate114Observer=o;return true}catch(_){return false}
-  }
-  function selfCheck(){
-    ensureStyle();installWrappers();installObserver();applyAll();
-    const hasDual=!!(byId("dualSwitchTrader")&&byId("dualSwitchCustomer")), hasStores=!!byId("dualOpenStores"), hasUnified=!!document.querySelector("[data-hesabi-unified-update-btn]");
-    const visibleSeparate=["settingsRefreshUi","settingsCleanCache","settingsUpdateApk","settingsCheckApk","settingsRunSelfCheck"].filter(id=>{const el=byId(id);if(!el)return false;try{return getComputedStyle(el).display!=="none"}catch(_){return false}});
-    const ok=hasDual&&hasStores&&visibleSeparate.length===0;
-    const res={ok,version:VERSION,build:BUILD_CODE,hasDual,hasStores,hasUnified,visibleSeparate,role:currentRoleLabel(),currentBuild:currentCode(),checkedAt:new Date().toISOString()};
-    window.__hesabiSettingsRoleUnifiedUpdate114=res; try{localStorage.setItem("hesabi_settings_role_unified_update_114",JSON.stringify({ok,role:res.role,currentBuild:res.currentBuild,at:res.checkedAt}))}catch(_){}
-    return res;
+  function ensureRoleCard(){
+    const page = byId("page_settings");
+    if(!page) return false;
+    if(!byId("hesabiRoleSettings115")){
+      page.insertAdjacentHTML("afterbegin", roleCardHtml());
+    }
+    bindRoleControls();
+    return true;
   }
 
-  ensureStyle();installWrappers();installObserver();schedule();
-  window.hesabiSettingsRoleUnifiedUpdate={version:VERSION,build:BUILD_CODE,ensureDualRoleInSettings,ensureSettingsUnifiedUpdate,openUnifiedUpdateModal,refreshUnifiedUpdateUi,runUnifiedUpdate,getUpdateState,selfCheck};
-  window.hesabiSettingsRoleUnifiedUpdateSelfCheck=selfCheck;
+  function nativeCode(){
+    try {
+      const n = typeof nativeVersionCode === "function" ? Number(nativeVersionCode() || 0) : 0;
+      if(n) return n;
+    } catch(_) {}
+    return 0;
+  }
+
+  function nativeName(){
+    try { return typeof nativeVersionName === "function" ? safeString(nativeVersionName() || "") : ""; } catch(_) { return ""; }
+  }
+
+  function nativeLabel(){
+    try { if(typeof nativeVersionLabel === "function") return nativeVersionLabel(); } catch(_) {}
+    return (nativeName() || "APK") + " (" + (nativeCode() || "-") + ")";
+  }
+
+  async function fetchUpdateInfo(){
+    try {
+      if(typeof fetchAndroidUpdateInfo === "function"){
+        const info = await fetchAndroidUpdateInfo();
+        if(info) return info;
+      }
+    } catch(_) {}
+    for(const u of ["android-update.json", "/android-update.json"]){
+      try {
+        const res = await fetch(u + "?v=" + Date.now(), { cache:"no-store", headers:{ "Cache-Control":"no-cache" } });
+        if(res.ok) return await res.json();
+      } catch(_) {}
+    }
+    return null;
+  }
+
+  async function updateState(){
+    const info = await fetchUpdateInfo();
+    const currentCode = nativeCode();
+    const currentName = nativeName();
+    const latestCode = Number((info && (info.latestVersionCode || info.versionCode)) || 0);
+    const latestName = safeString((info && (info.latestVersionName || info.versionName)) || "");
+    return { ok:!!info, info, currentCode, currentName, latestCode, latestName, hasUpdate:!!(currentCode && latestCode && latestCode > currentCode) };
+  }
+
+  function setStatus(text){
+    qsa("[data-update115-status]").forEach(function(el){ el.textContent = text; });
+  }
+
+  function setButton(btn, st){
+    if(!btn) return;
+    if(!st.ok){
+      btn.disabled = true;
+      btn.textContent = "تعذر فحص التحديث";
+    } else if(st.hasUpdate){
+      btn.disabled = false;
+      btn.textContent = "تحديث التطبيق الآن";
+    } else {
+      btn.disabled = true;
+      btn.textContent = "أنت على آخر نسخة";
+    }
+  }
+
+  async function refreshUpdate(){
+    const st = await updateState();
+    const status = st.ok
+      ? (st.hasUpdate
+          ? `يوجد تحديث جديد: ${st.latestName || st.latestCode}\nنسختك الحالية: ${st.currentName || "-"} / build ${st.currentCode || "-"}`
+          : `لا يوجد تحديث جديد.\nنسختك الحالية: ${st.currentName || "-"} / build ${st.currentCode || "-"}\nآخر نسخة متاحة: ${st.latestName || "-"} / build ${st.latestCode || "-"}`)
+      : "تعذر فحص التحديث. تأكد من الإنترنت.";
+    setStatus(status);
+    qsa("[data-update115-btn]").forEach(function(btn){ btn.__hesabiUpdateState115 = st; setButton(btn, st); });
+    return st;
+  }
+
+  async function runUpdate(btn){
+    const st = (btn && btn.__hesabiUpdateState115) || await updateState();
+    if(!st.hasUpdate){
+      setStatus("أنت على آخر نسخة. لا حاجة لتنظيف الكاش أو تنزيل APK.");
+      notify("أنت على آخر نسخة.", "success");
+      setButton(btn, st);
+      return;
+    }
+    try {
+      if(btn){ btn.disabled = true; btn.textContent = "جاري التحديث..."; }
+      setStatus("جاري تنظيف الكاش وتحديث الواجهات ثم فتح APK...");
+      try { if(typeof refreshWebUiNow === "function") await refreshWebUiNow(); } catch(_) {}
+      if(typeof downloadApkUpdate === "function") await downloadApkUpdate();
+      else if(st.info && st.info.apkUrl) location.href = st.info.apkUrl;
+    } catch(error) {
+      setStatus("تعذر تنفيذ التحديث: " + safeString(error && error.message || error));
+      if(btn) btn.disabled = false;
+    }
+  }
+
+  function updateCardHtml(){
+    return `
+      <div class="hesabi-update-card" id="hesabiUpdateSettings115">
+        <h2>التحديث</h2>
+        <div class="grid">
+          <div class="metric"><span class="muted">إصدار الواجهات</span><b>${VERSION}</b></div>
+          <div class="metric"><span class="muted">إصدار APK</span><b>${esc(nativeLabel())}</b></div>
+        </div>
+        <div class="hesabi-update-status" data-update115-status>جاري فحص التحديث...</div>
+        <div class="hesabi-update-actions">
+          <button class="btn ok" type="button" data-update115-btn disabled>جاري الفحص...</button>
+        </div>
+      </div>`;
+  }
+
+  function bindUpdate(root){
+    qsa("[data-update115-btn]", root || document).forEach(function(btn){
+      if(btn.__hesabiUpdateBound115) return;
+      btn.__hesabiUpdateBound115 = true;
+      btn.onclick = function(){ runUpdate(btn); };
+    });
+    refreshUpdate();
+  }
+
+  function replaceOldUpdateCard(){
+    const page = byId("page_settings");
+    if(!page) return false;
+    const oldButtons = ["settingsRefreshUi","settingsCleanCache","settingsUpdateApk","settingsCheckApk","settingsRunSelfCheck"].map(byId).filter(Boolean);
+    if(!oldButtons.length && byId("hesabiUpdateSettings115")){
+      bindUpdate(page);
+      return true;
+    }
+    let card = oldButtons[0] && oldButtons[0].closest && oldButtons[0].closest(".card");
+    if(!card){
+      card = qsa(".card", page).find(function(c){ return /التحديث|الكاش|APK|إصدار الواجهات/.test(c.textContent || ""); });
+    }
+    if(card){
+      card.outerHTML = updateCardHtml();
+      bindUpdate(page);
+      return true;
+    }
+    return false;
+  }
+
+  function openUpdateModal(){
+    const old = byId("hesabiUpdate115Modal");
+    if(old) old.remove();
+    const back = document.createElement("div");
+    back.id = "hesabiUpdate115Modal";
+    back.className = "hesabi113-modal-backdrop";
+    back.innerHTML = `<div class="hesabi113-modal"><div class="hesabi113-modal-head"><h2>تحديث التطبيق</h2><button class="hesabi113-close" id="closeUpdate115" type="button">×</button></div><div class="hesabi113-modal-body">${updateCardHtml()}</div></div>`;
+    document.body.appendChild(back);
+    const close = byId("closeUpdate115");
+    if(close) close.onclick = function(){ back.remove(); };
+    back.onclick = function(ev){ if(ev.target === back) back.remove(); };
+    bindUpdate(back);
+  }
+
+  function rebindTopMenu(){
+    try {
+      if(window.hesabiUiCleanupHeaderHomeNav && typeof window.hesabiUiCleanupHeaderHomeNav.ensureHeaderMenu === "function"){
+        window.hesabiUiCleanupHeaderHomeNav.ensureHeaderMenu();
+      }
+    } catch(_) {}
+    qsa('[data-top-menu-action="update"]').forEach(function(oldItem){
+      if(oldItem.__hesabiUpdate115) return;
+      const item = oldItem.cloneNode(true);
+      item.__hesabiUpdate115 = true;
+      oldItem.parentNode.replaceChild(item, oldItem);
+      item.onclick = function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { byId("hesabiTopOverflowMenu")?.classList.add("hidden"); } catch(_) {}
+        openUpdateModal();
+        return false;
+      };
+    });
+  }
+
+  function apply(){
+    ensureStyle();
+    ensureRoleCard();
+    replaceOldUpdateCard();
+    rebindTopMenu();
+  }
+
+  function schedule(){
+    setTimeout(apply, 0);
+    setTimeout(apply, 150);
+    setTimeout(apply, 600);
+  }
+
+  function wrap(){
+    const w = window.__hesabiSettingsUpdate115Wrapped || {};
+    if(typeof render === "function" && !w.render){
+      const base = render;
+      render = function(){ const out = base.apply(this, arguments); schedule(); return out; };
+      w.render = true;
+    }
+    if(typeof show === "function" && !w.show){
+      const base = show;
+      show = function(){ const out = base.apply(this, arguments); schedule(); return out; };
+      w.show = true;
+    }
+    if(typeof renderSettings === "function" && !w.settings){
+      const base = renderSettings;
+      renderSettings = function(){ const out = base.apply(this, arguments); schedule(); return out; };
+      w.settings = true;
+    }
+    window.__hesabiSettingsUpdate115Wrapped = w;
+  }
+
+  function selfCheck(){
+    apply();
+    const old = byId("settingsRefreshUi");
+    let oldVisible = false;
+    try { oldVisible = !!old && getComputedStyle(old).display !== "none"; } catch(_) {}
+    const ok = !!byId("hesabiRoleSettings115") && !!byId("hesabiUpdateSettings115") && !oldVisible;
+    return { ok, version:VERSION, build:BUILD_CODE, hasRole:!!byId("hesabiRoleSettings115"), hasUpdate:!!byId("hesabiUpdateSettings115"), oldVisible, checkedAt:new Date().toISOString() };
+  }
+
+  ensureStyle();
+  wrap();
+  schedule();
+  try { new MutationObserver(function(){ schedule(); }).observe(document.documentElement, { childList:true, subtree:true }); } catch(_) {}
+
+  window.hesabiSettingsRoleUnifiedUpdate = { version:VERSION, build:BUILD_CODE, apply, refreshUpdate, selfCheck };
+  window.hesabiSettingsRoleUnifiedUpdateSelfCheck = selfCheck;
 })();
