@@ -23,6 +23,7 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
+import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -102,16 +103,27 @@ public class MainActivity extends FragmentActivity {
 
         webView = new WebView(this);
         setContentView(webView);
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        s.setSupportMultipleWindows(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
+        s.setLoadsImagesAutomatically(true);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             s.setSafeBrowsingEnabled(true);
         }
@@ -498,6 +510,17 @@ public class MainActivity extends FragmentActivity {
             runOnUiThread(MainActivity.this::startItemOcrCamera);
         }
 
+        @JavascriptInterface
+        public void openAppInExternalBrowser() {
+            runOnUiThread(() -> {
+                try {
+                    Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL));
+                    startActivity(browser);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "鬲毓匕乇 賮鬲丨 丕賱賲鬲氐賮丨 丕賱禺丕乇噩賷: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+        }
         @JavascriptInterface
         public int getVersionCode() {
             return getInstalledVersionCodeSafe();

@@ -1,14 +1,14 @@
 {
-  "latestVersionCode": 114,
-  "latestVersionName": "1.0.114",
-  "required": false,
-  "title": "حسابي التجاري",
-  "message": "لا يوجد تحديث APK جديد. تم نشر تصحيح reCAPTCHA المرئي لتسجيل الدخول عبر SMS.",
-  "apkUrl": "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
-  "releaseNotes": "Web UI hotfix 1.0.117: visible reCAPTCHA fallback for Firebase Phone Auth in WebView.",
-  "notes": "تصحيح reCAPTCHA فقط بدون APK جديد.",
-  "versionName": "1.0.114",
-  "versionCode": 114,
-  "minimumSupportedVersionCode": 60,
-  "forceRefresh": true
+    "message":  "鬲丨丿賷孬 APK 賱廿氐賱丕丨 reCAPTCHA 丿丕禺賱 Android WebView 毓賳丿 鬲爻噩賷賱 丕賱丿禺賵賱 亘賰賵丿 SMS.",
+    "latestVersionCode":  118,
+    "forceRefresh":  true,
+    "apkUrl":  "https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk",
+    "latestVersionName":  "1.0.118",
+    "notes":  "廿氐賱丕丨 reCAPTCHA 丿丕禺賱 丕賱鬲胤亘賷賯.",
+    "versionCode":  118,
+    "minimumSupportedVersionCode":  60,
+    "releaseNotes":  "Native WebView compatibility for Firebase Phone Auth reCAPTCHA: enable JavaScript windows, mixed content, first-party/third-party cookies.",
+    "versionName":  "1.0.118",
+    "title":  "鬲丨丿賷孬 丨爻丕亘賷 丕賱鬲噩丕乇賷 1.0.118",
+    "required":  false
 }
