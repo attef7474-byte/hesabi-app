@@ -1,7 +1,7 @@
-// Hesabi App 1.0.120
+// Hesabi App 1.0.122
 // Stable module loader + runtime self check.
-const HESABI_APP_VERSION = '1.0.121';
-const HESABI_APP_BUILD_CODE = 121;
+const HESABI_APP_VERSION = '1.0.122';
+const HESABI_APP_BUILD_CODE = 122;
 
 const HESABI_MODULE_PARTS = [
   'js/modules/00_core_update_auth.js',
@@ -66,10 +66,7 @@ const HESABI_MODULE_PARTS = [
   'js/modules/55_utf8_recovery_115.js',
   'js/modules/56_sms_auth_no_hang.js',
   'js/modules/57_visible_recaptcha_phone_auth.js',
-  'js/modules/58_native_phone_auth_bridge.js',
-  'js/modules/59_settings_account_role_logout_fix.js',
-  'js/modules/60_settings_final_cleanup.js'
-];
+  'js/modules/58_native_phone_auth_bridge.js',];
 
 const HESABI_REQUIRED_GLOBALS = [
   'hesabiFinalSelfCheck',
@@ -130,9 +127,7 @@ const HESABI_REQUIRED_GLOBALS = [
   'hesabiSmsAuthNoHangSelfCheck',
   'hesabiVisibleRecaptchaPhoneAuthSelfCheck',
   'hesabiNativePhoneAuthBridgeSelfCheck',
-  'hesabiSettingsFinalCleanupSelfCheck',
-  'hesabiSettingsAccountRoleLogoutFixSelfCheck'
-];
+  'hesabiSettingsFinalCleanupSelfCheck',];
 
 const HESABI_RUNTIME_TIMEOUT_MS = 25000;
 
@@ -273,7 +268,7 @@ async function loadHesabiRuntime() {
   }
 
   setRuntimePhase('importing-runtime');
-  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.119.mjs\n';
+  const runtimeSource = sources.join('\n') + '\n//# sourceURL=hesabi-app-runtime-1.0.122.mjs\n';
   const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
   try {
     await import(runtimeUrl);
