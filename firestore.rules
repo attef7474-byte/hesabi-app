@@ -67,7 +67,7 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /items/{id} {
-        allow read: if isOwner(shopId) || (signed() && shopActive(shopId));
+        allow read: if isAppOwner() || isOwner(shopId) || hasCustomerLink(shopId) || (signed() && shopActive(shopId) && get(shopPath(shopId)).data.visibility == "public");
         allow create, update, delete: if isOwner(shopId);
       }
       match /customers/{customerId} {
