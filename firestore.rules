@@ -51,7 +51,7 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /shops/{shopId} {
-      allow read: if signed();
+      allow read: if isAppOwner() || isOwner(shopId) || hasCustomerLink(shopId) || resource.data.visibility == "public";
       allow create: if signed() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isAppOwner() || isOwner(shopId);
       allow delete: if false;

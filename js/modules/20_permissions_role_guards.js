@@ -5,8 +5,9 @@
   const VERSION = "1.0.81";
   const BUILD_CODE = 81;
   const ALL_PAGES = ["home","search","tasks","items","orders","customers","shops","messages","payments","invoices","statement","audit","stock","returns","schedules","collections","reports","policies","notifications","shopcode","settings","owner"];
-  const TRADER_ONLY = ["customers","audit","stock","collections","policies","reports"];
-  const CUSTOMER_ONLY_REDIRECTS = { shops:"home" };
+  const TRADER_ONLY = ["customers","audit","stock","collections","policies","reports","items","invoices","returns","schedules"];
+  const CUSTOMER_ONLY = ["shops"];
+  const CUSTOMER_ONLY_REDIRECTS = { };
   function normalizePage(page){ return ALL_PAGES.indexOf(page) >= 0 ? page : "home"; }
   function roleLabel(role){ return role === "trader" ? "تاجر" : (role === "customer" ? "عميل" : "غير محدد"); }
   function canOpenPage(ctx){
@@ -16,7 +17,7 @@
     const isOwner = !!ctx.isOwner;
     if(page === "owner" && !isOwner) return { ok:false, page, fallback:"home", code:"owner_only", message:"صفحة مالك التطبيق خاصة بحساب المالك فقط" };
     if(role !== "trader" && TRADER_ONLY.indexOf(page) >= 0) return { ok:false, page, fallback:"home", code:"trader_only", message:"هذه الصفحة خاصة بالتاجر فقط" };
-    if(role === "trader" && CUSTOMER_ONLY_REDIRECTS[page]) return { ok:false, page, fallback:CUSTOMER_ONLY_REDIRECTS[page], code:"customer_page_forbidden_to_trader", message:"هذه الصفحة خاصة بحساب العميل" };
+    if(role === "trader" && CUSTOMER_ONLY.indexOf(page) >= 0) return { ok:false, page, fallback:"home", code:"customer_page_forbidden_to_trader", message:"هذه الصفحة خاصة بحساب العميل" };
     return { ok:true, page, fallback:page, role, roleLabel:roleLabel(role) };
   }
   function pageMatrix(role, isOwner){
