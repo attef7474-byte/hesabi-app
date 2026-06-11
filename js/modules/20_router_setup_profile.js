@@ -875,8 +875,8 @@ function homeQuickItems(){
   ];
   const customer=[
     ['tasks','✅','المهام',dailyTaskCount()],['search','🔎','بحث',0],['shopcode','📷','مسح كود',0],['shops','🏪','متاجري',0],['items','🛒','شراء',0],['orders','🧾','طلباتي',c.orders],
-    ['messages','💬','الرسائل',c.messages],['payments','💵','السداد',c.payments],['invoices','📄','الفواتير',0],['statement','📊','كشف الحساب',0],
-    ['returns','↩️','المرتجعات',c.returns],['schedules','⏰','الاستحقاقات',c.schedules],['reports','📈','التقارير',0],[ 'notifications','🔔','الإشعارات',c.notifications],['settings','🛠️','الإعدادات',0]
+    ['messages','💬','الرسائل',c.messages],['payments','💵','السداد',c.payments],['invoices','📄','فواتيري',0],['statement','📊','كشف حسابي',0],
+    ['returns','↩️','مرتجعاتي',c.returns],['schedules','⏰','استحقاقاتي',c.schedules],[ 'notifications','🔔','الإشعارات',c.notifications],['settings','🛠️','الإعدادات',0]
   ];
   return state.role==='trader'?trader:customer;
 }
