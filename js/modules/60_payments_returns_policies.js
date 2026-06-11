@@ -407,106 +407,6 @@ function renderPolicies(){
   $('page_policies').innerHTML=top+content+saveBar;
   setTimeout(()=>{bindPageTabs('policies',renderPolicies); if($('savePoliciesPhase8')) $('savePoliciesPhase8').onclick=saveShopPoliciesPhase8; if(!canEdit){document.querySelectorAll('#page_policies input,#page_policies select,#page_policies textarea').forEach(x=>x.disabled=true);}});
 }
-function messageMaxAttachmentBytes(){ return 720 * 1024; }
-function messageAttachmentTypeFromMime(mime, fallback){
-  mime = String(mime || "").toLowerCase();
-  if(mime.startsWith("image/")) return "image";
-  if(mime.startsWith("audio/")) return "audio";
-  if(mime.startsWith("video/")) return "video";
-  return fallback || "file";
-}
-function messageAttachmentLabel(att){
-  if(!att) return "لا يوجد مرفق";
-  const map = { image:"صورة", audio:"تسجيل صوتي", video:"فيديو قصير", file:"ملف" };
-  const size = att.size ? " - " + Math.round(Number(att.size || 0) / 1024) + "KB" : "";
-  return (map[att.type] || "مرفق") + size + (att.name ? " - " + att.name : "");
-}
-function refreshMessageAttachmentPreview(){
-  try{
-    const box=$('messageAttachmentPreview'), text=$('messageAttachmentText'), voiceBtn=$('messageVoiceBtn'), stopBtn=$('messageStopVoiceBtn');
-    if(box){ box.classList.toggle('hidden', !pendingMessageAttachment); }
-    if(text){ text.textContent = pendingMessageAttachment ? messageAttachmentLabel(pendingMessageAttachment) : 'لا يوجد مرفق'; }
-    if(voiceBtn) voiceBtn.style.display = activeRecorder ? 'none' : '';
-    if(stopBtn) stopBtn.style.display = activeRecorder ? '' : 'none';
-  }catch(e){}
-}
-function clearMessageAttachment(){
-  pendingMessageAttachment = null;
-  refreshMessageAttachmentPreview();
-  const img=$('messageImageFile'), vid=$('messageVideoFile');
-  if(img) img.value='';
-  if(vid) vid.value='';
-  msg('تم حذف المرفق من الرسالة.','notice');
-}
-function fileToDataUrl(file){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('file read failed'));
-    reader.readAsDataURL(file);
-  });
-}
-async function pickMessageAttachment(event, forcedType){
-  try{
-    const file = event && event.target && event.target.files ? event.target.files[0] : null;
-    if(!file) return;
-    if(file.size > messageMaxAttachmentBytes()){
-      msg('حجم المرفق كبير. الحد الحالي حوالي 720KB حتى لا تفشل رسالة Firestore.','error');
-      if(event.target) event.target.value='';
-      return;
-    }
-    const type = messageAttachmentTypeFromMime(file.type, forcedType);
-    if(forcedType === 'image' && type !== 'image'){ msg('اختر صورة فقط.','error'); return; }
-    if(forcedType === 'video' && type !== 'video'){ msg('اختر فيديو قصير فقط.','error'); return; }
-    const dataUrl = await fileToDataUrl(file);
-    pendingMessageAttachment = { type, name:file.name || (type+'.bin'), mime:file.type || '', size:file.size || 0, dataUrl };
-    refreshMessageAttachmentPreview();
-    msg('تم تجهيز المرفق للإرسال.','success');
-  }catch(e){ console.error('pick message attachment failed',e); msg('تعذر تجهيز المرفق: '+String(e && e.message || e),'error'); }
-}
-async function startVoiceMessage(){
-  try{
-    if(activeRecorder){ msg('التسجيل يعمل بالفعل.','notice'); return; }
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
-      msg('تسجيل الصوت غير مدعوم في هذا المتصفح أو WebView.','error'); return;
-    }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-    activeRecorderChunks = [];
-    const mime = MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
-    activeRecorder = new MediaRecorder(stream, mime ? { mimeType:mime } : undefined);
-    activeRecorderStartedAt = Date.now();
-    activeRecorder.ondataavailable = ev => { if(ev.data && ev.data.size) activeRecorderChunks.push(ev.data); };
-    activeRecorder.onstop = async () => {
-      try{
-        const usedMime = activeRecorder && activeRecorder.mimeType ? activeRecorder.mimeType : (mime || 'audio/webm');
-        const blob = new Blob(activeRecorderChunks, { type: usedMime });
-        try{ stream.getTracks().forEach(t=>t.stop()); }catch(_){ }
-        activeRecorder = null;
-        activeRecorderChunks = [];
-        refreshMessageAttachmentPreview();
-        if(!blob.size){ msg('لم يتم تسجيل صوت واضح.','error'); return; }
-        if(blob.size > messageMaxAttachmentBytes()){
-          msg('التسجيل طويل أو حجمه كبير. حاول تسجيل رسالة أقصر.','error'); return;
-        }
-        const file = new File([blob], 'voice-message.webm', { type: usedMime });
-        const dataUrl = await fileToDataUrl(file);
-        pendingMessageAttachment = { type:'audio', name:file.name, mime:usedMime, size:file.size, dataUrl };
-        refreshMessageAttachmentPreview();
-        msg('تم تجهيز التسجيل الصوتي للإرسال.','success');
-      }catch(e){ activeRecorder=null; msg('تعذر تجهيز التسجيل: '+String(e && e.message || e),'error'); }
-    };
-    activeRecorder.start();
-    refreshMessageAttachmentPreview();
-    msg('بدأ تسجيل الصوت. اضغط إيقاف عند الانتهاء.','success');
-    setTimeout(()=>{ try{ if(activeRecorder) stopVoiceMessage(); }catch(_){} }, 45000);
-  }catch(e){ console.error('voice recording failed',e); activeRecorder=null; refreshMessageAttachmentPreview(); msg('تعذر بدء التسجيل الصوتي: '+String(e && e.message || e),'error'); }
-}
-function stopVoiceMessage(){
-  try{
-    if(!activeRecorder){ msg('لا يوجد تسجيل يعمل الآن.','notice'); return; }
-    activeRecorder.stop();
-  }catch(e){ activeRecorder=null; refreshMessageAttachmentPreview(); msg('تعذر إيقاف التسجيل: '+String(e && e.message || e),'error'); }
-}
 function canSendMessageNow(){
   const mode=String(phase8RawPolicy('messaging','linked_only'));
   if(mode==='disabled') return {ok:false,msg:'المراسلة مغلقة مؤقتًا من سياسات المتجر.'};
@@ -518,22 +418,16 @@ async function sendMessage(){
   try{
     if(!state.shopId){msg('لا يوجد متجر نشط.','error'); return;}
     const chk=canSendMessageNow(); if(!chk.ok){showAppDialog('تعذر إرسال الرسالة',chk.msg,'error',[{text:'موافق',cls:'ok'}]); return;}
-    const txt=String($('messageText')?.value||'').trim();
-    const attachment = pendingMessageAttachment ? {...pendingMessageAttachment} : null;
-    if(!txt && !attachment){msg('اكتب نص الرسالة أو أرفق صورة/صوت/فيديو.','error'); return;}
+    const txt=String($('messageText')?.value||'').trim(); if(!txt){msg('اكتب نص الرسالة.','error'); return;}
     let customerId=state.customerId||'', customerName=state.customerName||'', customerUid=state.role==='customer'?uid():'';
     if(state.role==='trader'){
-      customerId=$('messageCustomer')?.value||state.messageCustomerId||'';
+      customerId=$('messageCustomer')?.value||'';
       const c=(cache.customers||[]).find(x=>String(x.customerId||x.id)===String(customerId));
       if(!c){msg('اختر العميل لإرسال الرسالة.','error'); return;}
-      customerName=c.name||'عميل'; customerUid=c.customerUid||c.uid||'';
-      state.messageCustomerId=customerId; save();
+      customerName=c.name||'عميل'; customerUid=c.customerUid||'';
     }
-    const payload={shopId:state.shopId,customerId,customerUid,customerName,fromRole:state.role,fromUid:uid(),fromName:actorName(),text:txt,type:attachment?('chat_'+attachment.type):'chat',createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:state.role==='trader',readByCustomer:state.role==='customer',updatedAt:serverTimestamp()};
-    if(attachment){ payload.attachment=attachment; payload.attachmentType=attachment.type; payload.attachmentName=attachment.name; payload.attachmentMime=attachment.mime; payload.attachmentSize=attachment.size; }
-    await addDoc(collection(db,'shops',state.shopId,'messages'),payload);
+    await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId,customerUid,customerName,fromRole:state.role,fromUid:uid(),fromName:actorName(),text:txt,type:'chat',createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:state.role==='trader',readByCustomer:state.role==='customer',updatedAt:serverTimestamp()});
     if($('messageText')) $('messageText').value='';
-    pendingMessageAttachment=null; refreshMessageAttachmentPreview();
     msg('تم إرسال الرسالة.','success');
   }catch(e){console.error('send message failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إرسال الرسالة',e);return;} msg('تعذر إرسال الرسالة: '+friendlyFirestoreError(e),'error');}
 }
@@ -548,22 +442,17 @@ function renderMessages(){
   }catch(e){ console.warn('message read marker scheduling failed', e); }
   try{
     if(helper && typeof helper.renderPage === 'function'){
-      page.innerHTML = helper.renderPage({ messages: cache.messages || [], customers: cache.customers || [], role: state.role, state, check: chk });
+      page.innerHTML = helper.renderPage({ messages: cache.messages || [], customers: cache.customers || [], role: state.role, check: chk });
       setTimeout(()=>{ if(helper && typeof helper.bindActions === 'function') helper.bindActions(sendMessage); else if($('sendMessageBtn')) $('sendMessageBtn').onclick=sendMessage; });
       return;
     }
   }catch(e){ console.warn('messages helper render failed', e); }
   const msgs=(cache.messages||[]).slice(-80).reverse();
   const customerOptions=state.role==='trader'?`<div class="field"><label>العميل</label><select id="messageCustomer"><option value="">اختر العميل</option>${(cache.customers||[]).map(c=>`<option value="${esc(c.customerId||c.id||'')}">${esc(c.name||'عميل')} - ${esc(c.phone||'')}</option>`).join('')}</select></div>`:'';
-  const rows=msgs.map(m=>`<tr><td class="name"><b>${esc(m.fromName||m.senderName||'رسالة')}</b><div class="muted">${esc(m.fromRole==='trader'?'تاجر':m.fromRole==='customer'?'عميل':'النظام')}</div></td><td>${esc(m.text||m.body||m.message||'')}${m.attachment?' 📎':''}</td><td>${dt(m.createdMs)}</td></tr>`).join('');
+  const rows=msgs.map(m=>`<tr><td class="name"><b>${esc(m.fromName||m.senderName||'رسالة')}</b><div class="muted">${esc(m.fromRole==='trader'?'تاجر':m.fromRole==='customer'?'عميل':'النظام')}</div></td><td>${esc(m.text||m.body||m.message||'')}</td><td>${dt(m.createdMs)}</td></tr>`).join('');
   page.innerHTML=`<div class="card"><h2>الرسائل</h2>${chk.ok?'':`<div class="notice warn">${esc(chk.msg)}</div>`}${customerOptions}<div class="field"><label>نص الرسالة</label><textarea id="messageText" placeholder="اكتب رسالتك هنا"></textarea></div><button class="btn ok" id="sendMessageBtn" ${chk.ok?'':'disabled'}>إرسال</button></div><div class="table-wrap"><table class="compact-table"><thead><tr><th>المرسل</th><th>الرسالة</th><th>التاريخ</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا توجد رسائل</td></tr>'}</tbody></table></div>`;
   setTimeout(()=>{ if($('sendMessageBtn')) $('sendMessageBtn').onclick=sendMessage; });
 }
-window.hesabiPickMessageAttachment=pickMessageAttachment;
-window.hesabiClearMessageAttachment=clearMessageAttachment;
-window.hesabiRefreshMessageAttachmentPreview=refreshMessageAttachmentPreview;
-window.hesabiStartVoiceMessage=startVoiceMessage;
-window.hesabiStopVoiceMessage=stopVoiceMessage;
 function renderSettings(){
   const settingsHelper = window.hesabiSettingsHelpers;
   const rawTab = pageTabState('settings','security');
