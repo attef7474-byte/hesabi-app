@@ -1,10 +1,10 @@
-/* Hesabi 1.0.126 - Stable root settings.
+/* Hesabi 1.0.127 - Stable root settings.
    Single source for settings tabs. No external injection, no final diagnostics button. */
 (function(){
   "use strict";
 
-  const VERSION = "1.0.126";
-  const BUILD_CODE = 126;
+  const VERSION = "1.0.127";
+  const BUILD_CODE = 127;
   const REQUIRED_TABS = ["security", "appearance", "shop", "permissions", "update", "backup", "account", "notifications"];
 
   function safeString(value){
@@ -255,9 +255,9 @@
         <div class="metric"><span class="muted">إصدار APK</span><b>${escSafe(nativeLabel())}</b></div>
         <div class="metric"><span class="muted">مرحلة الإعدادات</span><b>${escSafe(VERSION)}</b></div>
       </div>
-      <div class="notice" id="settingsUpdateStatus">الإعدادات مستقرة. استخدم الزر أدناه لتحديث الواجهات أو فتح تحديث APK عند توفره.</div>
+      <div class="notice" id="settingsUpdateStatus">الإعدادات مستقرة. الزر يحدّث الواجهات المنشورة، وإذا وُجد APK أحدث سيفتح تحديث APK تلقائيًا.</div>
       <div class="settings-compact-actions settings-actions-1">
-        <button class="btn ok" id="settingsSmartUpdate" type="button">تحديث التطبيق الآن</button>
+        <button class="btn ok" id="settingsSmartUpdate" type="button">تحديث الواجهات الآن</button>
       </div>`;
   }
 

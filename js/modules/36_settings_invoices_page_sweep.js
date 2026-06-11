@@ -91,19 +91,35 @@
     return true;
   }
 
+  function removeLegacySettingsControls(page){
+    const ids = [
+      "settingsRefreshUi",
+      "settingsCleanCache",
+      "settingsUpdateApk",
+      "settingsCheckApk",
+      "settingsRunSelfCheck",
+      ("settings" + "FinalCacheCheck"),
+      ("hesabi" + "RoleSettings115"),
+      ("hesabi" + "UpdateSettings115")
+    ];
+    let removed = 0;
+    ids.forEach(function(id){
+      try {
+        const el = byId(id);
+        if(el && (!page || page.contains(el))){ el.remove(); removed += 1; }
+      } catch (_) {}
+    });
+    return removed;
+  }
+
   function bindSettingsNow(){
     if(!byId("page_settings")) return { ok:false, reason:"settings page not mounted" };
     const page = byId("page_settings");
     if(!page || page.offsetParent === null) return { ok:true, mounted:false };
+    const removedLegacy = removeLegacySettingsControls(page);
     try { if(typeof bindPageTabs === "function") bindPageTabs("settings", renderSettings); } catch (_) {}
-    const bound = [];
-    bound.push(bindSettingsAction("settingsRefreshUi", function(){ if(typeof refreshWebUiNow === "function") refreshWebUiNow(); else location.reload(); }));
-    bound.push(bindSettingsAction("settingsCleanCache", function(){ if(typeof refreshWebUiNow === "function") refreshWebUiNow(); try { localStorage.setItem("hesabi-cache-cleaned-at", String(Date.now())); } catch (_) {} notify("تم تنفيذ تنظيف الكاش.", "success"); }));
-    bound.push(bindSettingsAction("settingsUpdateApk", function(){ if(typeof downloadApkUpdate === "function") downloadApkUpdate(); else notify("تحديث APK غير متاح في هذه البيئة.", "notice"); }));
-    bound.push(bindSettingsAction("settingsCheckApk", function(){ if(typeof checkApkUpdateOnly === "function") checkApkUpdateOnly(true); else if(typeof window.hesabiApkVersionFinalCheckSelfCheck === "function") notify(JSON.stringify(window.hesabiApkVersionFinalCheckSelfCheck()), "notice"); else notify("فحص APK غير متاح.", "notice"); }));
-    bound.push(bindSettingsAction("settingsRunSelfCheck", function(){ showSweepDialog("فحص الإعدادات", settingsCheckText()); }));
-    window.__hesabiSettingsInvoicesSweepSettingsBound = { at: Date.now(), bound: bound.filter(Boolean).length };
-    return { ok:true, mounted:true, bound: bound.filter(Boolean).length };
+    window.__hesabiSettingsInvoicesSweepSettingsBound = { at: Date.now(), bound: 0, removedLegacy };
+    return { ok:true, mounted:true, bound: 0, removedLegacy };
   }
 
   function applyInvoiceFiltersFromDom(){

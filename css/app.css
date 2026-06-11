@@ -613,3 +613,43 @@ section.card > p.muted {
   .notify-row{display:grid;grid-template-columns:auto 1fr;gap:8px}
   .notify-meta{grid-column:1 / -1;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 }
+
+/* Hesabi 1.0.127 settings tabs safe layout - no clipped horizontal strip */
+#page_settings .page-tabs-card,
+#page_settings .page-tabs-card.side-tabs{
+  float:none!important;
+  clear:both!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:6px 0 10px!important;
+  overflow:visible!important;
+  position:sticky!important;
+  top:72px!important;
+  z-index:8!important;
+}
+#page_settings .page-tabs-card.side-tabs .page-tabs-bar,
+#page_settings .page-tabs-bar{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:6px!important;
+  overflow:visible!important;
+  padding:2px!important;
+  direction:rtl!important;
+}
+#page_settings .page-tab-btn{
+  min-width:0!important;
+  width:100%!important;
+  min-height:46px!important;
+  padding:5px 4px!important;
+  border-radius:13px!important;
+}
+#page_settings .page-tab-btn .ico{font-size:16px!important;line-height:1!important}
+#page_settings .page-tab-btn .txt{font-size:9.5px!important;line-height:1.15!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+@media(max-width:360px){
+  #page_settings .page-tabs-card.side-tabs .page-tabs-bar,
+  #page_settings .page-tabs-bar{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}
+  #page_settings .page-tab-btn{min-height:43px!important;padding:4px 2px!important}
+  #page_settings .page-tab-btn .ico{font-size:15px!important}
+  #page_settings .page-tab-btn .txt{font-size:8.2px!important}
+}
+
