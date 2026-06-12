@@ -189,11 +189,13 @@ private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
     private String friendlyNativeSmsError(Exception e) {
         String message = e == null ? "" : String.valueOf(e.getMessage());
         String lower = message.toLowerCase(Locale.US);
-        if (lower.contains("too many") || lower.contains("quota")) return "鬲賲 廿乇爻丕賱 賲丨丕賵賱丕鬲 賰孬賷乇丞. 丕賳鬲馗乇 賯賱賷賱賸丕 孬賲 丨丕賵賱 賲乇丞 兀禺乇賶.";
-        if (lower.contains("network") || lower.contains("timeout")) return "賮卮賱 丕賱丕鬲氐丕賱 賲毓 Firebase. 鬲兀賰丿 賲賳 丕賱廿賳鬲乇賳鬲 孬賲 丨丕賵賱 賲乇丞 兀禺乇賶.";
-        if (lower.contains("invalid") && lower.contains("phone")) return "乇賯賲 丕賱賴丕鬲賮 睾賷乇 氐丨賷丨. 丕爻鬲禺丿賲 丕賱氐賷睾丞 丕賱丿賵賱賷丞 賲孬賱 +967771749776.";
-        if (lower.contains("app") && lower.contains("not authorized")) return "鬲胤亘賷賯 Android 睾賷乇 賲氐乇丨 賮賷 Firebase. 鬲兀賰丿 賲賳 廿囟丕賮丞 SHA-1 賵 SHA-256 賱賱丨夭賲丞 com.hesabi.app 賵鬲賳夭賷賱 google-services.json 丕賱噩丿賷丿.";
-        return message == null || message.trim().isEmpty() ? "鬲毓匕乇 廿乇爻丕賱 賰賵丿 SMS 賲賳 Firebase Android Auth." : message;
+        if (lower.contains("billing")) return "\u062E\u062F\u0645\u0629 \u0631\u0633\u0627\u0626\u0644 \u0627\u0644\u0647\u0627\u062A\u0641 \u0641\u064A Firebase \u062A\u062D\u062A\u0627\u062C \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0641\u0648\u062A\u0631\u0629 Blaze \u0642\u0628\u0644 \u0625\u0631\u0633\u0627\u0644 SMS \u062D\u0642\u064A\u0642\u064A.";
+        if (lower.contains("operation") && lower.contains("allowed")) return "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0628\u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 \u063A\u064A\u0631 \u0645\u0641\u0639\u0651\u0644 \u0641\u064A Firebase Authentication.";
+        if (lower.contains("too many") || lower.contains("quota")) return "\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0643\u062B\u064A\u0631\u0629. \u0627\u0646\u062A\u0638\u0631 \u0642\u0644\u064A\u0644\u064B\u0627 \u062B\u0645 \u062D\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.";
+        if (lower.contains("network") || lower.contains("timeout")) return "\u0641\u0634\u0644 \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u062E\u062F\u0645\u0629 Firebase. \u062A\u0623\u0643\u062F \u0645\u0646 \u0627\u0644\u0625\u0646\u062A\u0631\u0646\u062A \u062B\u0645 \u062D\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.";
+        if (lower.contains("invalid") && lower.contains("phone")) return "\u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D. \u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0635\u064A\u063A\u0629 \u0627\u0644\u062F\u0648\u0644\u064A\u0629 \u0645\u062B\u0644 +967771749776.";
+        if (lower.contains("app") && lower.contains("not authorized")) return "\u062A\u0637\u0628\u064A\u0642 Android \u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0641\u064A Firebase. \u062A\u0623\u0643\u062F \u0645\u0646 \u0625\u0636\u0627\u0641\u0629 SHA-1 \u0648 SHA-256 \u0644\u0644\u062D\u0632\u0645\u0629 com.hesabi.app \u062B\u0645 \u0646\u0632\u0651\u0644 google-services.json \u0627\u0644\u062C\u062F\u064A\u062F.";
+        return message == null || message.trim().isEmpty() ? "\u062A\u0639\u0630\u0631 \u0625\u0631\u0633\u0627\u0644 \u0643\u0648\u062F SMS \u0645\u0646 Firebase Android Auth." : message;
     }
 
     private void sendNativeSmsAuthEvent(String type, String phone, String verificationId, String smsCode, String message) {
@@ -216,17 +218,17 @@ private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
             try {
                 if (firebaseAuth == null) initNativeFirebaseAuth();
                 if (firebaseAuth == null) {
-                    sendNativeSmsAuthEvent("failed", phone, "", "", "Firebase Android Auth 睾賷乇 噩丕賴夭. 鬲兀賰丿 賲賳 google-services.json 賵亘賳丕亍 APK 噩丿賷丿.");
+                    sendNativeSmsAuthEvent("failed", phone, "", "", "Firebase Android Auth \u063A\u064A\u0631 \u062C\u0627\u0647\u0632. \u062A\u0623\u0643\u062F \u0645\u0646 \u0648\u062C\u0648\u062F google-services.json \u0627\u0644\u0635\u062D\u064A\u062D \u062B\u0645 \u0627\u0628\u0646\u0650 APK \u062C\u062F\u064A\u062F.");
                     return;
                 }
                 String safePhone = phone == null ? "" : phone.trim();
                 if (!safePhone.startsWith("+") || safePhone.length() < 8) {
-                    sendNativeSmsAuthEvent("failed", safePhone, "", "", "乇賯賲 丕賱賴丕鬲賮 賷噩亘 兀賳 賷賰賵賳 亘丕賱氐賷睾丞 丕賱丿賵賱賷丞 賲孬賱 +967771749776.");
+                    sendNativeSmsAuthEvent("failed", safePhone, "", "", "\u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 \u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 \u0628\u0627\u0644\u0635\u064A\u063A\u0629 \u0627\u0644\u062F\u0648\u0644\u064A\u0629 \u0645\u062B\u0644 +967771749776.");
                     return;
                 }
                 nativeSmsPhone = safePhone;
                 nativeSmsVerificationId = "";
-                sendNativeSmsAuthEvent("sending", safePhone, "", "", "噩丕乇賷 廿乇爻丕賱 賰賵丿 丕賱鬲丨賯賯 毓亘乇 Firebase Android Auth...");
+                sendNativeSmsAuthEvent("sending", safePhone, "", "", "\u062C\u0627\u0631\u064A \u0625\u0631\u0633\u0627\u0644 \u0643\u0648\u062F \u0627\u0644\u062A\u062D\u0642\u0642 \u0639\u0628\u0631 Firebase Android Auth...");
                 PhoneAuthOptions options = PhoneAuthOptions.newBuilder(firebaseAuth)
                         .setPhoneNumber(safePhone)
                         .setTimeout(60L, TimeUnit.SECONDS)
@@ -236,7 +238,7 @@ private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
                             public void onVerificationCompleted(@NonNull PhoneAuthCredential credential) {
                                 String smsCode = "";
                                 try { smsCode = credential.getSmsCode(); } catch (Exception ignored) {}
-                                sendNativeSmsAuthEvent("autoCompleted", nativeSmsPhone, nativeSmsVerificationId, smsCode, smsCode == null || smsCode.isEmpty() ? "鬲賲 丕賱鬲丨賯賯 鬲賱賯丕卅賷賸丕 賲賳 Android. 廿匕丕 賱賲 賷賰鬲賲賱 丕賱丿禺賵賱貙 兀丿禺賱 丕賱賰賵丿 賷丿賵賷賸丕." : "鬲賲 丕賱鬲賯丕胤 賰賵丿 丕賱鬲丨賯賯 鬲賱賯丕卅賷賸丕.");
+                                sendNativeSmsAuthEvent("autoCompleted", nativeSmsPhone, nativeSmsVerificationId, smsCode, smsCode == null || smsCode.isEmpty() ? "\u062A\u0645 \u0627\u0644\u062A\u062D\u0642\u0642 \u062A\u0644\u0642\u0627\u0626\u064A\u064B\u0627 \u0645\u0646 Android. \u0625\u0630\u0627 \u0644\u0645 \u064A\u0643\u062A\u0645\u0644 \u0627\u0644\u062F\u062E\u0648\u0644\u060C \u0623\u062F\u062E\u0644 \u0627\u0644\u0643\u0648\u062F \u064A\u062F\u0648\u064A\u064B\u0627." : "\u062A\u0645 \u0627\u0644\u062A\u0642\u0627\u0637 \u0643\u0648\u062F \u0627\u0644\u062A\u062D\u0642\u0642 \u062A\u0644\u0642\u0627\u0626\u064A\u064B\u0627.");
                             }
 
                             @Override
@@ -248,7 +250,7 @@ private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
                             public void onCodeSent(@NonNull String verificationId, @NonNull PhoneAuthProvider.ForceResendingToken token) {
                                 nativeSmsVerificationId = verificationId;
                                 nativeSmsResendToken = token;
-                                sendNativeSmsAuthEvent("codeSent", nativeSmsPhone, verificationId, "", "鬲賲 廿乇爻丕賱 賰賵丿 丕賱鬲丨賯賯 廿賱賶 " + nativeSmsPhone);
+                                sendNativeSmsAuthEvent("codeSent", nativeSmsPhone, verificationId, "", "\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0643\u0648\u062F \u0627\u0644\u062A\u062D\u0642\u0642 \u0625\u0644\u0649 " + nativeSmsPhone);
                             }
                         })
                         .build();
@@ -386,7 +388,7 @@ private class HesabiWebViewClient extends WebViewClient {
                 }
             }
 
-            String title = wantsExcel ? "اختر ملف Excel للأصناف" : "اختر ملف";
+            String title = wantsExcel ? "\u0627\u062E\u062A\u0631 \u0645\u0644\u0641 Excel \u0644\u0644\u0623\u0635\u0646\u0627\u0641" : "\u0627\u062E\u062A\u0631 \u0645\u0644\u0641";
             Intent chooser = Intent.createChooser(fileIntent, title);
             if (cameraIntent != null) chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cameraIntent});
             startActivityForResult(chooser, REQ_FILE_CHOOSER);
@@ -414,7 +416,7 @@ private class HesabiWebViewClient extends WebViewClient {
             intent.putExtra("SAVE_HISTORY", false);
             intent.putExtra("BEEP_ENABLED", true);
             intent.putExtra("ORIENTATION_LOCKED", false);
-            intent.putExtra("PROMPT_MESSAGE", "قرّب الباركود المطلوب فقط داخل الإطار. إذا ظهرت عدة أكواد، غطِّ الأكواد الأخرى.");
+            intent.putExtra("PROMPT_MESSAGE", "\u0642\u0631\u0651\u0628 \u0627\u0644\u0628\u0627\u0631\u0643\u0648\u062F \u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u0641\u0642\u0637 \u062F\u0627\u062E\u0644 \u0627\u0644\u0625\u0637\u0627\u0631. \u0625\u0630\u0627 \u0638\u0647\u0631\u062A \u0639\u062F\u0629 \u0623\u0643\u0648\u0627\u062F\u060C \u063A\u0637\u0651\u0650 \u0627\u0644\u0623\u0643\u0648\u0627\u062F \u0627\u0644\u0623\u062E\u0631\u0649.");
             startActivityForResult(intent, REQ_EXTERNAL_BARCODE);
             return true;
         } catch (ActivityNotFoundException e) {
@@ -428,18 +430,18 @@ private class HesabiWebViewClient extends WebViewClient {
         try {
             if (!hasCameraPermission()) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQ_MEDIA_PERMISSIONS);
-                Toast.makeText(this, "اسمح بصلاحية الكاميرا ثم حاول مسح الكود مرة أخرى.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "\u0627\u0633\u0645\u062D \u0628\u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u0643\u0627\u0645\u064A\u0631\u0627 \u062B\u0645 \u062D\u0627\u0648\u0644 \u0645\u0633\u062D \u0627\u0644\u0643\u0648\u062F \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.", Toast.LENGTH_LONG).show();
                 return;
             }
             IntentIntegrator integrator = new IntentIntegrator(this);
-            integrator.setPrompt("وجّه الكاميرا نحو باركود الصنف");
+            integrator.setPrompt("\u0648\u062C\u0651\u0647 \u0627\u0644\u0643\u0627\u0645\u064A\u0631\u0627 \u0646\u062D\u0648 \u0628\u0627\u0631\u0643\u0648\u062F \u0627\u0644\u0635\u0646\u0641");
             integrator.setBeepEnabled(true);
             integrator.setBarcodeImageEnabled(false);
             integrator.setOrientationLocked(false);
             integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES);
             integrator.initiateScan();
         } catch (Exception e) {
-            sendItemBarcodeResult("", "تعذر فتح ماسح الباركود الأصلي: " + e.getMessage());
+            sendItemBarcodeResult("", "\u062A\u0639\u0630\u0631 \u0641\u062A\u062D \u0645\u0627\u0633\u062D \u0627\u0644\u0628\u0627\u0631\u0643\u0648\u062F \u0627\u0644\u0623\u0635\u0644\u064A: " + e.getMessage());
         }
     }
 
@@ -450,7 +452,7 @@ private class HesabiWebViewClient extends WebViewClient {
         try {
             if (startExternalItemBarcodeScanner()) return;
         } catch (Exception ignored) {}
-        Toast.makeText(this, "لا يوجد تطبيق ماسح خارجي متوافق مع ZXing. سيتم فتح الماسح الداخلي.", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "\u0644\u0627 \u064A\u0648\u062C\u062F \u062A\u0637\u0628\u064A\u0642 \u0645\u0627\u0633\u062D \u062E\u0627\u0631\u062C\u064A \u0645\u062A\u0648\u0627\u0641\u0642 \u0645\u0639 ZXing. \u0633\u064A\u062A\u0645 \u0641\u062A\u062D \u0627\u0644\u0645\u0627\u0633\u062D \u0627\u0644\u062F\u0627\u062E\u0644\u064A.", Toast.LENGTH_LONG).show();
         startEmbeddedItemBarcodeScanner();
     }
 
@@ -459,7 +461,7 @@ private class HesabiWebViewClient extends WebViewClient {
         try {
             if (!hasCameraPermission()) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQ_MEDIA_PERMISSIONS);
-                Toast.makeText(this, "اسمح بصلاحية الكاميرا ثم حاول قراءة اسم الصنف مرة أخرى.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "\u0627\u0633\u0645\u062D \u0628\u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u0643\u0627\u0645\u064A\u0631\u0627 \u062B\u0645 \u062D\u0627\u0648\u0644 \u0642\u0631\u0627\u0621\u0629 \u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.", Toast.LENGTH_LONG).show();
                 return;
             }
             File photoFile = createCameraImageFile();
@@ -469,23 +471,23 @@ private class HesabiWebViewClient extends WebViewClient {
             cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             startActivityForResult(cameraIntent, REQ_ITEM_OCR);
         } catch (Exception e) {
-            sendItemOcrResult("", "تعذر فتح كاميرا OCR: " + e.getMessage());
+            sendItemOcrResult("", "\u062A\u0639\u0630\u0631 \u0641\u062A\u062D \u0643\u0627\u0645\u064A\u0631\u0627 OCR: " + e.getMessage());
         }
     }
 
     private void processItemOcrImage(Uri uri) {
         try {
             if (uri == null) {
-                sendItemOcrResult("", "لم يتم التقاط صورة للقراءة.");
+                sendItemOcrResult("", "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u062A\u0642\u0627\u0637 \u0635\u0648\u0631\u0629 \u0644\u0644\u0642\u0631\u0627\u0621\u0629.");
                 return;
             }
             InputImage image = InputImage.fromFilePath(this, uri);
             TextRecognizer recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
             recognizer.process(image)
-                    .addOnSuccessListener(text -> sendItemOcrResult(text == null ? "" : text.getText(), "تمت قراءة النص من الصورة"))
-                    .addOnFailureListener(e -> sendItemOcrResult("", "فشل OCR: " + e.getMessage()));
+                    .addOnSuccessListener(text -> sendItemOcrResult(text == null ? "" : text.getText(), "\u062A\u0645\u062A \u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0646\u0635 \u0645\u0646 \u0627\u0644\u0635\u0648\u0631\u0629"))
+                    .addOnFailureListener(e -> sendItemOcrResult("", "\u0641\u0634\u0644 OCR: " + e.getMessage()));
         } catch (Exception e) {
-            sendItemOcrResult("", "تعذر معالجة صورة OCR: " + e.getMessage());
+            sendItemOcrResult("", "\u062A\u0639\u0630\u0631 \u0645\u0639\u0627\u0644\u062C\u0629 \u0635\u0648\u0631\u0629 OCR: " + e.getMessage());
         }
     }
 
@@ -518,7 +520,7 @@ private class HesabiWebViewClient extends WebViewClient {
             if (resultCode == Activity.RESULT_OK) {
                 processItemOcrImage(itemOcrImageUri);
             } else {
-                sendItemOcrResult("", "تم إلغاء قراءة اسم الصنف.");
+                sendItemOcrResult("", "\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0642\u0631\u0627\u0621\u0629 \u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641.");
             }
             return;
         }
@@ -529,12 +531,12 @@ private class HesabiWebViewClient extends WebViewClient {
                 if (code == null || code.trim().isEmpty()) code = data.getStringExtra("com.google.zxing.client.android.SCAN.SCAN_RESULT");
                 if (code == null || code.trim().isEmpty()) code = data.getStringExtra("barcode");
                 if (code != null && !code.trim().isEmpty()) {
-                    sendItemBarcodeResult(code.trim(), "تم قراءة كود الصنف بالماسح الخارجي");
+                    sendItemBarcodeResult(code.trim(), "\u062A\u0645 \u0642\u0631\u0627\u0621\u0629 \u0643\u0648\u062F \u0627\u0644\u0635\u0646\u0641 \u0628\u0627\u0644\u0645\u0627\u0633\u062D \u0627\u0644\u062E\u0627\u0631\u062C\u064A");
                 } else {
-                    sendItemBarcodeResult("", "لم يرجع تطبيق الماسح رقمًا واضحًا.");
+                    sendItemBarcodeResult("", "\u0644\u0645 \u064A\u0631\u062C\u0639 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0645\u0627\u0633\u062D \u0631\u0642\u0645\u064B\u0627 \u0648\u0627\u0636\u062D\u064B\u0627.");
                 }
             } else {
-                sendItemBarcodeResult("", "تم إلغاء مسح كود الصنف.");
+                sendItemBarcodeResult("", "\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0645\u0633\u062D \u0643\u0648\u062F \u0627\u0644\u0635\u0646\u0641.");
             }
             return;
         }
@@ -542,9 +544,9 @@ private class HesabiWebViewClient extends WebViewClient {
         IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (scanResult != null) {
             if (scanResult.getContents() != null) {
-                sendItemBarcodeResult(scanResult.getContents(), "تم قراءة كود الصنف");
+                sendItemBarcodeResult(scanResult.getContents(), "\u062A\u0645 \u0642\u0631\u0627\u0621\u0629 \u0643\u0648\u062F \u0627\u0644\u0635\u0646\u0641");
             } else {
-                sendItemBarcodeResult("", "تم إلغاء مسح الكود");
+                sendItemBarcodeResult("", "\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0645\u0633\u062D \u0627\u0644\u0643\u0648\u062F");
             }
             return;
         }
@@ -629,7 +631,7 @@ private class HesabiWebViewClient extends WebViewClient {
                     Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL));
                     startActivity(browser);
                 } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, "鬲毓匕乇 賮鬲丨 丕賱賲鬲氐賮丨 丕賱禺丕乇噩賷: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "\u062A\u0639\u0630\u0631 \u0641\u062A\u062D \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u0627\u0644\u062E\u0627\u0631\u062C\u064A: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             });
         }
@@ -654,7 +656,7 @@ private class HesabiWebViewClient extends WebViewClient {
                 try {
                     webView.evaluateJavascript("(async function(){try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));}}catch(e){} try{if('caches' in window){const keys=await caches.keys(); await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));}}catch(e){}})();", null);
                 } catch (Exception ignored) {}
-                Toast.makeText(MainActivity.this, "تم تجهيز الواجهات للتحديث الكامل.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "\u062A\u0645 \u062A\u062C\u0647\u064A\u0632 \u0627\u0644\u0648\u0627\u062C\u0647\u0627\u062A \u0644\u0644\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0643\u0627\u0645\u0644.", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -680,10 +682,10 @@ private class HesabiWebViewClient extends WebViewClient {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     BADGE_CHANNEL_ID,
-                    "تنبيهات حسابي التجاري",
+                    "\u062A\u0646\u0628\u064A\u0647\u0627\u062A \u062D\u0633\u0627\u0628\u064A \u0627\u0644\u062A\u062C\u0627\u0631\u064A",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("عدّاد الرسائل والطلبات والمراجعات على أيقونة التطبيق");
+            channel.setDescription("\u0639\u062F\u0651\u0627\u062F \u0627\u0644\u0631\u0633\u0627\u0626\u0644 \u0648\u0627\u0644\u0637\u0644\u0628\u0627\u062A \u0648\u0627\u0644\u0645\u0631\u0627\u062C\u0639\u0627\u062A \u0639\u0644\u0649 \u0623\u064A\u0642\u0648\u0646\u0629 \u0627\u0644\u062A\u0637\u0628\u064A\u0642");
             channel.setShowBadge(true);
             channel.enableVibration(false);
             channel.setSound(null, null);
@@ -710,10 +712,10 @@ private class HesabiWebViewClient extends WebViewClient {
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
             PendingIntent pi = PendingIntent.getActivity(this, 0, launchIntent, flags);
-            String text = (detail == null || detail.trim().isEmpty()) ? "لديك مراجعات جديدة داخل التطبيق" : detail;
+            String text = (detail == null || detail.trim().isEmpty()) ? "\u0644\u062F\u064A\u0643 \u0645\u0631\u0627\u062C\u0639\u0627\u062A \u062C\u062F\u064A\u062F\u0629 \u062F\u0627\u062E\u0644 \u0627\u0644\u062A\u0637\u0628\u064A\u0642" : detail;
             NotificationCompat.Builder b = new NotificationCompat.Builder(this, BADGE_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_hesabi_notification)
-                    .setContentTitle("حسابي التجاري")
+                    .setContentTitle("\u062D\u0633\u0627\u0628\u064A \u0627\u0644\u062A\u062C\u0627\u0631\u064A")
                     .setContentText(text)
                     .setNumber(safeCount)
                     .setBadgeIconType(NotificationCompat.BADGE_ICON_SMALL)
@@ -732,7 +734,7 @@ private class HesabiWebViewClient extends WebViewClient {
         BiometricManager manager = BiometricManager.from(this);
         int status = manager.canAuthenticate(authenticators);
         if (status != BiometricManager.BIOMETRIC_SUCCESS) {
-            sendBiometricResult(false, "البصمة أو قفل الجهاز غير جاهز. فعّل بصمة/وجه أو قفل شاشة من إعدادات الهاتف.", token);
+            sendBiometricResult(false, "\u0627\u0644\u0628\u0635\u0645\u0629 \u0623\u0648 \u0642\u0641\u0644 \u0627\u0644\u062C\u0647\u0627\u0632 \u063A\u064A\u0631 \u062C\u0627\u0647\u0632. \u0641\u0639\u0651\u0644 \u0628\u0635\u0645\u0629/\u0648\u062C\u0647 \u0623\u0648 \u0642\u0641\u0644 \u0634\u0627\u0634\u0629 \u0645\u0646 \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0647\u0627\u062A\u0641.", token);
             return;
         }
 
@@ -740,7 +742,7 @@ private class HesabiWebViewClient extends WebViewClient {
         BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
             @Override
             public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                sendBiometricResult(true, "تم التحقق", token);
+                sendBiometricResult(true, "\u062A\u0645 \u0627\u0644\u062A\u062D\u0642\u0642", token);
             }
 
             @Override
@@ -750,13 +752,13 @@ private class HesabiWebViewClient extends WebViewClient {
 
             @Override
             public void onAuthenticationFailed() {
-                Toast.makeText(MainActivity.this, "لم يتم التعرف، حاول مرة أخرى", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u062A\u0639\u0631\u0641\u060C \u062D\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649", Toast.LENGTH_SHORT).show();
             }
         });
 
         BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("حسابي التجاري")
-                .setSubtitle(reason == null || reason.trim().isEmpty() ? "تحقق من هويتك" : reason)
+                .setTitle("\u062D\u0633\u0627\u0628\u064A \u0627\u0644\u062A\u062C\u0627\u0631\u064A")
+                .setSubtitle(reason == null || reason.trim().isEmpty() ? "\u062A\u062D\u0642\u0642 \u0645\u0646 \u0647\u0648\u064A\u062A\u0643" : reason)
                 .setAllowedAuthenticators(authenticators)
                 .build();
 
@@ -773,7 +775,7 @@ private class HesabiWebViewClient extends WebViewClient {
     private void downloadApkFromUrl(String apkUrl) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
-                Toast.makeText(this, "اسمح للتطبيق بتثبيت التحديثات من هذا المصدر ثم اضغط تحديث مرة أخرى.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "\u0627\u0633\u0645\u062D \u0644\u0644\u062A\u0637\u0628\u064A\u0642 \u0628\u062A\u062B\u0628\u064A\u062A \u0627\u0644\u062A\u062D\u062F\u064A\u062B\u0627\u062A \u0645\u0646 \u0647\u0630\u0627 \u0627\u0644\u0645\u0635\u062F\u0631 \u062B\u0645 \u0627\u0636\u063A\u0637 \u062A\u062D\u062F\u064A\u062B \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.", Toast.LENGTH_LONG).show();
                 Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()));
                 startActivity(settingsIntent);
                 return;
@@ -784,8 +786,8 @@ private class HesabiWebViewClient extends WebViewClient {
 
             Uri uri = Uri.parse(apkUrl == null || apkUrl.trim().isEmpty() ? LATEST_APK_URL : apkUrl.trim());
             DownloadManager.Request request = new DownloadManager.Request(uri);
-            request.setTitle("تحديث حسابي التجاري");
-            request.setDescription("تحميل آخر إصدار متوفر من التطبيق");
+            request.setTitle("\u062A\u062D\u062F\u064A\u062B \u062D\u0633\u0627\u0628\u064A \u0627\u0644\u062A\u062C\u0627\u0631\u064A");
+            request.setDescription("\u062A\u062D\u0645\u064A\u0644 \u0622\u062E\u0631 \u0625\u0635\u062F\u0627\u0631 \u0645\u062A\u0648\u0641\u0631 \u0645\u0646 \u0627\u0644\u062A\u0637\u0628\u064A\u0642");
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(true);
             request.setMimeType("application/vnd.android.package-archive");
@@ -794,10 +796,10 @@ private class HesabiWebViewClient extends WebViewClient {
             request.setDestinationUri(Uri.fromFile(latestApkFile));
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             latestApkDownloadId = dm.enqueue(request);
-            Toast.makeText(this, "بدأ تحميل آخر تحديث. ستظهر شاشة التثبيت تلقائيًا بعد اكتمال التحميل.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "\u0628\u062F\u0623 \u062A\u062D\u0645\u064A\u0644 \u0622\u062E\u0631 \u062A\u062D\u062F\u064A\u062B. \u0633\u062A\u0638\u0647\u0631 \u0634\u0627\u0634\u0629 \u0627\u0644\u062A\u062B\u0628\u064A\u062A \u062A\u0644\u0642\u0627\u0626\u064A\u064B\u0627 \u0628\u0639\u062F \u0627\u0643\u062A\u0645\u0627\u0644 \u0627\u0644\u062A\u062D\u0645\u064A\u0644.", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl == null ? LATEST_APK_URL : apkUrl))); }
-            catch (Exception ignored) { Toast.makeText(this, "تعذر بدء تنزيل التحديث: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
+            catch (Exception ignored) { Toast.makeText(this, "\u062A\u0639\u0630\u0631 \u0628\u062F\u0621 \u062A\u0646\u0632\u064A\u0644 \u0627\u0644\u062A\u062D\u062F\u064A\u062B: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
         }
     }
 
@@ -813,7 +815,7 @@ private class HesabiWebViewClient extends WebViewClient {
                 int status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
                 if (status == DownloadManager.STATUS_SUCCESSFUL) return true;
                 if (status == DownloadManager.STATUS_FAILED) {
-                    Toast.makeText(this, "فشل تحميل التحديث. افحص الإنترنت وحاول مرة أخرى.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "\u0641\u0634\u0644 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u062A\u062D\u062F\u064A\u062B. \u0627\u0641\u062D\u0635 \u0627\u0644\u0625\u0646\u062A\u0631\u0646\u062A \u0648\u062D\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.", Toast.LENGTH_LONG).show();
                     return false;
                 }
             } finally { c.close(); }
@@ -825,7 +827,7 @@ private class HesabiWebViewClient extends WebViewClient {
         try {
             if (!isLatestDownloadSuccessful()) return;
             if (latestApkFile == null || !latestApkFile.exists()) {
-                Toast.makeText(this, "تم التحميل، لكن لم يتم العثور على ملف التحديث. افتح التنزيلات.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "\u062A\u0645 \u0627\u0644\u062A\u062D\u0645\u064A\u0644\u060C \u0644\u0643\u0646 \u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0645\u0644\u0641 \u0627\u0644\u062A\u062D\u062F\u064A\u062B. \u0627\u0641\u062A\u062D \u0627\u0644\u062A\u0646\u0632\u064A\u0644\u0627\u062A.", Toast.LENGTH_LONG).show();
                 return;
             }
             Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", latestApkFile);
@@ -834,7 +836,7 @@ private class HesabiWebViewClient extends WebViewClient {
             install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(install);
         } catch (Exception e) {
-            Toast.makeText(this, "تعذر فتح شاشة التثبيت: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "\u062A\u0639\u0630\u0631 \u0641\u062A\u062D \u0634\u0627\u0634\u0629 \u0627\u0644\u062A\u062B\u0628\u064A\u062A: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
