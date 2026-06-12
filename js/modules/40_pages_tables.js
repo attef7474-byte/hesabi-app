@@ -98,11 +98,14 @@ function renderInvoices(){
       const result=helpers.renderPage({
         invoices:cache.invoices||[],
         customers:cache.customers||[],
+        payments:cache.payments||[],
         role:state.role,
         state,
         selectedCustomer,
         selectedPay,
-        customerId:state.customerId||''
+        customerId:state.customerId||'',
+        shopName:cache.shop?.name||state.shopName||'',
+        cache
       });
       $('page_invoices').innerHTML=result.html;
       setTimeout(()=>helpers.bindActions({
@@ -110,7 +113,11 @@ function renderInvoices(){
         save,
         renderInvoices,
         bindDemandTable,
-        shareInvoiceText
+        shareInvoiceText,
+        invoices:cache.invoices||[],
+        payments:cache.payments||[],
+        shopName:cache.shop?.name||state.shopName||'',
+        exportInvoicesCsv
       }));
       return;
     }catch(error){
@@ -265,19 +272,32 @@ renderInvoices=function(){
       const rendered=invoicesHelper.renderPage({
         invoices:cache.invoices||[],
         customers:cache.customers||[],
+        payments:cache.payments||[],
         role:state.role,
         state,
         selectedCustomer,
         selectedPay,
-        customerId:state.customerId||''
+        customerId:state.customerId||'',
+        shopName:cache.shop?.name||state.shopName||'',
+        cache
       });
       const tabs=[['all','🧾','كل الفواتير'],['cash','💵','كاش'],['credit','📒','آجل'],['export','📤','تصدير']];
       const exportBox=tab==='export'?`<div class="card"><h2>تصدير الفواتير</h2><div class="settings-compact-actions"><button class="btn secondary mini" id="exportInvoicesCsv">تصدير الفواتير CSV</button></div></div>`:'';
       $('page_invoices').innerHTML=pageHead('الفواتير','الفواتير مقسمة إلى كاش وآجل مع بحث وفلاتر وتصدير.')+pageTabsBar('invoices',tab,tabs)+rendered.html+exportBox;
       setTimeout(()=>{
         bindPageTabs('invoices',renderInvoices);
-        invoicesHelper.bindActions({state,save,renderInvoices,bindDemandTable,shareInvoiceText});
-        if($('exportInvoicesCsv')) $('exportInvoicesCsv').onclick=exportInvoicesCsv;
+        invoicesHelper.bindActions({
+          state,save,renderInvoices,bindDemandTable,shareInvoiceText,
+          invoices:cache.invoices||[],
+          payments:cache.payments||[],
+          shopName:cache.shop?.name||state.shopName||'',
+          exportInvoicesCsv
+        });
+        if($('exportInvoicesCsv')) $('exportInvoicesCsv').onclick=()=>{
+          const h=window.hesabiInvoicesHelpers;
+          if(h && typeof h.exportInvoicesCsv==='function') h.exportInvoicesCsv(cache.invoices||[],{role:state.role,state,selectedCustomer:state.invFilterCustomer||'',selectedPay:(tab==='cash'||tab==='credit')?tab:(state.invFilterPay||''),shopName:cache.shop?.name||state.shopName||'',payments:cache.payments||[]});
+          else exportInvoicesCsv();
+        };
       });
       return;
     }catch(e){
@@ -417,7 +437,9 @@ renderStatement=function(){
         state,
         tab,
         selectedCustomer:state.statementCustomer||'',
-        customerId:state.customerId||''
+        customerId:state.customerId||'',
+        shopName:cache.shop?.name||state.shopName||'',
+        cache
       });
       $('page_statement').innerHTML=rendered.html;
       setTimeout(()=>statementsHelper.bindActions({
@@ -426,7 +448,11 @@ renderStatement=function(){
         renderStatement,
         bindPageTabs,
         bindDemandTable,
-        shareStatementText
+        shareStatementText,
+        ledger:cache.customerLedger||[],
+        customers:cache.customers||[],
+        shopName:cache.shop?.name||state.shopName||'',
+        role:state.role
       }));
       return;
     }catch(e){

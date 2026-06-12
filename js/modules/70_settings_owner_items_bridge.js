@@ -170,7 +170,29 @@ function ledgerRowsForCustomer(customerId){
   return [...invs,...pays].sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
 }
 async function shareStatementText(customerId){
-  try{const c=state.role==='customer'?customerDebtInfo().c:(cache.customers||[]).find(x=>x.id===customerId)||{}; const rows=ledgerRowsForCustomer(customerId||c.id||state.customerId); let running=0; const body=rows.map(r=>{running+=Number(r.amount||0); return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`;}).join('\n'); const text=`كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\n----------------\n${body||'لا توجد حركات.'}`; if(navigator.share) await navigator.share({title:'كشف حساب',text}); else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب.','success');}}catch(e){msg('تعذر مشاركة كشف الحساب: '+friendlyFirestoreError(e),'error');}
+  try{
+    const h=window.hesabiStatementsHelpers;
+    const resolvedCustomerId=customerId||state.statementCustomer||state.customerId||'';
+    const text=h && typeof h.buildStatementText==='function'
+      ? h.buildStatementText(cache.customerLedger||[],{
+          role:state.role,
+          state,
+          selectedCustomer:state.role==='trader'?resolvedCustomerId:'',
+          customerId:state.role==='customer'?state.customerId:resolvedCustomerId,
+          customers:cache.customers||[],
+          shopName:cache.shop?.name||state.shopName||'',
+          cache
+        })
+      : (()=>{
+          const c=state.role==='customer'?customerDebtInfo().c:(cache.customers||[]).find(x=>String(x.customerId||x.id||'')===String(resolvedCustomerId))||{};
+          const rows=ledgerRowsForCustomer(resolvedCustomerId||c.customerId||c.id||state.customerId);
+          let running=0;
+          const body=rows.map(r=>{running+=Number(r.amount||0); return `${new Date(Number(r.createdMs||Date.now())).toLocaleDateString('ar-YE')} | ${ledgerTypeText(r.type)} | ${Number(r.amount||0)>=0?'+':''}${money(r.amount)} | الرصيد: ${money(running)} | ${r.note||''}`;}).join('\n');
+          return `كشف حساب\nالمحل: ${cache.shop?.name||state.shopName||''}\nالعميل: ${c.name||state.customerName||''}\nالرصيد الحالي: ${money(Number(c.balance||0))}\n----------------\n${body||'لا توجد حركات.'}`;
+        })();
+    if(navigator.share) await navigator.share({title:'كشف حساب',text});
+    else {await navigator.clipboard?.writeText(text); msg('تم نسخ كشف الحساب.','success');}
+  }catch(e){msg('تعذر مشاركة كشف الحساب: '+friendlyFirestoreError(e),'error');}
 }
 
 
@@ -255,7 +277,21 @@ window.hesabiReceiveItemOcr=function(text,message){
 function openItemsExcelImport(){const f=$('itemsExcelImportFile'); if(f) f.click(); else msg('حقل اختيار ملف Excel غير موجود في الصفحة.','error');}
 function hesabiExcel(){return window.hesabiExcelImportExport||{}}
 function exportItemsToExcel(){exportCsv('hesabi-items.csv',['name','barcode','category','unit','cashPrice','creditPrice','stock'],cache.items||[]);}
-function exportInvoicesCsv(){exportCsv('hesabi-invoices.csv',['invoiceNo','customerName','paymentType','total','createdMs'],cache.invoices||[]);}
+function exportInvoicesCsv(){
+  const h=window.hesabiInvoicesHelpers;
+  if(h && typeof h.exportInvoicesCsv==='function'){
+    const result=h.exportInvoicesCsv(cache.invoices||[],{
+      role:state.role,
+      state,
+      selectedCustomer:state.invFilterCustomer||'',
+      selectedPay:state.invFilterPay||'',
+      shopName:cache.shop?.name||state.shopName||'',
+      payments:cache.payments||[]
+    });
+    if(!result || result.ok!==false) return result;
+  }
+  return exportCsv('hesabi-invoices.csv',['invoiceNo','customerName','paymentType','total','createdMs'],cache.invoices||[]);
+}
 function exportPaymentsCsv(){exportCsv('hesabi-payments.csv',['customerName','amount','method','reference','status','createdMs'],cache.payments||[]);}
 function exportCustomersCsv(){exportCsv('hesabi-customers.csv',['name','phone','balance','creditLimit','status'],cache.customers||[]);}
 function exportCsv(filename, cols, rows){

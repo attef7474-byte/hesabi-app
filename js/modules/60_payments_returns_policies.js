@@ -20,6 +20,14 @@ function phase5PaymentReferenceExists(ref, excludeId=''){
 }
 function phase5BuildInvoiceText(inv){
   if(!inv) return 'لم يتم العثور على الفاتورة.';
+  const h=window.hesabiInvoicesHelpers;
+  if(h && typeof h.buildInvoiceText==='function'){
+    return h.buildInvoiceText(inv,{
+      payments:cache.payments||[],
+      shopName:cache.shop?.name||state.shopName||'',
+      state
+    });
+  }
   const lines=Array.isArray(inv.items)?inv.items:(Array.isArray(inv.lines)?inv.lines:[]);
   const rows=lines.map((l,i)=>`${i+1}. ${l.name||l.itemName||'صنف'} × ${Number(l.qty||l.quantity||0)} = ${money(l.total||Number(l.qty||0)*Number(l.price||0))}`).join('\n');
   return `فاتورة ${inv.invoiceNo||inv.id}\nالعميل: ${inv.customerName||''}\nنوع الدفع: ${payTypeText(inv.paymentType||'cash')}\nالتاريخ: ${dt(inv.createdMs)}\n----------------------\n${rows||'لا توجد أصناف'}\n----------------------\nالإجمالي: ${money(inv.total||0)}`;
