@@ -39,6 +39,13 @@ service cloud.firestore {
       return customerDocExists(shopId, customerId)
         && get(customerDocPath(shopId, customerId)).data.customerUid == request.auth.uid;
     }
+    function customerDocOwnedByAuthAfter(shopId, customerId, phoneKey){
+      return customerId is string
+        && phoneKey is string
+        && getAfter(customerDocPath(shopId, customerId)).data.customerUid == request.auth.uid
+        && getAfter(customerDocPath(shopId, customerId)).data.phoneKey == phoneKey
+        && getAfter(customerDocPath(shopId, customerId)).data.shopId == shopId;
+    }
 
     function isCustomerLinkMessageCreate(shopId){
       return requestCustomerMatchesLink(shopId)
@@ -75,7 +82,7 @@ service cloud.firestore {
         && request.resource.data.customerId is string
         && request.resource.data.phoneKey is string
         && isAuthPhone(request.resource.data.phoneKey)
-        && customerDocOwnedByAuth(shopId, request.resource.data.customerId);
+        && customerDocOwnedByAuthAfter(shopId, request.resource.data.customerId, request.resource.data.phoneKey);
     }
 
     match /shopPhones/{phoneKey} {
@@ -91,7 +98,7 @@ service cloud.firestore {
         && request.resource.data.shopId == shopId
         && request.resource.data.phoneKey == phoneKey
         && request.resource.data.customerId is string
-        && customerDocOwnedByAuth(shopId, request.resource.data.customerId);
+        && customerDocOwnedByAuthAfter(shopId, request.resource.data.customerId, phoneKey);
       allow delete: if false;
     }
     match /phoneUidLinks/{phoneKey} {
