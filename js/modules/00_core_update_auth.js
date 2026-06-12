@@ -72,8 +72,8 @@ let activeRecorder=null;
 let activeRecorderChunks=[];
 let activeRecorderStartedAt=0;
 let previousPage='home';
-const APP_VERSION='1.0.127';
-const APP_BUILD_CODE = 127;
+const APP_VERSION='1.0.128';
+const APP_BUILD_CODE = 128;
 let renderReports;
 
 // 1.0.41: defaults and robust self-recovery helpers. These prevent the app from entering an endless recovery dialog when an older cached UI misses a helper function.
@@ -110,15 +110,36 @@ async function refreshWebUiNow(){
   try{
     const updater=window.hesabiUpdateCacheStability;
     if(updater && typeof updater.refreshWebUiNow==='function'){
-      await updater.refreshWebUiNow('legacy-refreshWebUiNow');
-      return;
+      await updater.refreshWebUiNow('force-full-refresh');
     }
-    if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations(); for(const r of regs){try{await r.unregister()}catch(e){}}}
-    if('caches' in window){const keys=await caches.keys(); for(const k of keys){try{await caches.delete(k)}catch(e){}}}
-    try{localStorage.setItem('hesabi_last_cache_clean', String(Date.now()));}catch(e){}
-    try{sessionStorage.setItem('hesabi_force_update_ts', String(Date.now()));}catch(e){}
-    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.clearWebCacheForUpdate==='function'){try{window.hesabiAndroidBridge.clearWebCacheForUpdate();}catch(e){}}
-  }catch(e){console.warn('refreshWebUiNow failed',e)}
+
+    // Aggressive manual cleanup for browsers/WebView
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){ await r.unregister().catch(()=>{}); }
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      for(const k of keys){ await caches.delete(k).catch(()=>{}); }
+    }
+
+    localStorage.setItem('hesabi_last_cache_clean', String(Date.now()));
+    sessionStorage.setItem('hesabi_force_update_ts', String(Date.now()));
+
+    if(window.hesabiAndroidBridge && typeof window.hesabiAndroidBridge.clearWebCacheForUpdate==='function'){
+      try{ window.hesabiAndroidBridge.clearWebCacheForUpdate(); }catch(e){}
+    }
+
+    // Force reload with double cache buster
+    const url = new URL(location.href);
+    url.searchParams.set('v', '1.0.128-' + Date.now());
+    url.searchParams.set('refresh', '1');
+    url.searchParams.set('nativeTs', String(Date.now()));
+    location.replace(url.toString());
+  }catch(e){
+    console.warn('refreshWebUiNow failed',e);
+    location.reload();
+  }
 }
 function latestApkDirectUrl(){return 'https://github.com/attef7474-byte/hesabi-app/releases/latest/download/hesabi-app-latest.apk';}
 async function downloadApkUpdate(){

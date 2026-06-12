@@ -3,8 +3,8 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.90";
-  const BUILD_CODE = 90;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
   const MAX_MESSAGES = 80;
 
   function escSafe(value){

@@ -3,8 +3,8 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.111";
-  const BUILD_CODE = 111;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
 
   const EXPECTED_MODULES = [
     "js/modules/00_core_update_auth.js",

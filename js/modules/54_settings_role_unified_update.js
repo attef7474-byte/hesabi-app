@@ -2,8 +2,8 @@
    Role switching UI is rendered only by js/modules/11_settings_helpers.js in the account tab. */
 (function(){
   "use strict";
-  const VERSION = "1.0.126";
-  const BUILD_CODE = 126;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
 
   function safeString(value){ try { return value == null ? "" : String(value); } catch (_) { return ""; } }
 

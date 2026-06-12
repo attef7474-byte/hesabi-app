@@ -3,8 +3,8 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.111";
-  const BUILD_CODE = 111;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
   const SUPPORT_EMAIL = "attef7474@gmail.com";
   const REPORTS_KEY = "hesabi_support_reports_v1";
 

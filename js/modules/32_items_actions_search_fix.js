@@ -4,7 +4,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.94";
+  const VERSION = "1.0.128";
   const ITEM_PAGE_SIZE = 10;
   const ITEM_TABLE_KEYS = { itemsList:true, itemsEditList:true, itemsPriceList:true };
 

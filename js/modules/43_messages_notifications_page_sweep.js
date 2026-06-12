@@ -3,8 +3,8 @@
    No Firestore writes are changed. Existing sendMessage, notification open and counter handlers remain the source of truth. */
 (function(){
   "use strict";
-  const VERSION = "1.0.103";
-  const BUILD_CODE = 103;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
   const SEARCH_INPUT_ID = "mnPageSearch";
 
   function byId(id){ try { return document.getElementById(id); } catch (_) { return null; } }

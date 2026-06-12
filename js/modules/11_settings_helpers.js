@@ -3,8 +3,8 @@
 (function(){
   "use strict";
 
-  const VERSION = "1.0.127";
-  const BUILD_CODE = 127;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
   const REQUIRED_TABS = ["security", "appearance", "shop", "permissions", "update", "backup", "account", "notifications"];
 
   function safeString(value){
@@ -456,8 +456,11 @@
       }
     } catch (_) {}
     try {
-      if(typeof refreshWebUiNow === "function") await refreshWebUiNow();
-      const target = (location.pathname || "/") + "?v=" + encodeURIComponent(VERSION + "-" + Date.now());
+      if(typeof refreshWebUiNow === "function") {
+        await refreshWebUiNow();
+        return; // refreshWebUiNow handles the reload
+      }
+      const target = (location.pathname || "/") + "?v=" + encodeURIComponent("1.0.128-" + Date.now());
       location.replace(target);
     } catch(error) {
       notify("تعذر تحديث الواجهات: " + safeString(error && error.message || error), "error");

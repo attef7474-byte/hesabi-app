@@ -2,8 +2,8 @@
    This module no longer injects anything into settings. */
 (function(){
   "use strict";
-  const VERSION = "1.0.126";
-  const BUILD_CODE = 126;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
 
   function byId(id){ try { return document.getElementById(id); } catch (_) { return null; } }
   function page(name){ return byId("page_" + name); }

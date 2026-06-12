@@ -5,8 +5,8 @@
    No Firestore rules, order, payment, invoice, or data mutation logic is changed here. */
 (function(){
   "use strict";
-  const VERSION = "1.0.95";
-  const BUILD = 95;
+  const VERSION = "1.0.128";
+  const BUILD = 128;
   const ITEM_KEYS = ["itemsList","itemsEditList","itemsPriceList"];
   const ITEM_PAGE_SIZE = 10;
 
