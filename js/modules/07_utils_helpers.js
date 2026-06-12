@@ -81,6 +81,70 @@
     return Number.isFinite(n) ? n : fallback;
   }
 
+  function compressImage(file, maxWidth=800, maxHeight=800, quality=0.7){
+    return new Promise((resolve, reject) => {
+      if(!file) { resolve(null); return; }
+      if(!file.type.startsWith('image/')) { reject(new Error('الملف المختار ليس صورة صالحة.')); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+          } else {
+            if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve({
+            name: file.name,
+            type: 'image/jpeg',
+            dataUrl: canvas.toDataURL('image/jpeg', quality),
+            size: 0 // Will be calculated if needed, but for Base64 in Firestore we care about the result length
+          });
+        };
+        img.onerror = () => reject(new Error('تعذر معالجة الصورة.'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('تعذر قراءة الملف.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  let mediaRecorder = null;
+  let audioChunks = [];
+  function startAudioRecording(){
+    return new Promise(async (resolve, reject) => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.onload = () => resolve({ type: 'audio/webm', dataUrl: reader.result, duration: 0 });
+          reader.readAsDataURL(audioBlob);
+          stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorder.start();
+      } catch (e) { reject(new Error('تعذر تشغيل الميكروفون. تأكد من منح الصلاحية.')); }
+    });
+  }
+
+  function stopAudioRecording(){
+    if(mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      return true;
+    }
+    return false;
+  }
+
   window.hesabiUtilsHelpers = Object.assign(window.hesabiUtilsHelpers || {}, {
     version: MODULE_VERSION,
     normalizeArabicDigits,
@@ -92,12 +156,15 @@
     phoneKeyToInternational,
     toInternationalPhone,
     fileToDataUrl,
-    safeNumber
+    safeNumber,
+    compressImage,
+    startAudioRecording,
+    stopAudioRecording
   });
 
   window.hesabiUtilsHelpersSelfCheck = function(){
     const api = window.hesabiUtilsHelpers || {};
-    const required = ['escapeHtml','formatMoney','todayIso','makeId','normalizePhone','phoneKeyToInternational','toInternationalPhone','fileToDataUrl','safeNumber'];
+    const required = ['escapeHtml','formatMoney','todayIso','makeId','normalizePhone','phoneKeyToInternational','toInternationalPhone','fileToDataUrl','safeNumber','compressImage','startAudioRecording'];
     const missingApi = required.filter(name => typeof api[name] !== 'function');
     const probes = [];
     try { probes.push({ name: 'escapeHtml', ok: api.escapeHtml('<x>') === '&lt;x&gt;' }); } catch (error) { probes.push({ name: 'escapeHtml', ok: false, error: String(error && error.message || error) }); }

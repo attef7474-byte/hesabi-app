@@ -422,11 +422,19 @@ function canSendMessageNow(){
   if(state.role==='customer' && !state.customerId) return {ok:false,msg:'يجب ربط حسابك بالمتجر قبل المراسلة.'};
   return {ok:true,msg:''};
 }
-async function sendMessage(){
+async function sendMessage(attachment = null){
   try{
     if(!state.shopId){msg('لا يوجد متجر نشط.','error'); return;}
     const chk=canSendMessageNow(); if(!chk.ok){showAppDialog('تعذر إرسال الرسالة',chk.msg,'error',[{text:'موافق',cls:'ok'}]); return;}
-    const txt=String($('messageText')?.value||'').trim(); if(!txt){msg('اكتب نص الرسالة.','error'); return;}
+
+    // Check if attachment is passed or in global helper state
+    let finalAttachment = (attachment && !attachment.preventDefault) ? attachment : null;
+    if(!finalAttachment && window.hesabiMessagesHelpers && window.hesabiMessagesHelpers.getPendingAttachment){
+      finalAttachment = window.hesabiMessagesHelpers.getPendingAttachment();
+    }
+
+    const txt=String($('messageText')?.value||'').trim();
+    if(!txt && !finalAttachment){msg('اكتب نص الرسالة أو أرفق ملفًا.','error'); return;}
     let customerId=state.customerId||'', customerName=state.customerName||'', customerUid=state.role==='customer'?uid():'';
     if(state.role==='trader'){
       customerId=$('messageCustomer')?.value||'';
@@ -434,8 +442,37 @@ async function sendMessage(){
       if(!c){msg('اختر العميل لإرسال الرسالة.','error'); return;}
       customerName=c.name||'عميل'; customerUid=c.customerUid||'';
     }
-    await addDoc(collection(db,'shops',state.shopId,'messages'),{shopId:state.shopId,customerId,customerUid,customerName,fromRole:state.role,fromUid:uid(),fromName:actorName(),text:txt,type:'chat',createdAt:serverTimestamp(),createdMs:Date.now(),readByTrader:state.role==='trader',readByCustomer:state.role==='customer',updatedAt:serverTimestamp()});
+
+    const payload = {
+      shopId:state.shopId,
+      customerId,
+      customerUid,
+      customerName,
+      fromRole:state.role,
+      fromUid:uid(),
+      fromName:actorName(),
+      text:txt,
+      type: finalAttachment ? (finalAttachment.kind || 'chat') : 'chat',
+      createdAt:serverTimestamp(),
+      createdMs:Date.now(),
+      readByTrader:state.role==='trader',
+      readByCustomer:state.role==='customer',
+      updatedAt:serverTimestamp()
+    };
+
+    if(finalAttachment){
+      payload.attachmentKind = finalAttachment.kind;
+      payload.attachmentData = finalAttachment.dataUrl;
+      payload.attachmentName = finalAttachment.name || '';
+      if(finalAttachment.duration) payload.attachmentDuration = finalAttachment.duration;
+      console.info('Sending attachment via Firestore Base64 (Temporary limited solution)');
+    }
+
+    await addDoc(collection(db,'shops',state.shopId,'messages'), payload);
     if($('messageText')) $('messageText').value='';
+    if(window.hesabiMessagesHelpers && window.hesabiMessagesHelpers.clearPendingAttachment){
+      window.hesabiMessagesHelpers.clearPendingAttachment();
+    }
     msg('تم إرسال الرسالة.','success');
   }catch(e){console.error('send message failed',e); if(e?.code==='permission-denied'||/permission|insufficient/i.test(String(e?.message||''))){showPermissionDeniedLogoutDialog('إرسال الرسالة',e);return;} msg('تعذر إرسال الرسالة: '+friendlyFirestoreError(e),'error');}
 }

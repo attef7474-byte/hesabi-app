@@ -65,8 +65,15 @@
     if(!container) return { ok:false, reason:"messages page missing" };
     ensureTableGuard(container);
     ensureSearch(container, "بحث في الرسائل");
+
     const sendBtn = byId("sendMessageBtn");
-    if(sendBtn && typeof sendMessage === "function") sendBtn.onclick = sendMessage;
+    const helper = window.hesabiMessagesHelpers;
+    if(helper && typeof helper.bindActions === "function" && typeof sendMessage === "function"){
+      helper.bindActions(sendMessage);
+    } else if(sendBtn && typeof sendMessage === "function") {
+      sendBtn.onclick = sendMessage;
+    }
+
     const selector = byId("messageCustomer");
     if(selector){
       selector.onchange = function(){
