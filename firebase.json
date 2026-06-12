@@ -4,7 +4,13 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.apk",
+      "**/*.bat",
+      "**/build/**",
+      "gradle/**",
+      "local.properties",
+      "app/**"
     ]
   },
   "firestore": {
