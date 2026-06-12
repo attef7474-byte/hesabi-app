@@ -606,6 +606,32 @@ section.card > p.muted {
 .wa-chat-card,.notify-card,.notify-list-card{max-width:100%;overflow:hidden}
 .wa-thread,.notify-list{max-width:100%;overflow-x:hidden}
 .wa-bubble,.notify-row{overflow-wrap:anywhere;word-break:break-word}
+
+/* Chat Attachments Support */
+.wa-composer{display:flex!important;flex-direction:column!important;gap:8px!important}
+.wa-composer-actions{display:flex;gap:8px;padding:2px 0}
+.wa-attachment-preview{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:8px;margin-bottom:8px;position:relative}
+.wa-attachment-preview.hidden{display:none!important}
+.preview-wrap{display:flex;align-items:center;gap:10px}
+.preview-wrap img{max-width:60px;max-height:60px;border-radius:8px;object-fit:cover}
+.audio-preview{font-size:12px;color:#0f172a;flex:1;justify-content:space-between}
+.wa-image img{max-width:100%;max-height:240px;border-radius:10px;cursor:pointer;display:block;margin-bottom:6px;transition:opacity 0.2s}
+.wa-image img:hover{opacity:0.9}
+.wa-audio{margin-bottom:6px;max-width:100%}
+.wa-audio audio{width:100%;height:36px;border-radius:20px}
+.fullscreen-image-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
+.overlay-content{position:relative;max-width:100%;max-height:100%}
+.overlay-content img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px}
+.overlay-content .close-btn{position:absolute;top:-40px;right:0;background:#fff;border:0;border-radius:8px;padding:5px 12px;font-weight:900;cursor:pointer}
+.wa-unread-chip{background:#22c55e;color:#fff;font-size:9px;padding:2px 5px;border-radius:4px;margin-right:6px}
+
+/* Message Status Ticks */
+.msg-status{font-size:14px;margin-right:4px;line-height:1;display:inline-block;vertical-align:middle;user-select:none}
+.msg-status.sent{color:#94a3b8}
+.msg-status.delivered{color:#94a3b8}
+.msg-status.read{color:#38bdf8}
+.wa-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px}
+
 @media (max-width: 640px){
   .mn-search-row{display:grid;grid-template-columns:1fr auto auto;gap:6px}
   .mn-search-row input{width:100%;min-width:0}
