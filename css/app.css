@@ -632,6 +632,13 @@ section.card > p.muted {
 .msg-status.read{color:#38bdf8}
 .wa-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px}
 
+/* Shop QR Display */
+.shop-qr-card{text-align:center}
+.shop-qr-display{background:#fff;padding:20px;border-radius:20px;border:1px solid #e2e8f0;margin:15px auto;display:inline-block;box-shadow:0 10px 25px rgba(0,0,0,0.05)}
+.qr-image{width:200px;height:200px;display:block;margin:0 auto}
+.shop-id-badge{margin-top:12px;font-size:16px;color:#0647e7;background:#eff6ff;padding:8px 15px;border-radius:12px;font-weight:900}
+.customer-scan-card{text-align:center}
+
 @media (max-width: 640px){
   .mn-search-row{display:grid;grid-template-columns:1fr auto auto;gap:6px}
   .mn-search-row input{width:100%;min-width:0}

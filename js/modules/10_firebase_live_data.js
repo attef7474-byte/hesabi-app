@@ -244,7 +244,92 @@ function renderShops(){
   renderBasicListPage('shops','متاجري','المتاجر المرتبطة بحساب العميل.',rows,['المتجر','الكود']);
 }
 function renderShopCode(){
-  $('page_shopcode').innerHTML=`<div class="card"><h2>كود التاجر</h2><p>كود المحل: <b>${esc(state.shopId||'-')}</b></p><div class="field"><label>رابط الدعوة</label><input readonly value="${esc(shopJoinLink(state.shopId||''))}"></div></div>`;
+  if(isTrader()){
+    const sid = state.shopId || '';
+    const link = shopJoinLink(sid);
+    const qr = qrImageUrl(link);
+    $('page_shopcode').innerHTML = `
+      <div class="card shop-qr-card">
+        <h2>QR كود المتجر للعملاء</h2>
+        <p class="muted">اجعل العميل يمسح هذا الكود بجهازه للارتباط بمتجرك مباشرة والبدء في الطلب.</p>
+        <div class="shop-qr-display">
+          <img src="${qr}" alt="Shop QR Code" class="qr-image">
+          <div class="shop-id-badge">كود المتجر: <b>${esc(sid)}</b></div>
+        </div>
+        <div class="field">
+          <label>رابط الربط المباشر</label>
+          <div class="inline-input-with-scan">
+            <input id="shopLinkInput" readonly value="${esc(link)}">
+            <button class="btn ok mini" id="copyShopLinkBtn">نسخ</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="shareShopQrBtn">مشاركة كود المتجر</button>
+        </div>
+      </div>`;
+
+    const copyBtn = document.getElementById('copyShopLinkBtn');
+    if(copyBtn) copyBtn.onclick = () => {
+      const input = document.getElementById('shopLinkInput');
+      if(input){
+        input.select();
+        try {
+          document.execCommand('copy');
+          msg('تم نسخ الرابط بنجاح', 'success');
+        } catch(e) { msg('تعذر النسخ التلقائي، يمكنك نسخه يدويًا', 'notice'); }
+      }
+    };
+
+    const shareBtn = document.getElementById('shareShopQrBtn');
+    if(shareBtn) shareBtn.onclick = () => {
+      const text = `تفضل بالارتباط بمتجري ( ${cache.shop?.name || state.shopName || 'حسابي التجاري'} ) عبر هذا الرابط للبدء في الطلب والمراسلة:\n${link}`;
+      if(navigator.share){
+        navigator.share({ title: 'رابط متجري في حسابي', text: text, url: link }).catch(() => {});
+      } else {
+        msg('يمكنك نسخ الرابط ومشاركته يدويًا', 'notice');
+      }
+    };
+  } else {
+    // For customer: Show scanner to join a shop
+    $('page_shopcode').innerHTML = `
+      <div class="card customer-scan-card">
+        <h2>📷 مسح كود المتجر</h2>
+        <p class="muted">وجه الكاميرا نحو كود QR المقدم من التاجر للارتباط بمتجره فوراً.</p>
+        <div class="barcode-scan-box">
+          <div class="barcode-scan-line" id="customerShopScanStatus">بانتظار مسح الكود...</div>
+          <div class="barcode-actions">
+            <button class="btn ok compact-main-btn" id="startCustomerShopScan">فتح الماسح الضوئي</button>
+          </div>
+        </div>
+        <div class="notice">سيتم فتح صفحة الربط تلقائياً بمجرد التعرف على الكود.</div>
+      </div>`;
+
+    const scanBtn = document.getElementById('startCustomerShopScan');
+    if(scanBtn) scanBtn.onclick = () => {
+      if(typeof hesabiItemsHelpers !== 'undefined' && typeof hesabiItemsHelpers.startUniversalScan === 'function'){
+        hesabiItemsHelpers.startUniversalScan({
+          onShopCode: (shopId) => {
+            msg('تم التعرف على المتجر: ' + shopId, 'success');
+            active = 'home'; // Go home first to refresh
+            setTimeout(() => {
+              if(typeof show === 'function') {
+                // If not logged in or profile not done, go to setup
+                if(!state.profileDone) {
+                   if($('joinShopId')) $('joinShopId').value = shopId;
+                   show('home'); // render() in 20_router_setup_profile will handle setup
+                } else {
+                   // Already customer, try to link another shop
+                   if(typeof linkCustomerToShop === 'function'){
+                     linkCustomerToShop(shopId, state.customerName, state.customerPhone, false);
+                   }
+                }
+              }
+            }, 100);
+          }
+        });
+      }
+    };
+  }
 }
 
 /* phase9: removed older duplicate renderOwnerConsole; final implementation appears later. */
