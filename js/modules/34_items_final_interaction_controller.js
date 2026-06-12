@@ -174,6 +174,14 @@
     }
     const apply = byId(key + "ApplySearch"); if(apply) apply.onclick = function(ev){ if(ev) ev.preventDefault(); setSearchAndRender(key); };
     const clear = byId(key + "ClearSearch"); if(clear) clear.onclick = function(ev){ if(ev) ev.preventDefault(); clearSearchAndRender(key); };
+    const scan = byId(key + "ScanBarcode"); if(scan) scan.onclick = function(ev){
+      if(ev) ev.preventDefault();
+      if(typeof hesabiItemsHelpers !== "undefined" && typeof hesabiItemsHelpers.startUniversalScan === "function"){
+        hesabiItemsHelpers.startUniversalScan();
+      } else if(window.hesabiNativeScanItemBarcodeEmbedded){
+        window.hesabiNativeScanItemBarcodeEmbedded();
+      }
+    };
     const prev = byId(key + "Prev"); if(prev) prev.onclick = function(ev){ if(ev) ev.preventDefault(); moveItemPage(key, -1); };
     const next = byId(key + "Next"); if(next) next.onclick = function(ev){ if(ev) ev.preventDefault(); moveItemPage(key, 1); };
   };

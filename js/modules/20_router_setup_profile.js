@@ -298,6 +298,19 @@ async function setupSearchStores(){
 }
 let setupQrStream=null, setupQrTimer=null;
 async function setupStartQrScan(){
+  if(window.hesabiNativeScanItemBarcodeEmbedded){
+    if(typeof hesabiItemsHelpers !== 'undefined' && typeof hesabiItemsHelpers.startUniversalScan === 'function'){
+      hesabiItemsHelpers.startUniversalScan({
+        onShopCode: (shopId) => {
+          if($('joinShopId')) $('joinShopId').value = shopId;
+          setupAddShopSelection(shopId, 'من الماسح', true);
+        }
+      });
+      return;
+    }
+    window.hesabiNativeScanItemBarcodeEmbedded();
+    return;
+  }
   try{
     if(!('BarcodeDetector' in window)){msg('هذا المتصفح لا يدعم مسح QR بالكاميرا. استخدم إدخال الكود أو البحث عن المتجر.','error');return}
     const video=$('setupQrVideo'); if(!video) return;

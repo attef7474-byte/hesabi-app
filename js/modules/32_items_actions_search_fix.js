@@ -120,6 +120,7 @@
         <div class="field items-search-field"><label>بحث سريع</label><input id="${safeKey}Search" value="${safeHtml(q)}" placeholder="اكتب الاسم أو الباركود ثم اضغط بحث" autocomplete="off" inputmode="search"></div>
         <button type="button" class="btn secondary items-search-apply" id="${safeKey}ApplySearch">بحث</button>
         <button type="button" class="btn light mini" id="${safeKey}ClearSearch" ${q?"":"disabled"}>مسح</button>
+        <button type="button" class="btn ok mini scan-btn-inline" id="${safeKey}ScanBarcode" title="مسح باركود">📷</button>
         <div class="items-extra-controls">${extraControls || ""}</div>
       </div>
       <div class="items-pager-top" aria-label="تنقل صفحات الأصناف">
@@ -174,6 +175,15 @@
     if(apply) apply.onclick = function(ev){ if(ev) ev.preventDefault(); runSearch(key, rerender); };
     const clear = byId(key + "ClearSearch");
     if(clear) clear.onclick = function(ev){ if(ev) ev.preventDefault(); clearSearch(key, rerender); };
+    const scan = byId(key + "ScanBarcode");
+    if(scan) scan.onclick = function(ev){
+      if(ev) ev.preventDefault();
+      if(typeof hesabiItemsHelpers !== "undefined" && typeof hesabiItemsHelpers.startUniversalScan === "function"){
+        hesabiItemsHelpers.startUniversalScan();
+      } else if(window.hesabiNativeScanItemBarcodeEmbedded){
+        window.hesabiNativeScanItemBarcodeEmbedded();
+      }
+    };
     const prev = byId(key + "Prev"), next = byId(key + "Next");
     if(prev) prev.onclick = function(ev){ if(ev) ev.preventDefault(); movePage(key, -1, rerender); };
     if(next) next.onclick = function(ev){ if(ev) ev.preventDefault(); movePage(key, 1, rerender); };
@@ -212,7 +222,7 @@
   function deleteItem(id){ if(id && typeof deleteSingleItem === "function") deleteSingleItem(id); }
 
   function findItemKeyFromId(id){
-    const m = String(id || "").match(/^(itemsList|itemsEditList|itemsPriceList)(ApplySearch|ClearSearch|Prev|Next|Search)$/);
+    const m = String(id || "").match(/^(itemsList|itemsEditList|itemsPriceList)(ApplySearch|ClearSearch|ScanBarcode|Prev|Next|Search)$/);
     return m ? m[1] : "";
   }
   if(!window.__hesabiItemsActionsFix1093Installed){
@@ -237,6 +247,15 @@
       if(key){
         if(id.endsWith("ApplySearch")){ ev.preventDefault(); ev.stopImmediatePropagation(); runSearch(key, renderItems); return; }
         if(id.endsWith("ClearSearch")){ ev.preventDefault(); ev.stopImmediatePropagation(); clearSearch(key, renderItems); return; }
+        if(id.endsWith("ScanBarcode")){
+          ev.preventDefault(); ev.stopImmediatePropagation();
+          if(typeof hesabiItemsHelpers !== "undefined" && typeof hesabiItemsHelpers.startUniversalScan === "function"){
+            hesabiItemsHelpers.startUniversalScan();
+          } else if(window.hesabiNativeScanItemBarcodeEmbedded){
+            window.hesabiNativeScanItemBarcodeEmbedded();
+          }
+          return;
+        }
         if(id.endsWith("Prev")){ ev.preventDefault(); ev.stopImmediatePropagation(); movePage(key, -1, renderItems); return; }
         if(id.endsWith("Next")){ ev.preventDefault(); ev.stopImmediatePropagation(); movePage(key, 1, renderItems); return; }
       }

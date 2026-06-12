@@ -108,6 +108,101 @@
     }) || '';
   }
 
+  function startUniversalScan(options = {}){
+    window.hesabiActiveScanOptions = options;
+    if(window.hesabiNativeScanItemBarcodeEmbedded){
+      window.hesabiNativeScanItemBarcodeEmbedded();
+      return;
+    }
+    if('BarcodeDetector' in window){
+      // Web implementation fallback could go here if needed, but for now we follow requirements.
+      // If native not available, and Web supported, we could trigger setupStartQrScan logic but adapted.
+    }
+    if(typeof msg === 'function') msg('المسح بالكاميرا مدعوم داخل تطبيق Android فقط حاليًا. يمكنك إدخال الكود يدويًا.', 'notice');
+  }
+
+  window.hesabiReceiveItemBarcode = function(code, message){
+    const c = String(code || '').trim();
+    if(!c){ if(message && typeof msg === 'function') msg(message, 'notice'); return; }
+    const options = window.hesabiActiveScanOptions || {};
+
+    // Check if it's a shop code
+    if(c.startsWith('SHOP-') || (c.includes('joinShop=') && c.includes('SHOP-'))){
+      if(typeof extractShopCodeFromText === 'function'){
+        const shopId = extractShopCodeFromText(c);
+        if(shopId){
+          if(options.onShopCode) { options.onShopCode(shopId); return; }
+          // Default behavior for shop code: if in setup, fill it.
+          const joinInput = document.getElementById('joinShopId');
+          if(joinInput){
+            joinInput.value = shopId;
+            if(typeof setupAddShopSelection === 'function') setupAddShopSelection(shopId, 'من الماسح', true);
+            return;
+          }
+        }
+      }
+    }
+
+    // Otherwise treat as item barcode
+    if(options.onItemCode){
+      options.onItemCode(c);
+    } else {
+      // For trader: if item exists, open for edit
+      if(typeof isTrader === 'function' && isTrader() && typeof cache !== 'undefined'){
+        const item = findItemByCode(cache.items || [], c);
+        if(item){
+          if(typeof selectItemForEdit === 'function') { selectItemForEdit(item.id); return; }
+          if(typeof state !== 'undefined') { state.editItemId = item.id; state.itemsTab = 'edit'; if(typeof save === 'function') save(); if(typeof renderItems === 'function') renderItems(); return; }
+        }
+      }
+
+      // Default behavior: search and fill
+      const searchInputs = ['itemsListSearch', 'itemsEditListSearch', 'itemsPriceListSearch', 'browsePurchaseSearch', 'purchaseInlineItemInput'];
+      let foundInput = null;
+      for(const id of searchInputs){
+        const el = document.getElementById(id);
+        if(el && !el.closest('.hidden')){ foundInput = el; break; }
+      }
+
+      if(foundInput){
+        foundInput.value = c;
+        foundInput.dispatchEvent(new Event('input', { bubbles: true }));
+        // For inline purchase, try to find and add
+        if(foundInput.id === 'purchaseInlineItemInput'){
+          if(typeof itemById === 'function' && typeof cache !== 'undefined'){
+            const item = findItemByCode(cache.items || [], c);
+            if(item && typeof addItemToPurchaseInvoice === 'function'){
+              addItemToPurchaseInvoice(item.id, 1);
+              if(typeof renderPurchaseInvoiceOnly === 'function') renderPurchaseInvoiceOnly();
+              foundInput.value = '';
+              return;
+            }
+          }
+        }
+        // Trigger enter/search
+        foundInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      } else {
+        // Last resort: Add item page barcode field
+        const bcInput = document.getElementById('itemBarcode');
+        if(bcInput && !bcInput.closest('.hidden')){
+          bcInput.value = c;
+          bcInput.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+        // If not in add tab, maybe go to add tab if trader
+        if(typeof isTrader === 'function' && isTrader() && typeof state !== 'undefined' && state.itemsTab !== 'add'){
+          state.itemsTab = 'add';
+          if(typeof save === 'function') save();
+          if(typeof renderItems === 'function') renderItems();
+          setTimeout(() => {
+            const bc = document.getElementById('itemBarcode');
+            if(bc) { bc.value = c; bc.dispatchEvent(new Event('input', { bubbles: true })); }
+          }, 100);
+        }
+      }
+    }
+  };
+
   function selfCheck(){
     const api = window.hesabiItemsHelpers || {};
     const required = [
@@ -146,6 +241,7 @@
     itemCreditPrice,
     findItemByCode,
     extractItemNameFromOcrText,
+    startUniversalScan,
     selfCheck
   });
 

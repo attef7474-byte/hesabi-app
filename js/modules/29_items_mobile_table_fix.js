@@ -77,6 +77,7 @@
         <div class="items-demand-toolbar">
           <div class="field items-search-field"><label>بحث سريع</label><input id="${safeKey}Search" value="${safeHtml(q)}" placeholder="اكتب ثم اضغط بحث" autocomplete="off" inputmode="search"></div>
           <button type="button" class="btn secondary items-search-apply" id="${safeKey}ApplySearch">بحث</button>
+          <button type="button" class="btn ok mini scan-btn-inline" id="${safeKey}ScanBarcode" title="مسح باركود">📷</button>
           <div class="items-extra-controls">${extraControls || ""}</div>
         </div>
         <div class="items-pager-top" aria-label="تنقل صفحات الأصناف">
@@ -115,6 +116,14 @@
         };
       }
       if(apply) apply.onclick = runSearch;
+      const scan = typeof $ === "function" ? $(key + "ScanBarcode") : document.getElementById(key + "ScanBarcode");
+      if(scan) scan.onclick = function(){
+        if(typeof hesabiItemsHelpers !== "undefined" && typeof hesabiItemsHelpers.startUniversalScan === "function"){
+          hesabiItemsHelpers.startUniversalScan();
+        } else if(window.hesabiNativeScanItemBarcodeEmbedded){
+          window.hesabiNativeScanItemBarcodeEmbedded();
+        }
+      };
       const prev = typeof $ === "function" ? $(key + "Prev") : document.getElementById(key + "Prev");
       const next = typeof $ === "function" ? $(key + "Next") : document.getElementById(key + "Next");
       if(prev) prev.onclick = function(){ state[key + "Page"] = Math.max(1, Number(state[key + "Page"] || 1) - 1); try { if(typeof save === "function") save(); } catch(_) {} if(typeof rerender === "function") rerender(); };

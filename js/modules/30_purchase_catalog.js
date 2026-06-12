@@ -327,7 +327,7 @@ function renderSelectedCartTable(cart){
   const inlineQ=esc(catalogState().inlineQ||'');
   const emptyRow=`<tr class="invoice-entry-row">
       <td>${(cart.lines||[]).length+1}</td>
-      <td class="purchase-inline-name"><input id="purchaseInlineItemInput" value="${inlineQ}" autocomplete="off" placeholder="اكتب اسم الصنف هنا">${renderPurchaseInlineSuggest(catalogState().inlineQ||'')}</td>
+      <td class="purchase-inline-name"><div class="inline-input-with-scan"><input id="purchaseInlineItemInput" value="${inlineQ}" autocomplete="off" placeholder="اكتب اسم الصنف هنا"><button type="button" class="icon-mini-btn" id="purchaseInlineScanBtn" title="مسح باركود">📷</button></div>${renderPurchaseInlineSuggest(catalogState().inlineQ||'')}</td>
       <td class="purchase-inline-qty"><input id="purchaseInlineQty" type="number" min="1" step="1" value="1"></td>
       <td class="muted">${showPrices?'—':'مخفي'}</td><td class="muted">${showPrices?'—':'مخفي'}</td><td class="muted">اختر الصنف</td>
     </tr>`;
@@ -398,7 +398,10 @@ function renderCustomerAddItemsPage(){
   }).join('') || `<tr><td colspan="5" class="empty-selected">لا توجد أصناف مطابقة</td></tr>`;
   $('page_items').innerHTML=`<div class="card purchase-page-card">
     <div class="purchase-invoice-head"><h2>➕ إضافة أصناف للطلب</h2><div class="purchase-invoice-actions"><button class="btn ok" id="saveBrowseItems">حفظ والعودة للطلب</button><button class="btn light" id="backToInvoice">رجوع</button></div></div>
-    <div class="purchase-add-page-toolbar"><div class="field"><label>بحث</label><input id="browsePurchaseSearch" value="${esc(cs.q||'')}" placeholder="اكتب اسم الصنف أو الباركود"></div><div class="field"><label>التصنيف</label><select id="browsePurchaseCategory">${itemCategoryOptions(cs.category||'الكل')}</select></div></div>
+    <div class="purchase-add-page-toolbar">
+      <div class="field"><label>بحث</label><div class="inline-input-with-scan"><input id="browsePurchaseSearch" value="${esc(cs.q||'')}" placeholder="اكتب اسم الصنف أو الباركود"><button type="button" class="icon-mini-btn" id="browsePurchaseScanBtn" title="مسح باركود">📷</button></div></div>
+      <div class="field"><label>التصنيف</label><select id="browsePurchaseCategory">${itemCategoryOptions(cs.category||'الكل')}</select></div>
+    </div>
     <div class="muted" style="margin:8px 0">${cs.q?'نتائج البحث المطابقة':'يعرض افتراضيًا 10 أصناف من الأكثر طلبًا أو الأكثر استخدامًا'}</div>
     <div style="overflow:auto"><table class="purchase-add-page-table"><thead><tr><th>الصنف</th><th>السعر</th><th>المتوفر</th><th>في الطلب</th><th>اختيار</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="purchase-page-nav"><button class="btn light" id="browsePrev" ${meta.page<=1?'disabled':''}>السابق</button><span class="status pending">صفحة ${meta.page} من ${meta.pages} / ${meta.total} صنف</span><button class="btn light" id="browseNext" ${meta.page>=meta.pages?'disabled':''}>التالي</button></div>
@@ -422,6 +425,8 @@ function bindPurchaseInvoiceActions(){
     input.oninput=()=>{cs.inlineQ=input.value; saveCatalog(); const box=$('purchaseInlineSuggest'); if(box){box.outerHTML=renderPurchaseInlineSuggest(cs.inlineQ);} bindInlineSuggestButtons(); setTimeout(()=>{const inp=$('purchaseInlineItemInput'); if(inp){inp.focus(); try{inp.setSelectionRange(inp.value.length,inp.value.length)}catch{}}},0);};
     input.onfocus=()=>{const box=$('purchaseInlineSuggest'); if(box && String(input.value||'').trim()) box.classList.remove('hidden');};
   }
+  const scan=$('purchaseInlineScanBtn');
+  if(scan) scan.onclick=()=>{if(typeof hesabiItemsHelpers !== 'undefined' && typeof hesabiItemsHelpers.startUniversalScan === 'function') hesabiItemsHelpers.startUniversalScan();};
   bindInlineSuggestButtons();
 }
 function bindInlineSuggestButtons(){
@@ -441,6 +446,8 @@ function bindCustomerBrowsePage(){
   const cat=$('browsePurchaseCategory'); if(cat) cat.onchange=e=>{cs.category=e.target.value; cs.page=1; saveCatalog(); renderCustomerAddItemsPage();};
   const prev=$('browsePrev'); if(prev) prev.onclick=()=>{cs.page=Math.max(1,Number(cs.page||1)-1); saveCatalog(); renderCustomerAddItemsPage();};
   const next=$('browseNext'); if(next) next.onclick=()=>{cs.page=Number(cs.page||1)+1; saveCatalog(); renderCustomerAddItemsPage();};
+  const scan=$('browsePurchaseScanBtn');
+  if(scan) scan.onclick=()=>{if(typeof hesabiItemsHelpers !== 'undefined' && typeof hesabiItemsHelpers.startUniversalScan === 'function') hesabiItemsHelpers.startUniversalScan();};
   document.querySelectorAll('[data-browse-add]').forEach(b=>b.onclick=()=>{if(addItemToPurchaseInvoice(b.dataset.browseAdd,1)){msg('تمت إضافة الصنف للطلب','success'); renderCustomerAddItemsPage();}});
 }
 
