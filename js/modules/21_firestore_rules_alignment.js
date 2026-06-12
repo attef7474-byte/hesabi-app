@@ -1,24 +1,25 @@
-/* Hesabi 1.0.82 - Firestore Rules Alignment Review.
+/* Hesabi 1.0.128 - Firestore Rules Alignment Review.
    Read-only diagnostics only. No Firestore reads/writes and no rules mutation from the app. */
 (function(){
   "use strict";
-  const VERSION = "1.0.82";
-  const BUILD_CODE = 82;
+  const VERSION = "1.0.128";
+  const BUILD_CODE = 128;
   const EXPECTED_PATHS = [
-    { key:"shops", path:"shops/{shopId}", roles:["trader","customer"], note:"ملف المتجر وإعداداته" },
-    { key:"items", path:"shops/{shopId}/items/{itemId}", roles:["trader","customer-read"], note:"الأصناف والمخزون" },
+    { key:"shops", path:"shops/{shopId}", roles:["trader","customer-discoverable"], note:"ملف المتجر وإعداداته" },
+    { key:"items", path:"shops/{shopId}/items/{itemId}", roles:["trader","linked-customer-read"], note:"الأصناف والمخزون" },
     { key:"customers", path:"shops/{shopId}/customers/{customerId}", roles:["trader","linked-customer-read"], note:"بيانات العملاء والرصيد" },
     { key:"purchaseRequests", path:"shops/{shopId}/purchaseRequests/{requestId}", roles:["trader","linked-customer"], note:"طلبات الشراء" },
     { key:"invoices", path:"shops/{shopId}/invoices/{invoiceId}", roles:["trader","linked-customer-read"], note:"الفواتير" },
-    { key:"payments", path:"shops/{shopId}/payments/{paymentId}", roles:["trader","linked-customer-create"], note:"السداد والموافقات" },
+    { key:"paymentRequests", path:"shops/{shopId}/paymentRequests/{paymentId}", roles:["trader","linked-customer-create"], note:"السداد والموافقات" },
+    { key:"returnRequests", path:"shops/{shopId}/returnRequests/{returnId}", roles:["trader","linked-customer-create"], note:"المرتجعات" },
     { key:"customerLedger", path:"shops/{shopId}/customerLedger/{ledgerId}", roles:["trader","linked-customer-read"], note:"كشف الحساب" },
-    { key:"returns", path:"shops/{shopId}/returns/{returnId}", roles:["trader","linked-customer-create"], note:"المرتجعات" },
-    { key:"schedules", path:"shops/{shopId}/schedules/{scheduleId}", roles:["trader","linked-customer-read"], note:"الجداول والاستحقاقات" },
+    { key:"paymentSchedules", path:"shops/{shopId}/paymentSchedules/{scheduleId}", roles:["trader","linked-customer-read"], note:"الجداول والاستحقاقات" },
     { key:"messages", path:"shops/{shopId}/messages/{messageId}", roles:["trader","linked-customer"], note:"الرسائل" },
+    { key:"customerUidLinks", path:"shops/{shopId}/customerUidLinks/{uid}", roles:["verified-customer-link"], note:"ربط العميل بالمتجر بعد التحقق" },
     { key:"auditLogs", path:"shops/{shopId}/auditLogs/{auditId}", roles:["trader-read","system-write"], note:"سجل العمليات" },
     { key:"stockLedger", path:"shops/{shopId}/stockLedger/{stockLedgerId}", roles:["trader-read","system-write"], note:"حركات المخزون" },
-    { key:"shopPhones", path:"shopPhones/{phoneKey}", roles:["auth-read"], note:"استرجاع حساب التاجر بالهاتف" },
-    { key:"customerPhoneLinks", path:"customerPhoneLinks/{phoneKey}/shops/{shopId}", roles:["auth-read"], note:"روابط العميل بالمتاجر" },
+    { key:"shopPhones", path:"shopPhones/{phoneKey}", roles:["owner-or-auth-phone"], note:"استرجاع حساب التاجر بالهاتف" },
+    { key:"customerPhoneLinks", path:"customerPhoneLinks/{phoneKey}/shops/{shopId}", roles:["auth-phone-link"], note:"روابط العميل بالمتاجر" },
     { key:"userProfiles", path:"userProfiles/{uid}", roles:["owner-user"], note:"ملف حساب المستخدم" }
   ];
   function isPermissionDenied(error){
@@ -53,7 +54,7 @@
   }
   function selfCheck(){
     const missing = ["expectedKeys","pathByKey","runtimeContext","reviewRuntimeReadiness","firestoreErrorAdvice"].filter(function(name){ return typeof api[name] !== "function"; });
-    const sampleOk = expectedKeys().indexOf("purchaseRequests") >= 0 && !!pathByKey("payments") && isPermissionDenied({code:"permission-denied"});
+    const sampleOk = expectedKeys().indexOf("purchaseRequests") >= 0 && !!pathByKey("paymentRequests") && isPermissionDenied({code:"permission-denied"});
     return { ok: missing.length === 0 && sampleOk, version:VERSION, build:BUILD_CODE, missing, sampleOk, pathCount:EXPECTED_PATHS.length };
   }
   const api = { version:VERSION, build:BUILD_CODE, expectedPaths:EXPECTED_PATHS.slice(), expectedKeys, pathByKey, isPermissionDenied, runtimeContext, reviewRuntimeReadiness, firestoreErrorAdvice };

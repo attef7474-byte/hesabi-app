@@ -456,6 +456,7 @@ renderAudit=function(){
 }
 
 renderReports=function(){
+  if(state.role!=='trader'){show('home');return}
   const reportsHelper=window.hesabiReportsHelpers||{};
   const tab=typeof reportsHelper.safeReportTab==='function'?reportsHelper.safeReportTab(pageTabState('reports','summary')):pageTabState('reports','summary');
   const tabs=[['summary','📊','ملخص'],['sales','🧾','المبيعات'],['debts','💳','الديون'],['stock','📦','المخزون'],['export','📤','تصدير']];
